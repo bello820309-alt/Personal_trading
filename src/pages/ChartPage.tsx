@@ -190,8 +190,11 @@ function ChartView({ asset, series }: { asset: AssetConfig; series: AssetSeries 
         </label>
       )}
 
+      {/* 數值圖例：電腦版放在圖表上方，手機版放在圖表下方，讓圖表在第一屏就看得到 */}
       {bar && (
-        <Legend asset={asset} bar={bar} prev={prev} computed={computed} index={idx} colorOf={(l) => resolveColor(chartTheme, l.color)} />
+        <div className="hidden md:block">
+          <Legend asset={asset} bar={bar} prev={prev} computed={computed} index={idx} colorOf={(l) => resolveColor(chartTheme, l.color)} />
+        </div>
       )}
 
       <PriceChart
@@ -203,6 +206,12 @@ function ChartView({ asset, series }: { asset: AssetConfig; series: AssetSeries 
         rangeKey={rangeKey}
         onHover={onHover}
       />
+
+      {bar && (
+        <div className="md:hidden">
+          <Legend asset={asset} bar={bar} prev={prev} computed={computed} index={idx} colorOf={(l) => resolveColor(chartTheme, l.color)} />
+        </div>
+      )}
       <p className="text-xs text-muted">
         小技巧：手機用兩指縮放、左右滑動；點一下圖表可以看當天的數值。圖上的「買」「賣」是所選指標的經典訊號，不是投資建議。
         {asset.historyNote ? ` ${asset.historyNote}` : ''}
