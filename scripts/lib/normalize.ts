@@ -66,6 +66,7 @@ export function normalizeYahooChart(json: unknown, asset: AssetConfig, now: Date
   const byDate = new Map<string, Row>();
   let skipped = 0;
   let fixed = 0;
+  let closedDays = 0;
   for (let i = 0; i < ts.length; i++) {
     const o = q.open?.[i];
     const h = q.high?.[i];
@@ -75,10 +76,16 @@ export function normalizeYahooChart(json: unknown, asset: AssetConfig, now: Date
       skipped++;
       continue;
     }
+    const vol = q.volume?.[i];
+    // 股票沒有成交、開高低收又完全一樣的日子，其實是休市（颱風假、分割停止交易），
+    // Yahoo 會用前一天的收盤價補一根，留著會讓指標失真，所以略過。
+    if (asset.market !== 'crypto' && !(typeof vol === 'number' && vol > 0) && o === h && h === l && l === c) {
+      closedDays++;
+      continue;
+    }
     const hi = Math.max(h, o, c);
     const lo = Math.min(l, o, c);
     if (hi !== h || lo !== l) fixed++;
-    const vol = q.volume?.[i];
     const adj = ac[i];
     byDate.set(toDate(ts[i]!), {
       t: toDate(ts[i]!),
@@ -91,6 +98,7 @@ export function normalizeYahooChart(json: unknown, asset: AssetConfig, now: Date
     });
   }
   if (skipped > 0) warnings.push(`略過 ${skipped} 筆空值資料`);
+  if (closedDays > 0) warnings.push(`略過 ${closedDays} 筆沒有成交的休市日（颱風假、停止交易等）`);
   if (fixed > 0) warnings.push(`修正 ${fixed} 筆高低價不一致的資料`);
 
   let rows = [...byDate.values()].sort((a, b) => (a.t < b.t ? -1 : a.t > b.t ? 1 : 0));

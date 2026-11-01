@@ -96,6 +96,31 @@ describe('normalizeYahooChart', () => {
     expect(warnings.join()).toContain('空值');
   });
 
+  it('股票：零成交量且開高低收相同的休市日會被略過；有成交量的一字跌停會保留', () => {
+    const json = yahooLike({
+      start: TW_START,
+      days: 6,
+      tz: 'Asia/Taipei',
+      currency: 'TWD',
+      extra: (r) => {
+        const q = (r.indicators as { quote: Record<string, (number | null)[]>[] }).quote[0]!;
+        // index 2：颱風假（Yahoo 用前一天收盤補一根、成交量 0）
+        for (const k of ['open', 'high', 'low', 'close'] as const) q[k]![2] = 50;
+        q.volume![2] = 0;
+        // index 4：一字跌停（開高低收相同，但有成交量）
+        for (const k of ['open', 'high', 'low', 'close'] as const) q[k]![4] = 45;
+        q.volume![4] = 123456;
+      },
+    });
+    const { file, warnings } = normalizeYahooChart(json, tw, new Date(Date.UTC(2025, 0, 1)));
+    expect(file.bars.t).toEqual(['2024-01-02', '2024-01-03', '2024-01-05', '2024-01-06', '2024-01-07']);
+    expect(file.bars.c[3]).toBe(45);
+    expect(warnings.join()).toContain('休市日');
+    // 加密貨幣沒有休市，不套用這條規則
+    const crypto = normalizeYahooChart(json, btc, new Date(Date.UTC(2025, 0, 1)));
+    expect(crypto.file.bars.t.length).toBe(6);
+  });
+
   it('加密貨幣：今天（UTC）的 K 棒標記為尚未收盤', () => {
     const start = Date.UTC(2024, 0, 1) / 1000;
     const json = yahooLike({ start, days: 300, tz: 'UTC', currency: 'USD' });

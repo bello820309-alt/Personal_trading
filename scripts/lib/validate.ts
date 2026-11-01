@@ -59,7 +59,8 @@ export function validateAssetFile(
 
   // 和上一版比較：歷史資料不應該大幅改變
   if (prev && prev.bars.t.length > 0) {
-    if (n < prev.bars.t.length - 5) errors.push(`歷史資料變少了（上一版 ${prev.bars.t.length} 根，這次 ${n} 根）`);
+    // 容許少量差異（例如休市日的整理規則改變），但大幅變少代表抓到的歷史被截斷
+    if (n < prev.bars.t.length * 0.98 - 5) errors.push(`歷史資料變少了（上一版 ${prev.bars.t.length} 根，這次 ${n} 根）`);
     const newSplit = file.events.splits.some((s) => !prev.events.splits.some((p) => p.date === s.date));
     const prevIdx = new Map(prev.bars.t.map((d, i) => [d, i]));
     let overlap = 0;
