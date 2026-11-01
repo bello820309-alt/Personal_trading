@@ -93,12 +93,19 @@ export function normalizeYahooChart(json: unknown, asset: AssetConfig, now: Date
   if (skipped > 0) warnings.push(`略過 ${skipped} 筆空值資料`);
   if (fixed > 0) warnings.push(`修正 ${fixed} 筆高低價不一致的資料`);
 
-  const rows = [...byDate.values()].sort((a, b) => (a.t < b.t ? -1 : a.t > b.t ? 1 : 0));
+  let rows = [...byDate.values()].sort((a, b) => (a.t < b.t ? -1 : a.t > b.t ? 1 : 0));
+  const start = asset.historyStart;
+  if (start) {
+    const before = rows.length;
+    rows = rows.filter((r) => r.t >= start);
+    if (rows.length < before) warnings.push(`依設定只使用 ${start} 以後的資料（捨棄 ${before - rows.length} 筆較早的資料）`);
+  }
   if (rows.length === 0) throw new Error('整理後沒有任何有效的 K 棒');
 
   const dividends: DividendEvent[] = Object.values(result.events?.dividends ?? {})
     .filter((d) => typeof d.date === 'number' && isPos(d.amount))
     .map((d) => ({ date: toDate(d.date!), amount: round(d.amount!, 6) }))
+    .filter((d) => !start || d.date >= start)
     .sort((a, b) => a.date.localeCompare(b.date));
   const splits: SplitEvent[] = Object.values(result.events?.splits ?? {})
     .filter((s) => typeof s.date === 'number' && isPos(s.numerator) && isPos(s.denominator))

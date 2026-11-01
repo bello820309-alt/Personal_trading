@@ -48,6 +48,10 @@ export interface AssetConfig {
   /** 是否週末也交易（用來產生未來日期，給一目均衡表的雲層用） */
   tradesOnWeekends: boolean;
   costs: CostDefaults;
+  /** 只使用這一天以後的資料（資料來源在這之前有問題時使用） */
+  historyStart?: string;
+  /** historyStart 的原因（會顯示在 App 裡） */
+  historyNote?: string;
 }
 
 export const ASSETS: AssetConfig[] = [
@@ -66,6 +70,10 @@ export const ASSETS: AssetConfig[] = [
     pricePrecision: 2,
     volume: { divisor: 1000, unit: '張', label: '成交量' },
     tradesOnWeekends: false,
+    // Yahoo 在 2014 年以前的 0050 資料沒有做 2025 年「1 拆 4」的分割調整（價格是現在的 4 倍），
+    // 和之後的資料接不起來，所以從 2014 年開始使用。
+    historyStart: '2014-01-02',
+    historyNote: '資料從 2014 年開始：Yahoo 在這之前的 0050 價格沒有做 2025 年「1 拆 4」的分割調整，和之後的資料接不起來。',
     costs: {
       feeRate: 0.001425,
       feeDiscount: 1,

@@ -111,6 +111,19 @@ describe('normalizeYahooChart', () => {
     expect(back).toEqual(file);
   });
 
+  it('有設定 historyStart 時，只保留那天以後的資料', () => {
+    const json = yahooLike({ start: TW_START, days: 300, tz: 'Asia/Taipei', currency: 'TWD' });
+    const custom = { ...tw, historyStart: '2024-03-01' };
+    const { file, warnings } = normalizeYahooChart(json, custom, new Date(Date.UTC(2025, 0, 1)));
+    expect(file.bars.t[0]).toBe('2024-03-01');
+    expect(file.events.dividends).toEqual([]);
+    expect(warnings.join()).toContain('2024-03-01');
+  });
+
+  it('0050 設定從 2014-01-02 開始（避開 Yahoo 未調整分割的舊資料）', () => {
+    expect(tw.historyStart).toBe('2014-01-02');
+  });
+
   it('沒有資料時丟出錯誤', () => {
     expect(() => normalizeYahooChart({ chart: { result: [] } }, tw, new Date())).toThrow();
   });
