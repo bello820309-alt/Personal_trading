@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="zh-Hant-TW" data-theme="dark" data-color="tw">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="description" content="新手也看得懂的技術分析：0050、VOO、比特幣的指標、解說與回測" />
+    <meta name="theme-color" content="#0f172a" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="技術分析學堂" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <link rel="apple-touch-icon" href="./icons/apple-touch-icon-180x180.png" />
+    <title>技術分析學堂</title>
+    <script>
+      // 在 React 載入前先套用主題，避免畫面閃爍。
+      (function () {
+        try {
+          var s = JSON.parse(localStorage.getItem('ta-settings-v1') || '{}');
+          var theme = s.theme || 'system';
+          if (theme === 'system') {
+            theme = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+          }
+          document.documentElement.setAttribute('data-theme', theme);
+          document.documentElement.setAttribute('data-color', s.colorMode === 'intl' ? 'intl' : 'tw');
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

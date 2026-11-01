@@ -1,0 +1,22 @@
+name: CI
+
+# 預設分支的 push 已由「更新行情資料並部署」workflow 測試；這裡負責 Pull Request 和其他分支。
+on:
+  pull_request:
+  push:
+
+jobs:
+  test:
+    if: github.event_name == 'pull_request' || github.ref_name != github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build

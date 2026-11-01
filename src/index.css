@@ -1,0 +1,105 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
+
+/* 顏色 token：深色與淺色主題各一組，漲跌顏色依「紅漲綠跌／綠漲紅跌」設定切換。
+   注意：src/theme.ts 裡給圖表用的顏色要和這裡保持一致。 */
+:root,
+:root[data-theme='dark'] {
+  --bg: #0b1220;
+  --surface: #111a2e;
+  --surface-2: #18233b;
+  --border: #26324d;
+  --text: #e6edf7;
+  --text-muted: #9aa8bd;
+  --accent: #60a5fa;
+  --accent-contrast: #0b1220;
+  --red: #f05252;
+  --green: #22c55e;
+  --hot: #f59e0b;
+  --cold: #38bdf8;
+  color-scheme: dark;
+}
+
+:root[data-theme='light'] {
+  --bg: #f5f7fb;
+  --surface: #ffffff;
+  --surface-2: #eef2f7;
+  --border: #dde3ec;
+  --text: #0f172a;
+  --text-muted: #5b6b82;
+  --accent: #2563eb;
+  --accent-contrast: #ffffff;
+  --red: #dc2626;
+  --green: #16a34a;
+  --hot: #d97706;
+  --cold: #0284c7;
+  color-scheme: light;
+}
+
+:root,
+:root[data-color='tw'] {
+  --up: var(--red);
+  --down: var(--green);
+}
+
+:root[data-color='intl'] {
+  --up: var(--green);
+  --down: var(--red);
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--border);
+  --color-fg: var(--text);
+  --color-muted: var(--text-muted);
+  --color-accent: var(--accent);
+  --color-accent-contrast: var(--accent-contrast);
+  --color-up: var(--up);
+  --color-down: var(--down);
+  --color-hot: var(--hot);
+  --color-cold: var(--cold);
+  --font-sans: system-ui, -apple-system, 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', 'Heiti TC', sans-serif;
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--text);
+  -webkit-tap-highlight-color: transparent;
+  text-size-adjust: 100%;
+}
+
+body {
+  font-family: var(--font-sans);
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* 解說文章裡的公式區塊 */
+.formula {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.85rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* 讓長表格在手機上可以左右捲動，而不是撐破版面 */
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+input[type='range'] {
+  accent-color: var(--accent);
+}

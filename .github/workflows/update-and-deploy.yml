@@ -1,0 +1,115 @@
+name: 更新行情資料並部署
+
+on:
+  schedule:
+    # 美股收盤、比特幣日 K 收完之後（台北時間每天 08:23）
+    - cron: '23 0 * * *'
+    # 台股收盤之後（台北時間週一到週五 15:07）
+    - cron: '7 7 * * 1-5'
+  # 可以在 GitHub 的 Actions 頁面手動按「Run workflow」
+  workflow_dispatch:
+  push:
+    paths-ignore:
+      - '**.md'
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: update-and-deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  data:
+    name: 抓取行情資料
+    # 只有排程或手動執行時才抓資料；一般的程式碼 push 只重新部署
+    if: github.event_name != 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.ref_name }}
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: 抓取資料
+        id: fetch
+        continue-on-error: true
+        run: npm run fetch-data
+      - name: 檢查資料
+        continue-on-error: true
+        run: npm run validate-data
+      - name: Commit 資料
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/data
+          if git diff --cached --quiet; then
+            echo "資料沒有變化，不需要 commit。"
+          else
+            git commit -m "data: 更新行情資料（$(date -u +'%Y-%m-%d %H:%M') UTC）"
+            for i in 1 2 3; do
+              git pull --rebase origin "${GITHUB_REF_NAME}" && git push origin "HEAD:${GITHUB_REF_NAME}" && break
+              sleep $((i * 5))
+            done
+          fi
+      - name: 抓取失敗時通知
+        if: steps.fetch.outcome == 'failure'
+        run: |
+          echo "::error title=行情資料更新失敗::有標的抓取或驗證失敗，已保留上一版資料。請查看「抓取資料」步驟的紀錄。"
+          exit 1
+
+  build:
+    name: 測試與建置
+    needs: data
+    # 用 GITHUB_TOKEN push 的 commit 不會觸發其他 workflow，所以抓完資料要在這裡接著部署
+    if: ${{ always() && (github.event_name == 'schedule' || github.ref_name == github.event.repository.default_branch) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      pages_enabled: ${{ steps.pages.outputs.enabled }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # 指定分支名稱，才會拿到剛剛 commit 的最新資料
+          ref: ${{ github.ref_name }}
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - name: 檢查 GitHub Pages 是否已開啟
+        id: pages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh api "repos/${GITHUB_REPOSITORY}/pages" --silent 2>/dev/null; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=GitHub Pages 尚未開啟::請先把 repo 改成公開，再到 Settings → Pages，把 Source 設為「GitHub Actions」，然後重新執行這個 workflow。"
+          fi
+      - if: steps.pages.outputs.enabled == 'true'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    name: 部署到 GitHub Pages
+    needs: build
+    if: ${{ always() && needs.build.result == 'success' && needs.build.outputs.pages_enabled == 'true' }}
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
