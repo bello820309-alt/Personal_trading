@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-11-01T04:28:00.210Z",
+  "assets": [
+    {
+      "id": "0050",
+      "symbol": "0050.TW",
+      "status": "missing",
+      "error": "資料驗證失敗：單日漲跌超過 30%，可能是分割沒有調整：2014-01-02（-75.1%）"
+    },
+    {
+      "id": "VOO",
+      "symbol": "VOO",
+      "status": "ok",
+      "updatedAt": "2026-11-01T04:28:00.210Z",
+      "lastDate": "2026-10-30",
+      "bars": 4061
+    },
+    {
+      "id": "BTC",
+      "symbol": "BTC-USD",
+      "status": "ok",
+      "updatedAt": "2026-11-01T04:28:00.210Z",
+      "lastDate": "2026-11-01",
+      "bars": 4428
+    }
+  ]
+}
