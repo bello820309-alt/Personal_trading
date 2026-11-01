@@ -9,6 +9,8 @@ const base = process.env.BASE_PATH ?? '/Personal_trading/';
 
 export default defineConfig({
   base,
+  // 圖表函式庫與 25 個指標的解說都打包在一起（gzip 後約 200 KB），PWA 會快取，所以放寬警告門檻
+  build: { chunkSizeWarningLimit: 900 },
   plugins: [
     react(),
     tailwindcss(),
