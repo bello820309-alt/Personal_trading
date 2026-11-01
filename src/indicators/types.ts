@@ -106,6 +106,8 @@ export interface IndicatorResult {
   priceLevels?: PriceLevel[];
   /** 固定的數值範圍（0～100 的擺盪指標） */
   scale?: { min: number; max: number };
+  /** 圖例與說明裡線的顯示順序（線的 key）；沒有指定就照 lines 的順序 */
+  legendOrder?: string[];
 }
 
 export type Tone = 'bullish' | 'bearish' | 'hot' | 'cold' | 'neutral';

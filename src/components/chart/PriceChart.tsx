@@ -22,15 +22,19 @@ import {
 } from 'lightweight-charts';
 import type { AssetConfig } from '../../config/assets';
 import type { Candle } from '../../data/types';
-import { fmtCompact } from '../../data/format';
+import { fmtCompact, fmtDate, fmtPct, fmtPrice, signClass } from '../../data/format';
 import { futureDates } from '../../data/resample';
 import type { ColorRole, IndicatorResult, LineOutput, Series } from '../../indicators/types';
 import { useResolvedTheme, useSettings } from '../../store/settings';
 import { getChartTheme, withAlpha, type ChartTheme } from '../../theme';
 import { BandFill, type BandPoint } from './bandFill';
+import { formatLineValue, lineColorAt, lineValueAt, orderedLines } from './legend';
 
 export interface ChartIndicator {
+  /** 指標 id（點圖例標題時傳給 onExplain） */
   key: string;
+  /** 圖例上顯示的名稱，例如 MACD、KD */
+  title: string;
   result: IndicatorResult;
   placement: 'overlay' | 'pane';
 }
@@ -51,7 +55,17 @@ interface Props {
   /** 這個值改變時重設可視範圍（切換標的、週期、區間）；其他變動會保留使用者縮放的位置 */
   rangeKey: string;
   compact?: boolean;
-  onHover?: (index: number | null) => void;
+  /** 點圖例上的指標名稱時呼叫（例如打開解說） */
+  onExplain?: (key: string) => void;
+}
+
+interface PaneBox {
+  top: number;
+  height: number;
+}
+
+function sameBoxes(a: PaneBox[], b: PaneBox[]): boolean {
+  return a.length === b.length && a.every((x, i) => Math.abs(x.top - b[i]!.top) < 0.5 && Math.abs(x.height - b[i]!.height) < 0.5);
 }
 
 export function resolveColor(t: ChartTheme, role: ColorRole): string {
@@ -102,11 +116,85 @@ function candlePriceFormat(asset: AssetConfig): PriceFormat {
     : { type: 'price', precision: asset.pricePrecision, minMove: 1 / 10 ** asset.pricePrecision };
 }
 
-function panePriceFormat(line: LineOutput, asset: AssetConfig): PriceFormat {
+/** 副圖座標軸的數字格式：比特幣的數值很大就不顯示小數，0～100 的擺盪指標顯示 1 位小數 */
+function panePriceFormat(line: LineOutput, asset: AssetConfig, fixedScale: boolean): PriceFormat {
   if (line.unit === 'volume') {
     return { type: 'custom', minMove: 1, formatter: (v: number) => fmtCompact(v / asset.volume.divisor) };
   }
+  if (line.unit === 'percent') return { type: 'price', precision: 2, minMove: 0.01 };
+  if (fixedScale) return { type: 'price', precision: 1, minMove: 0.1 };
+  if (asset.market === 'crypto') return { type: 'price', precision: 0, minMove: 1 };
   return { type: 'price', precision: 2, minMove: 0.01 };
+}
+
+/** 圖例裡代表一條線的小色塊（線、柱子、點的樣子不同） */
+function Swatch({ line, color }: { line: LineOutput; color: string }) {
+  if (line.kind === 'histogram') return <span className="inline-block h-2.5 w-1.5 shrink-0 rounded-[1px]" style={{ background: color }} />;
+  if (line.kind === 'dots') return <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: color }} />;
+  return (
+    <span
+      className="inline-block w-3 shrink-0"
+      style={{ borderTop: `${line.width && line.width > 1 ? 2 : 1.5}px ${line.dashed ? 'dashed' : 'solid'} ${color}` }}
+    />
+  );
+}
+
+function IndicatorLegend({
+  ci,
+  index,
+  t,
+  asset,
+  onExplain,
+}: {
+  ci: ChartIndicator;
+  index: number;
+  t: ChartTheme;
+  asset: AssetConfig;
+  onExplain?: (key: string) => void;
+}) {
+  const lines = orderedLines(ci.result);
+  return (
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+      {onExplain ? (
+        <button
+          type="button"
+          onClick={() => onExplain(ci.key)}
+          className="pointer-events-auto font-semibold text-fg underline decoration-dotted underline-offset-2"
+        >
+          {ci.title}
+        </button>
+      ) : (
+        <span className="font-semibold text-fg">{ci.title}</span>
+      )}
+      {lines.length === 0 && (ci.result.priceLevels?.length ?? 0) > 0 && <span className="text-muted">（圖上的點狀橫線）</span>}
+      {lines.map((l) => (
+        <span key={l.key} className="inline-flex items-center gap-1 whitespace-nowrap">
+          <Swatch line={l} color={resolveColor(t, lineColorAt(l, index))} />
+          {l.label !== ci.title && <span className="text-muted">{l.label}</span>}
+          <span className="text-fg">{formatLineValue(lineValueAt(l, index), l, asset)}</span>
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function PriceLegend({ bar, prev, asset, compact }: { bar: Candle; prev: Candle | undefined; asset: AssetConfig; compact?: boolean }) {
+  const chg = prev ? bar.close / prev.close - 1 : null;
+  const item = (label: string, v: number) => (
+    <span className="whitespace-nowrap">
+      <span className="text-muted">{label}</span> <span className="text-fg">{fmtPrice(v, asset)}</span>
+    </span>
+  );
+  return (
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+      <span className="font-semibold text-fg">{fmtDate(bar.time)}</span>
+      {!compact && item('開', bar.open)}
+      {!compact && item('高', bar.high)}
+      {!compact && item('低', bar.low)}
+      {item('收', bar.close)}
+      <span className={signClass(chg)}>{fmtPct(chg)}</span>
+    </div>
+  );
 }
 
 /** 依顯示平移量，把指標數列轉成圖表資料（平移到未來的部分使用預先產生的未來日期） */
@@ -153,18 +241,20 @@ function buildHistogramData(
   });
 }
 
-function PriceChartImpl({ candles, asset, indicators, markers, visibleBars, rangeKey, compact, onHover }: Props) {
+function PriceChartImpl({ candles, asset, indicators, markers, visibleBars, rangeKey, compact, onExplain }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const hoverRef = useRef(onHover);
-  hoverRef.current = onHover;
   const savedRange = useRef<{ key: string; range: LogicalRange } | null>(null);
   const theme = useResolvedTheme();
   const colorMode = useSettings((s) => s.colorMode);
   const isMobile = useIsMobile();
+  /** 十字線所在的 K 棒（沒有觸碰時是 null → 顯示最新一根） */
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+  /** 每個區塊（主圖、副圖）在容器裡的位置，用來放圖例 */
+  const [boxes, setBoxes] = useState<PaneBox[]>([]);
 
   const paneCount = indicators.filter((i) => i.placement === 'pane').length;
   const mainHeight = compact ? 240 : isMobile ? 300 : 420;
-  const paneHeight = compact ? 100 : isMobile ? 120 : 140;
+  const paneHeight = compact ? 110 : isMobile ? 150 : 150;
   const height = mainHeight + paneCount * paneHeight;
 
   useEffect(() => {
@@ -223,7 +313,7 @@ function PriceChartImpl({ candles, asset, indicators, markers, visibleBars, rang
         const common = {
           priceLineVisible: false,
           lastValueVisible: ci.placement === 'pane',
-          priceFormat: ci.placement === 'overlay' ? cFormat : panePriceFormat(line, asset),
+          priceFormat: ci.placement === 'overlay' ? cFormat : panePriceFormat(line, asset, !!ci.result.scale),
           ...(ci.result.scale && ci.placement === 'pane'
             ? {
                 autoscaleInfoProvider: () => ({
@@ -333,11 +423,28 @@ function PriceChartImpl({ candles, asset, indicators, markers, visibleBars, rang
     applyInitialRange();
     // 圖表剛建立時容器可能還沒量好尺寸（例如切換頁面的瞬間），可視範圍會套用失敗；
     // 等兩個畫面更新（尺寸確定）之後再套用一次，之後才開始記錄使用者的縮放位置。
+    // 量出每個區塊的位置，讓圖例放在各區塊的左上角；區塊大小改變（包括拖動分隔線）時重新量
+    const measure = () => {
+      const host = el.getBoundingClientRect();
+      const next = chart.panes().map((p) => {
+        const r = p.getHTMLElement()?.getBoundingClientRect();
+        return r ? { top: r.top - host.top, height: r.height } : { top: 0, height: 0 };
+      });
+      setBoxes((prev) => (sameBoxes(prev, next) ? prev : next));
+    };
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    for (const p of chart.panes()) {
+      const pe = p.getHTMLElement();
+      if (pe) ro.observe(pe);
+    }
+
     let ready = false;
     let raf2 = 0;
     const raf1 = requestAnimationFrame(() => {
       raf2 = requestAnimationFrame(() => {
         applyInitialRange();
+        measure();
         ready = true;
       });
     });
@@ -347,18 +454,17 @@ function PriceChartImpl({ candles, asset, indicators, markers, visibleBars, rang
     ts.subscribeVisibleLogicalRangeChange(onRange);
 
     const onMove = (param: MouseEventParams<Time>) => {
-      const cb = hoverRef.current;
-      if (!cb) return;
       if (!param.point || param.logical === undefined) {
-        cb(null);
+        setHoverIdx(null);
         return;
       }
       const idx = Math.round(param.logical);
-      cb(idx < 0 ? null : Math.min(idx, n - 1));
+      setHoverIdx(idx < 0 ? null : Math.min(idx, n - 1));
     };
     chart.subscribeCrosshairMove(onMove);
 
     return () => {
+      ro.disconnect();
       cancelAnimationFrame(raf1);
       cancelAnimationFrame(raf2);
       ts.unsubscribeVisibleLogicalRangeChange(onRange);
@@ -367,7 +473,37 @@ function PriceChartImpl({ candles, asset, indicators, markers, visibleBars, rang
     };
   }, [candles, asset, indicators, markers, visibleBars, rangeKey, compact, theme, colorMode, isMobile, mainHeight, paneHeight]);
 
-  return <div ref={containerRef} style={{ height }} className="w-full overflow-hidden rounded-lg border border-line" />;
+  const t = getChartTheme(theme, colorMode);
+  const idx = hoverIdx !== null && hoverIdx < candles.length ? hoverIdx : candles.length - 1;
+  const bar = candles[idx];
+  const overlays = indicators.filter((ci) => ci.placement === 'overlay');
+  const panes = indicators.filter((ci) => ci.placement === 'pane');
+  const legendClass =
+    'pointer-events-none absolute left-1.5 z-10 max-w-[calc(100%-4.25rem)] space-y-0.5 rounded bg-surface/70 px-1.5 py-0.5 text-[11px] leading-snug tabular md:text-xs';
+
+  return (
+    <div className="relative">
+      <div ref={containerRef} style={{ height }} className="w-full overflow-hidden rounded-lg border border-line" />
+      {/* 圖例：每個區塊左上角標出線的名稱、顏色與數值（類似 TradingView） */}
+      {bar && boxes[0] && (
+        <div className={legendClass} style={{ top: boxes[0].top + 4 }}>
+          <PriceLegend bar={bar} prev={candles[idx - 1]} asset={asset} compact={compact} />
+          {overlays.map((ci) => (
+            <IndicatorLegend key={ci.key} ci={ci} index={idx} t={t} asset={asset} onExplain={onExplain} />
+          ))}
+        </div>
+      )}
+      {panes.map((ci, k) => {
+        const box = boxes[k + 1];
+        if (!box) return null;
+        return (
+          <div key={ci.key} className={legendClass} style={{ top: box.top + 3 }}>
+            <IndicatorLegend ci={ci} index={idx} t={t} asset={asset} onExplain={onExplain} />
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 export const PriceChart = memo(PriceChartImpl);

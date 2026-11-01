@@ -181,7 +181,7 @@ function BacktestView({
     [res, t.textMuted, t.accent],
   );
   const chartIndicators = useMemo<ChartIndicator[]>(
-    () => [{ key: def.id, result: res.computed.result, placement: def.placement }],
+    () => [{ key: def.id, title: def.shortName, result: res.computed.result, placement: def.placement }],
     [res, def],
   );
   const markers = useMemo<ChartMarker[]>(

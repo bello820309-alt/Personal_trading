@@ -35,6 +35,12 @@ export const OTHER_CONTENT: IndicatorContent[] = [
     marketNotes: ['全球通用 20／2。'],
     kind: { timing: '同步', bestFor: '盤整行情（逆勢）；擠壓後找突破' },
     combineWith: ['RSI：確認是否真的超買超賣', '肯特納通道：布林通道縮進肯特納通道內代表「擠壓」'],
+    lineGuide: {
+      upper: '上軌：中軌加 2 倍標準差，代表「正常波動範圍」的上緣。',
+      middle: '中軌（虛線）：20 日均線。',
+      lower: '下軌：中軌減 2 倍標準差，代表正常波動範圍的下緣。跌破下軌代表偏離平均很多。',
+    },
+    chartNote: '上下軌之間的淡色區域就是通道；通道變窄代表波動變小，常常是大行情前的醞釀。',
   },
   {
     id: 'atr',
@@ -63,6 +69,9 @@ export const OTHER_CONTENT: IndicatorContent[] = [
     marketNotes: ['全球通用 14 天。'],
     kind: { timing: '同步', bestFor: '風險管理（停損、部位大小）' },
     combineWith: ['任何進場訊號：用 ATR 設定停損', 'SuperTrend、肯特納通道'],
+    lineGuide: {
+      atr: '{label}：最近平均每天的波動大小（價格單位）。數字越大代表晃得越厲害，但不分漲跌。',
+    },
   },
   {
     id: 'keltner',
@@ -91,6 +100,12 @@ export const OTHER_CONTENT: IndicatorContent[] = [
     marketNotes: ['常見 20／10／2；也有 20／20／1.5 的版本。'],
     kind: { timing: '同步', bestFor: '趨勢突破' },
     combineWith: ['布林通道', 'ADX'],
+    lineGuide: {
+      upper: '上軌：EMA 加 2 倍 ATR。收盤突破上軌代表趨勢很強。',
+      middle: '中線（虛線）：20 日 EMA。',
+      lower: '下軌：EMA 減 2 倍 ATR。',
+    },
+    chartNote: '上下軌之間的淡色區域就是通道。',
   },
   {
     id: 'volume',
@@ -119,6 +134,11 @@ export const OTHER_CONTENT: IndicatorContent[] = [
     marketNotes: ['台股以「張」為單位（1 張 = 1000 股），這裡也這樣顯示。', 'VOO 以「股」為單位；比特幣顯示的是美元成交值。'],
     kind: { timing: '同步（有時領先價格）', bestFor: '確認其他訊號' },
     combineWith: ['任何突破訊號（均線、通道）', 'OBV'],
+    lineGuide: {
+      vol: '成交量柱子：每根 K 棒的成交量。收盤比開盤高用上漲顏色，比開盤低用下跌顏色。',
+      ma1: '{label}：最近 {n} 天的平均成交量（短）。',
+      ma2: '{label}：最近 {n} 天的平均成交量。柱子明顯高過這條線代表量增，低很多代表量縮。',
+    },
   },
   {
     id: 'obv',
@@ -148,6 +168,10 @@ export const OTHER_CONTENT: IndicatorContent[] = [
     marketNotes: ['各市場用法相同。'],
     kind: { timing: '領先（理論上）', bestFor: '確認趨勢、找背離' },
     combineWith: ['價格的趨勢指標', 'MFI'],
+    lineGuide: {
+      obv: 'OBV：上漲日加上當天成交量、下跌日減掉成交量，一路累積起來的線。往上走代表資金流入。',
+      obvMa: '{label}：OBV 的平均線。OBV 往上穿過它代表資金開始流入，往下穿過代表開始流出。',
+    },
   },
   {
     id: 'mfi',
@@ -178,6 +202,10 @@ export const OTHER_CONTENT: IndicatorContent[] = [
     marketNotes: ['常見 14 天，門檻 80／20。'],
     kind: { timing: '同步', bestFor: '盤整行情' },
     combineWith: ['RSI', 'OBV'],
+    lineGuide: {
+      mfi: '{label}：把成交量算進去的 RSI（0～100）。高於 80 是資金超買，低於 20 是資金超賣。',
+    },
+    chartNote: '虛線由上到下是：80、50、20。',
   },
   {
     id: 'fibonacci',
@@ -209,6 +237,8 @@ export const OTHER_CONTENT: IndicatorContent[] = [
     marketNotes: ['各市場用法相同；比特幣交易者特別常用。'],
     kind: { timing: '預先畫出的參考價位', bestFor: '趨勢中的回檔' },
     combineWith: ['KD、RSI：在費波那契價位附近出現低檔訊號時更有參考價值', 'K 線型態'],
+    lineGuide: {},
+    chartNote: '圖上的點狀橫線就是回撤價位，右邊的價格軸上會標示 Fib 23.6%、38.2%、50%、61.8% 等。38.2%～61.8% 最常被當成可能的支撐或壓力。',
   },
   {
     id: 'pivot',
@@ -235,5 +265,13 @@ export const OTHER_CONTENT: IndicatorContent[] = [
     marketNotes: ['期貨與外匯交易者最常用；股票也適用。'],
     kind: { timing: '預先算出的參考價位', bestFor: '區間操作、設定目標價' },
     combineWith: ['費波那契回撤', 'K 線型態'],
+    lineGuide: {
+      r2: 'R2（虛線）：第二壓力。',
+      r1: 'R1：第一壓力，漲到這附近容易遇到賣壓。',
+      p: 'P（樞軸）：上一期高、低、收的平均，可當作多空分界。',
+      s1: 'S1：第一支撐，跌到這附近容易有買盤。',
+      s2: 'S2（虛線）：第二支撐。',
+    },
+    chartNote: '每條線在同一期（週、月或年）內是水平的，換期時才會跳到新的位置。',
   },
 ];

@@ -36,6 +36,11 @@ export const MOMENTUM_CONTENT: IndicatorContent[] = [
     marketNotes: ['國際：RSI(14)，70／30。', '台股：RSI(6) 搭配 RSI(12)，常用 80／20。', '比特幣波動大，RSI 在 70 以上停留很久的情況更常見。'],
     kind: { timing: '同步（有時略帶領先）', bestFor: '盤整行情；趨勢行情要小心' },
     combineWith: ['ADX：ADX 低時 RSI 的超買超賣比較準', '均線：只在長期趨勢向上時做「超賣反彈」'],
+    lineGuide: {
+      rsi: '{label}：主要的 RSI 線（0～100）。越高代表最近漲的力道越強；碰到上方虛線是超買，碰到下方虛線是超賣。',
+      rsi2: '{label}：天數比較長的 RSI，比較平滑。短天期 RSI 往上穿過它，也有人當作轉強的訊號。',
+    },
+    chartNote: '虛線由上到下是：超買門檻、50、超賣門檻。',
   },
   {
     id: 'kd',
@@ -78,6 +83,11 @@ export const MOMENTUM_CONTENT: IndicatorContent[] = [
     marketNotes: ['台股：幾乎都用 9／3／3，看日 KD 和週 KD。', '國外常用的 Stochastic(14, 3, 3) 算法不同，數值無法直接比較。'],
     kind: { timing: '同步（短線靈敏）', bestFor: '盤整行情、短線操作' },
     combineWith: ['均線：只在月線、季線向上時做低檔黃金交叉', '成交量'],
+    lineGuide: {
+      k: 'K 線（快線）：今天的收盤價落在最近 9 天高低區間的哪個位置（經過平滑），反應比較快。',
+      d: 'D 線（慢線）：K 的平均，反應比較慢。K 往上穿過 D 叫黃金交叉，往下穿過叫死亡交叉。',
+    },
+    chartNote: '虛線由上到下是：80（高檔／超買）、50、20（低檔／超賣）。',
   },
   {
     id: 'williams-r',
@@ -106,6 +116,10 @@ export const MOMENTUM_CONTENT: IndicatorContent[] = [
     marketNotes: ['國際通用 14 天；台股軟體也有人用 10 天或 20 天。'],
     kind: { timing: '同步（很靈敏）', bestFor: '盤整行情' },
     combineWith: ['趨勢指標（均線、ADX）', 'KD'],
+    lineGuide: {
+      wr: '{label}：收盤價離最近 14 天的最高價有多遠（−100～0）。越接近 0 越強（超買），越接近 −100 越弱（超賣）。',
+    },
+    chartNote: '虛線由上到下是：−20（超買）、−50、−80（超賣）。',
   },
   {
     id: 'cci',
@@ -135,6 +149,10 @@ export const MOMENTUM_CONTENT: IndicatorContent[] = [
     marketNotes: ['常見 14 或 20 天；台股軟體多為 14 天。'],
     kind: { timing: '同步', bestFor: '偏趨勢行情（順勢用法）' },
     combineWith: ['ADX：確認趨勢強度', '均線'],
+    lineGuide: {
+      cci: '{label}：價格偏離近期平均水準的程度。突破 +100 代表進入強勢，跌破 −100 代表進入弱勢。',
+    },
+    chartNote: '虛線由上到下是：+100、0、−100。',
   },
   {
     id: 'roc',
@@ -163,6 +181,11 @@ export const MOMENTUM_CONTENT: IndicatorContent[] = [
     marketNotes: ['常見 10、12、20 天；也有人用 125 天、250 天看長期動能。'],
     kind: { timing: '同步（略帶領先）', bestFor: '趨勢行情' },
     combineWith: ['均線', 'RSI'],
+    lineGuide: {
+      roc: '{label}：和 {n} 天前比漲跌了幾 %。在 0 之上代表比 {n} 天前高。',
+      rocMa: '{label}：ROC 的平均線，用來看動能是在變強還是變弱。',
+    },
+    chartNote: '中間的虛線是 0：ROC 由下往上穿過 0 代表動能翻正。',
   },
   {
     id: 'bias',
@@ -194,6 +217,10 @@ export const MOMENTUM_CONTENT: IndicatorContent[] = [
     marketNotes: ['台股：常看 6、12、24 日乖離，或月線、季線乖離。', '加密貨幣波動大，乖離動輒 ±20% 以上。'],
     kind: { timing: '同步', bestFor: '區間震盪、極端行情後的反彈' },
     combineWith: ['均線', 'RSI、KD：一起確認超買超賣'],
+    lineGuide: {
+      '*': '{label}：收盤價離 {n} 日均線幾 %。正值代表在均線之上，數字越大代表離均線越遠、越容易被拉回。',
+    },
+    chartNote: '虛線是 0，代表價格剛好在均線上。',
   },
   {
     id: 'stoch-rsi',
@@ -223,6 +250,11 @@ export const MOMENTUM_CONTENT: IndicatorContent[] = [
     marketNotes: ['常見 14／14／3／3。在加密貨幣圈特別流行。'],
     kind: { timing: '領先（但雜訊多）', bestFor: '短線、盤整行情' },
     combineWith: ['長天期均線：只做順大趨勢方向的訊號', 'RSI'],
+    lineGuide: {
+      k: '%K（快線）：RSI 在最近區間裡的位置（0～100），非常靈敏。',
+      d: '%D（慢線）：%K 的平均，比較平滑。%K 穿過 %D 就是交叉訊號。',
+    },
+    chartNote: '虛線是 80（超買）和 20（超賣）。',
   },
   {
     id: 'psy',
@@ -249,5 +281,9 @@ export const MOMENTUM_CONTENT: IndicatorContent[] = [
     marketNotes: ['台股常用 12 天。'],
     kind: { timing: '同步', bestFor: '盤整行情' },
     combineWith: ['乖離率', 'RSI'],
+    lineGuide: {
+      psy: '{label}：最近 {n} 天裡有幾成的日子是上漲的。越高代表市場越樂觀。',
+    },
+    chartNote: '虛線由上到下是：過熱（75）、50、過冷（25）。',
   },
 ];

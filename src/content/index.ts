@@ -17,4 +17,22 @@ export function getContent(id: string | null | undefined): IndicatorContent | un
   return id ? BY_ID.get(id) : undefined;
 }
 
+/**
+ * 某條線的白話說明（把 {label}、{n} 換成線的名稱與天數）。
+ * barUnit：週 K、月 K 時傳「週」「個月」，會把「{n} 天」換成「{n} 週」。
+ */
+export function lineGuideText(
+  content: IndicatorContent | undefined,
+  line: { key: string; label: string },
+  barUnit?: string,
+): string | null {
+  if (!content) return null;
+  const raw = content.lineGuide[line.key] ?? content.lineGuide['*'];
+  if (!raw) return null;
+  const n = line.label.match(/\d+/)?.[0] ?? '';
+  let text = raw.replaceAll('{label}', line.label);
+  if (barUnit) text = text.replace(/\{n\} ?[天日]/g, `${n} ${barUnit}`);
+  return text.replaceAll('{n}', n);
+}
+
 export const ALL_CONTENT = ALL;

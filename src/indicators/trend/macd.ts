@@ -46,6 +46,8 @@ export const macdIndicator: IndicatorDef<MacdParams> = {
         { key: 'macd', label: 'MACD（訊號線）', values: sig, kind: 'line', color: 's0', width: 2 },
       ],
       levels: [{ value: 0, label: '0 軸' }],
+      // 柱狀體要先畫（才不會蓋住線），但說明時先講 DIF、訊號線，再講柱狀體比較好懂
+      legendOrder: ['dif', 'macd', 'osc'],
     };
   },
   signals(candles, r) {

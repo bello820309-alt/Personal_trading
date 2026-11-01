@@ -2,6 +2,7 @@ import { useMemo, type ReactNode } from 'react';
 import { AssetStateView } from '../components/AssetState';
 import { AssetTabs } from '../components/AssetTabs';
 import { PriceChart, type ChartIndicator, type ChartMarker } from '../components/chart/PriceChart';
+import { ArrowGuide, LineGuide } from '../components/LineGuide';
 import { Notice, Spinner, ToneBadge } from '../components/ui';
 import { ASSETS, DEFAULT_ASSET_ID, getAsset, type AssetConfig } from '../config/assets';
 import { defaultCosts, runIndicatorBacktest } from '../backtest/strategies';
@@ -199,8 +200,12 @@ function LiveChart({ def, asset, series }: { def: IndicatorDef; asset: AssetConf
   const update = useSettings((s) => s.update);
   const candles = series.candles;
   const ci = useMemo(() => computeIndicator(def, candles, asset.market, null), [def, candles, asset.market]);
-  const indicators = useMemo<ChartIndicator[]>(() => [{ key: def.id, result: ci.result, placement: def.placement }], [ci, def]);
-  const markers = useMemo<ChartMarker[]>(() => signalsOf(ci, candles).map((s) => ({ index: s.index, side: s.side })), [ci, candles]);
+  const indicators = useMemo<ChartIndicator[]>(
+    () => [{ key: def.id, title: def.shortName, result: ci.result, placement: def.placement }],
+    [ci, def],
+  );
+  const signals = useMemo(() => signalsOf(ci, candles), [ci, candles]);
+  const markers = useMemo<ChartMarker[]>(() => signals.map((s) => ({ index: s.index, side: s.side })), [signals]);
   const d = describeOf(ci, candles);
   return (
     <div>
@@ -213,6 +218,16 @@ function LiveChart({ def, asset, series }: { def: IndicatorDef; asset: AssetConf
         rangeKey={`learn|${def.id}|${asset.id}`}
         compact
       />
+      <div className="mt-3">
+        <h3 className="mb-1.5 text-xs font-medium text-muted">{def.placement === 'overlay' ? '畫在 K 線上的線' : 'K 線下方小圖裡的線'}</h3>
+        <LineGuide def={def} result={ci.result} />
+        {signals.length > 0 && (
+          <>
+            <h3 className="mt-3 mb-1.5 text-xs font-medium text-muted">圖上的箭頭</h3>
+            <ArrowGuide signals={signals} />
+          </>
+        )}
+      </div>
       {d && (
         <div className="mt-3 rounded-lg border border-line px-3 py-2">
           <div className="flex items-center gap-2">

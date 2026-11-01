@@ -47,6 +47,9 @@ export const TREND_CONTENT: IndicatorContent[] = [
     ],
     kind: { timing: '落後指標', bestFor: '趨勢明顯的行情' },
     combineWith: ['均線交叉（黃金交叉／死亡交叉）', '乖離率：看價格離均線多遠', '成交量：突破均線時有沒有放量'],
+    lineGuide: {
+      '*': '{label}：最近 {n} 天收盤價的平均。天數越少的線越貼近價格、轉彎越快；比較粗的那條是用來產生買賣訊號的均線。',
+    },
   },
   {
     id: 'ema',
@@ -84,6 +87,9 @@ export const TREND_CONTENT: IndicatorContent[] = [
     marketNotes: ['國際上常用 EMA 20／50／200。', '台股看盤軟體預設多為 SMA，用 EMA 時記得數值會和券商 App 的均線不同。'],
     kind: { timing: '落後指標（比 SMA 快一些）', bestFor: '趨勢行情、短線操作' },
     combineWith: ['MACD', 'SMA：一快一慢比較', 'ADX：先確認有趨勢再用均線'],
+    lineGuide: {
+      '*': '{label}：最近 {n} 天的指數移動平均，越近的價格占的比重越大，所以比同天數的 MA 更早轉彎。比較粗的那條用來產生訊號。',
+    },
   },
   {
     id: 'ma-cross',
@@ -122,6 +128,10 @@ export const TREND_CONTENT: IndicatorContent[] = [
     ],
     kind: { timing: '落後指標', bestFor: '有明確大趨勢的行情；盤整時表現差' },
     combineWith: ['ADX：ADX 高時交叉訊號比較可靠', '成交量：交叉時放量比較有說服力'],
+    lineGuide: {
+      fast: '{label}（短天期）：反應快，代表最近一段時間的平均成本。',
+      slow: '{label}（長天期）：反應慢，代表比較長期的平均成本。短的線往上穿過長的線就是黃金交叉，往下穿過就是死亡交叉。',
+    },
   },
   {
     id: 'macd',
@@ -160,6 +170,12 @@ export const TREND_CONTENT: IndicatorContent[] = [
     marketNotes: ['全球最常用的設定就是 12／26／9，台股、美股、加密貨幣都一樣。'],
     kind: { timing: '落後指標（柱狀體略帶領先）', bestFor: '趨勢行情' },
     combineWith: ['RSI／KD：一個看趨勢、一個看超買超賣', '成交量：確認動能有資金支持'],
+    lineGuide: {
+      dif: 'DIF（快線）：12 日 EMA 減 26 日 EMA。在 0 軸之上代表短期均線高於長期均線（偏多），線往上走代表上漲動能在增強。',
+      macd: 'MACD（訊號線）：DIF 的 9 日平均，比 DIF 平滑、轉彎比較慢。DIF 由下往上穿過它叫 MACD 黃金交叉，往下穿過叫死亡交叉。',
+      osc: 'OSC（柱狀體）：DIF 減訊號線，也就是兩條線的距離。柱子在 0 軸之上代表 DIF 在訊號線上方；柱子越來越長代表力道增強，越來越短代表力道減弱。',
+    },
+    chartNote: '中間的虛線是 0 軸：DIF 在 0 軸之上偏多、之下偏空。',
   },
   {
     id: 'dmi',
@@ -196,6 +212,12 @@ export const TREND_CONTENT: IndicatorContent[] = [
     marketNotes: ['全球通用 14 天；ADX 門檻常用 20 或 25。'],
     kind: { timing: '落後指標', bestFor: '判斷是趨勢盤還是盤整盤' },
     combineWith: ['均線、MACD：ADX 高時才使用', 'RSI、KD：ADX 低時比較適合'],
+    lineGuide: {
+      pdi: '+DI（上漲力道）：越高代表往上推的力量越強。',
+      mdi: '−DI（下跌力道）：越高代表往下壓的力量越強。+DI 在 −DI 之上代表多方占優勢。',
+      adx: 'ADX（趨勢強度，粗線）：不分漲跌，只看趨勢明不明顯。低於 20 代表盤整，高於 25 代表趨勢明確。',
+    },
+    chartNote: '虛線是 ADX 門檻：ADX 在虛線之上時，DI 的交叉訊號比較可靠。',
   },
   {
     id: 'psar',
@@ -228,6 +250,9 @@ export const TREND_CONTENT: IndicatorContent[] = [
     marketNotes: ['全球通用 0.02／0.2，是 Wilder 在 1978 年提出的原始設定。'],
     kind: { timing: '落後指標', bestFor: '趨勢明確的行情；盤整時很差' },
     combineWith: ['ADX：只在有趨勢時使用 SAR', '均線：用長均線判斷大方向'],
+    lineGuide: {
+      sar: 'SAR 點：在 K 線下方（上漲顏色）代表上漲趨勢，點的位置可當作停損參考；跳到 K 線上方（下跌顏色）代表轉為下跌趨勢。',
+    },
   },
   {
     id: 'ichimoku',
@@ -264,6 +289,14 @@ export const TREND_CONTENT: IndicatorContent[] = [
     marketNotes: ['大部分市場都使用 9／26／52。', '加密貨幣全年無休，有人改用 20／60／120／30。'],
     kind: { timing: '落後為主，雲層提供未來參考', bestFor: '中長期趨勢判斷' },
     combineWith: ['成交量：突破雲層時是否放量', 'RSI：確認突破時的動能'],
+    lineGuide: {
+      tenkan: '轉換線：最近 9 天最高價與最低價的中間值，代表短期的平衡點。',
+      kijun: '基準線：最近 26 天最高價與最低價的中間值，代表中期的平衡點。轉換線往上穿過基準線偏多。',
+      spanA: '先行帶 A：轉換線和基準線的平均，往未來平移 26 天畫出，是「雲」的一條邊。',
+      spanB: '先行帶 B：最近 52 天最高價與最低價的中間值，也往未來平移，是「雲」的另一條邊。',
+      chikou: '遲行線：今天的收盤價往回平移 26 天畫出，用來和當時的價格比較強弱。',
+    },
+    chartNote: '兩條先行帶中間的色塊就是「雲」：上漲顏色代表先行帶 A 在上（多方雲），下跌顏色代表先行帶 B 在上（空方雲）。價格在雲上偏多、在雲下偏空、在雲裡方向不明。',
   },
   {
     id: 'supertrend',
@@ -293,6 +326,10 @@ export const TREND_CONTENT: IndicatorContent[] = [
     marketNotes: ['常見設定 10／3；短線有人用 7／2，比特幣波動大有人用更大的倍數。'],
     kind: { timing: '落後指標', bestFor: '趨勢行情' },
     combineWith: ['ADX', '成交量'],
+    lineGuide: {
+      up: '多方線（上漲顏色）：在價格下方，代表上漲趨勢，可當作移動停損；收盤跌破它就翻空。',
+      down: '空方線（下跌顏色）：在價格上方，代表下跌趨勢；收盤漲過它就翻多。',
+    },
   },
   {
     id: 'donchian',
@@ -322,5 +359,12 @@ export const TREND_CONTENT: IndicatorContent[] = [
     marketNotes: ['海龜法則：短線 20／10、長線 55／20。'],
     kind: { timing: '突破型（同步）指標', bestFor: '有大趨勢的行情' },
     combineWith: ['ATR：海龜法則用 ATR 決定停損與部位大小', '成交量：突破時放量更可信'],
+    lineGuide: {
+      upper: '上軌：最近 N 天的最高價。收盤突破它代表創 N 日新高（海龜法則的買點）。',
+      lower: '下軌：最近 N 天的最低價。',
+      middle: '中線（虛線）：上軌和下軌的中間。',
+      exit: '出場線（灰色虛線）：最近幾天的最低價，收盤跌破就出場。',
+    },
+    chartNote: '上下軌之間的淡色區域就是通道。',
   },
 ];

@@ -1,23 +1,23 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AssetStateView } from '../components/AssetState';
 import { AssetTabs } from '../components/AssetTabs';
-import { PriceChart, resolveColor, type ChartIndicator, type ChartMarker } from '../components/chart/PriceChart';
+import { PriceChart, type ChartIndicator, type ChartMarker } from '../components/chart/PriceChart';
 import { ExplainSheet } from '../components/ExplainSheet';
 import { CloseIcon, InfoIcon, PlusIcon, SlidersIcon } from '../components/icons';
 import { IndicatorPicker } from '../components/IndicatorPicker';
+import { ArrowGuide, LineGuide } from '../components/LineGuide';
 import { ParamEditor } from '../components/ParamEditor';
 import { Card, Segmented, ToneBadge } from '../components/ui';
 import { DEFAULT_ASSET_ID, getAsset, type AssetConfig } from '../config/assets';
-import { fmtAuto, fmtDate, fmtNum, fmtPct, fmtPrice, fmtVolume, signClass } from '../data/format';
+import { fmtDate, fmtPct, fmtPrice, signClass } from '../data/format';
 import { useAsset } from '../data/load';
 import { TIMEFRAME_LABELS, type Timeframe } from '../data/resample';
 import type { AssetSeries, Candle } from '../data/types';
 import { barsForRange, useDisplayCandles } from '../data/useSeries';
 import { computeIndicator, describeOf, getIndicator, signalsOf, type ComputedIndicator } from '../indicators/registry';
-import type { LineOutput } from '../indicators/types';
+import type { Signal } from '../indicators/types';
 import { Link, navigate, withQuery } from '../router';
-import { RANGE_LABELS, useResolvedTheme, useSettings, type RangeKey } from '../store/settings';
-import { getChartTheme } from '../theme';
+import { RANGE_LABELS, useSettings, type RangeKey } from '../store/settings';
 
 export function ChartPage({ assetId }: { assetId?: string }) {
   const lastAsset = useSettings((s) => s.lastAsset);
@@ -39,24 +39,9 @@ export function ChartPage({ assetId }: { assetId?: string }) {
   );
 }
 
-function lineValueAt(line: LineOutput, index: number): number | null {
-  const v = line.values[index - (line.shift ?? 0)];
-  return v === undefined ? null : v;
-}
-
-function formatLineValue(v: number | null, line: LineOutput, asset: AssetConfig): string {
-  if (v === null) return '—';
-  if (line.unit === 'volume') return fmtVolume(v, asset);
-  if (line.unit === 'percent') return `${fmtNum(v, 2)}%`;
-  return fmtAuto(v);
-}
-
 function ChartView({ asset, series }: { asset: AssetConfig; series: AssetSeries }) {
   const s = useSettings();
-  const theme = useResolvedTheme();
-  const chartTheme = getChartTheme(theme, s.colorMode);
   const candles = useDisplayCandles(series, s.adjusted, s.timeframe);
-  const [hover, setHover] = useState<number | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [explainId, setExplainId] = useState<string | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
@@ -71,7 +56,7 @@ function ChartView({ asset, series }: { asset: AssetConfig; series: AssetSeries 
   );
 
   const chartIndicators = useMemo<ChartIndicator[]>(
-    () => computed.map((c) => ({ key: c.def.id, result: c.result, placement: c.def.placement })),
+    () => computed.map((c) => ({ key: c.def.id, title: c.def.shortName, result: c.result, placement: c.def.placement })),
     [computed],
   );
 
@@ -85,12 +70,8 @@ function ChartView({ asset, series }: { asset: AssetConfig; series: AssetSeries 
 
   const visibleBars = barsForRange(candles, s.range);
   const rangeKey = `${asset.id}|${s.timeframe}|${s.range}`;
-  const onHover = useCallback((i: number | null) => setHover(i), []);
 
   const n = candles.length;
-  const idx = hover ?? n - 1;
-  const bar = candles[idx];
-  const prev = idx > 0 ? candles[idx - 1] : undefined;
   const last = candles[n - 1]!;
   const lastPrev = candles[n - 2];
   const lastChange = lastPrev ? last.close / lastPrev.close - 1 : null;
@@ -190,13 +171,6 @@ function ChartView({ asset, series }: { asset: AssetConfig; series: AssetSeries 
         </label>
       )}
 
-      {/* 數值圖例：電腦版放在圖表上方，手機版放在圖表下方，讓圖表在第一屏就看得到 */}
-      {bar && (
-        <div className="hidden md:block">
-          <Legend asset={asset} bar={bar} prev={prev} computed={computed} index={idx} colorOf={(l) => resolveColor(chartTheme, l.color)} />
-        </div>
-      )}
-
       <PriceChart
         candles={candles}
         asset={asset}
@@ -204,52 +178,23 @@ function ChartView({ asset, series }: { asset: AssetConfig; series: AssetSeries 
         markers={markers}
         visibleBars={visibleBars}
         rangeKey={rangeKey}
-        onHover={onHover}
+        onExplain={setExplainId}
       />
-
-      {bar && (
-        <div className="md:hidden">
-          <Legend asset={asset} bar={bar} prev={prev} computed={computed} index={idx} colorOf={(l) => resolveColor(chartTheme, l.color)} />
-        </div>
-      )}
-      <p className="text-xs text-muted">
-        小技巧：手機用兩指縮放、左右滑動；點一下圖表可以看當天的數值。圖上的「買」「賣」是所選指標的經典訊號，不是投資建議。
+      <p className="text-xs leading-relaxed text-muted">
+        小技巧：圖裡每個區塊的左上角會標出線的名稱、顏色和數值；手指按住圖表左右移動，可以看每一天的數值，點名稱可以看解說。兩指可以縮放。圖上的箭頭是所選指標的經典訊號，不是投資建議。
         {asset.historyNote ? ` ${asset.historyNote}` : ''}
       </p>
 
-      {signalCi && <SignalList ci={signalCi} candles={candles} asset={asset} timeframe={s.timeframe} />}
+      <ReadingGuide
+        computed={computed}
+        candles={candles}
+        timeframe={s.timeframe}
+        signalId={signalCi?.def.id ?? null}
+        signals={signals}
+        onExplain={setExplainId}
+      />
 
-      <Card>
-        <h2 className="mb-3 text-base font-semibold text-fg">這些指標目前怎麼說</h2>
-        {computed.length === 0 ? (
-          <p className="text-sm text-muted">還沒有加入指標。按「加入指標」挑幾個來看看吧。</p>
-        ) : (
-          <ul className="space-y-3">
-            {computed.map((c) => {
-              const d = describeOf(c, candles);
-              return (
-                <li key={c.def.id} className="border-b border-line pb-3 last:border-0 last:pb-0">
-                  <div className="flex items-center gap-2">
-                    {d && <ToneBadge tone={d.tone} />}
-                    <span className="text-sm font-medium text-fg">{c.def.name}</span>
-                    <button type="button" onClick={() => setExplainId(c.def.id)} className="ml-auto text-xs text-accent">
-                      看解說
-                    </button>
-                  </div>
-                  {d ? (
-                    <>
-                      <p className="mt-1 text-sm text-fg">{d.headline}</p>
-                      <p className="mt-0.5 text-sm leading-relaxed text-muted">{d.detail}</p>
-                    </>
-                  ) : (
-                    <p className="mt-1 text-sm text-muted">資料不夠長，還算不出來。</p>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </Card>
+      {signalCi && <SignalList ci={signalCi} candles={candles} asset={asset} timeframe={s.timeframe} />}
 
       <IndicatorPicker
         open={pickerOpen}
@@ -271,60 +216,83 @@ function ChartView({ asset, series }: { asset: AssetConfig; series: AssetSeries 
   );
 }
 
-function Legend({
-  asset,
-  bar,
-  prev,
+/** 「怎麼看這張圖」：每個指標的線代表什麼、箭頭代表什麼、現在是什麼狀態 */
+function ReadingGuide({
   computed,
-  index,
-  colorOf,
+  candles,
+  timeframe,
+  signalId,
+  signals,
+  onExplain,
 }: {
-  asset: AssetConfig;
-  bar: Candle;
-  prev: Candle | undefined;
   computed: ComputedIndicator[];
-  index: number;
-  colorOf: (l: LineOutput) => string;
+  candles: Candle[];
+  timeframe: Timeframe;
+  signalId: string | null;
+  signals: Signal[];
+  onExplain: (id: string) => void;
 }) {
-  const chg = prev ? bar.close / prev.close - 1 : null;
+  const panes = computed.filter((c) => c.def.placement === 'pane');
+  const barUnit = timeframe === 'W' ? '週' : timeframe === 'M' ? '個月' : undefined;
   return (
-    <div className="rounded-lg border border-line bg-surface px-3 py-2 text-xs tabular">
-      <div className="flex flex-wrap gap-x-3 gap-y-0.5">
-        <span className="font-medium text-fg">{fmtDate(bar.time)}</span>
-        <span className="text-muted">
-          開 <span className="text-fg">{fmtPrice(bar.open, asset)}</span>
-        </span>
-        <span className="text-muted">
-          高 <span className="text-fg">{fmtPrice(bar.high, asset)}</span>
-        </span>
-        <span className="text-muted">
-          低 <span className="text-fg">{fmtPrice(bar.low, asset)}</span>
-        </span>
-        <span className="text-muted">
-          收 <span className="text-fg">{fmtPrice(bar.close, asset)}</span>
-        </span>
-        <span className={signClass(chg)}>{fmtPct(chg)}</span>
-        <span className="text-muted">
-          {asset.volume.label} <span className="text-fg">{fmtVolume(bar.volume, asset)}</span>
-        </span>
-      </div>
-      {computed.map((c) => {
-        const lines = c.result.lines.filter((l) => l.key !== 'trend');
-        if (lines.length === 0) return null;
-        const showName = lines[0]!.label !== c.def.shortName;
-        return (
-          <div key={c.def.id} className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
-            {showName && <span className="text-muted">{c.def.shortName}</span>}
-            {lines.map((l) => (
-              <span key={l.key} className="inline-flex items-center gap-1 text-muted">
-                {!l.hidden && <span className="inline-block h-2 w-2 rounded-full" style={{ background: colorOf(l) }} />}
-                {l.label} <span className="text-fg">{formatLineValue(lineValueAt(l, index), l, asset)}</span>
-              </span>
-            ))}
-          </div>
-        );
-      })}
-    </div>
+    <Card>
+      <h2 className="text-base font-semibold text-fg">怎麼看這張圖</h2>
+      <p className="mt-0.5 mb-4 text-xs text-muted">下面每個顏色樣本都和圖上的線一樣，對照著看就知道哪條是哪條。</p>
+      {barUnit && (
+        <p className="mb-4 rounded-lg border border-hot/40 bg-hot/10 px-3 py-2 text-sm leading-relaxed text-fg">
+          現在看的是{TIMEFRAME_LABELS[timeframe]}：一根 K 棒代表一{barUnit === '週' ? '週' : '個月'}，所以指標用的「天數」在這裡都是「{barUnit}數」。例如
+          MACD 的 12、26，在這張圖上是 12 {barUnit}、26 {barUnit}；下面「現在」的說明裡的「今天」，指的是最新這一根 K 棒。
+        </p>
+      )}
+      {computed.length === 0 ? (
+        <p className="text-sm text-muted">還沒有加入指標。按「加入指標」挑幾個來看看吧。</p>
+      ) : (
+        <ul className="space-y-5">
+          {computed.map((c) => {
+            const d = describeOf(c, candles);
+            const paneNo = panes.indexOf(c) + 1;
+            const where =
+              c.def.placement === 'overlay'
+                ? '畫在 K 線上的線'
+                : panes.length > 1
+                  ? `K 線下方第 ${paneNo} 個小圖裡的線`
+                  : 'K 線下方小圖裡的線';
+            return (
+              <li key={c.def.id} className="border-b border-line pb-5 last:border-0 last:pb-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-base font-semibold text-fg">{c.def.name}</span>
+                  {c.def.shortName !== c.def.name && <span className="text-sm text-muted">{c.def.shortName}</span>}
+                  <button type="button" onClick={() => onExplain(c.def.id)} className="ml-auto shrink-0 text-xs text-accent">
+                    看解說
+                  </button>
+                </div>
+                <h3 className="mt-2 mb-1.5 text-xs font-medium text-muted">{where}</h3>
+                <LineGuide def={c.def} result={c.result} barUnit={barUnit} />
+                {c.def.id === signalId && signals.length > 0 && (
+                  <>
+                    <h3 className="mt-3 mb-1.5 text-xs font-medium text-muted">圖上的箭頭</h3>
+                    <ArrowGuide signals={signals} />
+                  </>
+                )}
+                <div className="mt-3 rounded-lg bg-surface-2 px-3 py-2">
+                  {d ? (
+                    <>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <ToneBadge tone={d.tone} />
+                        <span className="text-sm font-medium text-fg">現在：{d.headline}</span>
+                      </div>
+                      <p className="mt-1 text-sm leading-relaxed text-muted">{d.detail}</p>
+                    </>
+                  ) : (
+                    <p className="text-sm text-muted">資料不夠長，還算不出目前的狀態。</p>
+                  )}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </Card>
   );
 }
 

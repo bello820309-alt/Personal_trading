@@ -25,6 +25,13 @@ export interface IndicatorContent {
   kind: { timing: string; bestFor: string };
   /** 常見搭配 */
   combineWith: string[];
+  /**
+   * 圖上每條線代表什麼（key 對應指標輸出的線；'*' 用於天數可變的線，例如 MA5、MA20）。
+   * 文字裡可以用 {label} 代入線的名稱、{n} 代入名稱裡的天數。
+   */
+  lineGuide: Record<string, string>;
+  /** 圖上其他元素的說明（參考虛線、雲層、價位線…） */
+  chartNote?: string;
 }
 
 export interface BasicsArticle {
