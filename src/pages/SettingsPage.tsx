@@ -64,7 +64,7 @@ export function SettingsPage() {
       </Card>
 
       <Card>
-        <SectionTitle sub="GitHub Actions 每天在美股收盤後（台北 08:23）與台股收盤後（台北 15:07）自動抓取。">資料</SectionTitle>
+        <SectionTitle sub="日 K 資料由 GitHub Actions 每小時檢查一次（收盤後寫入）；比特幣在網頁開著時每分鐘直接向幣安取得即時價格。">資料</SectionTitle>
         <div className="table-scroll">
           <table className="w-full min-w-[420px] text-sm">
             <thead>
@@ -94,7 +94,7 @@ export function SettingsPage() {
           </table>
         </div>
         <p className="mt-2 text-xs text-muted">
-          上次抓取：{manifest ? fmtDateTime(manifest.generatedAt) : '—'}（台北時間）。
+          日 K 資料最後一次更新：{manifest ? fmtDateTime(manifest.generatedAt) : '—'}（台北時間）。
           <Link to="/basics/data-source" className="ml-1 text-accent">
             價格資料是從哪裡來的？
           </Link>

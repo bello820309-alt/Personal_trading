@@ -70,7 +70,7 @@ export function Layout({ children }: { children: ReactNode }) {
           })}
         </nav>
         <p className="mt-auto px-3 text-xs leading-relaxed text-muted">0050 · VOO · 比特幣
-          <br />資料每天自動更新</p>
+          <br />比特幣每分鐘更新</p>
       </aside>
 
       <div className="md:pl-56">

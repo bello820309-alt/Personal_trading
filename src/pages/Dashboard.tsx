@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { AssetTabs } from '../components/AssetTabs';
+import { DataTimeNote } from '../components/DataTimeNote';
 import { LineChart, type LineSpec } from '../components/chart/LineChart';
 import { Sparkline } from '../components/Sparkline';
 import { Card, Notice, PageTitle, Segmented, SectionTitle, Spinner, ToneBadge } from '../components/ui';
@@ -106,15 +107,14 @@ function AssetCard({ asset, state }: { asset: AssetConfig; state: LoadState<Asse
         <span className="text-2xl font-bold text-fg tabular">{fmtPrice(last.close, asset)}</span>
         <span className={`text-sm font-medium tabular ${signClass(chg)}`}>{fmtPct(chg)}</span>
       </div>
-      <div className="text-xs text-muted">
-        {fmtDate(last.time)}
-        {state.data.meta.lastBarComplete ? ' 收盤' : <span className="ml-1 rounded bg-hot/15 px-1.5 py-0.5 text-hot">尚未收盤</span>}
-        {yearChg !== null && (
-          <span className="ml-2">
-            近一年 <span className={signClass(yearChg)}>{fmtPct(yearChg, 1)}</span>
-          </span>
-        )}
+      <div className="mt-0.5 text-xs text-muted">
+        <DataTimeNote series={state.data} compact />
       </div>
+      {yearChg !== null && (
+        <div className="text-xs text-muted">
+          近一年 <span className={signClass(yearChg)}>{fmtPct(yearChg, 1)}</span>
+        </div>
+      )}
       <p className="mt-2 flex-1 text-xs leading-relaxed text-muted">{asset.intro}</p>
       <div className="mt-3 flex gap-4 text-sm">
         <Link to={`/chart/${asset.id}`} className="text-accent">

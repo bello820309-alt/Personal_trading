@@ -132,6 +132,13 @@ export function normalizeYahooChart(json: unknown, asset: AssetConfig, now: Date
     const end = result.meta?.currentTradingPeriod?.regular?.end;
     lastBarComplete = typeof end === 'number' ? now.getTime() / 1000 >= end + 15 * 60 : false;
   }
+  // 只存「已收盤」的 K 棒：盤中的數字一直在變，存進 repo 只會每小時產生一個 commit。
+  // 比特幣今天的 K 棒由網頁直接向幣安取得（即時）；股票則等收盤後下一次更新再寫入。
+  if (!lastBarComplete && rows.length > 1) {
+    rows = rows.slice(0, -1);
+    warnings.push(`最後一根（${lastDate}）尚未收盤，先不寫入`);
+    lastBarComplete = true;
+  }
 
   const file: AssetDataFile = {
     schemaVersion: 1,

@@ -121,12 +121,34 @@ describe('normalizeYahooChart', () => {
     expect(crypto.file.bars.t.length).toBe(6);
   });
 
-  it('加密貨幣：今天（UTC）的 K 棒標記為尚未收盤', () => {
+  it('加密貨幣：今天（UTC）還沒收盤的 K 棒不寫入檔案（網頁會直接向幣安取得）', () => {
     const start = Date.UTC(2024, 0, 1) / 1000;
     const json = yahooLike({ start, days: 300, tz: 'UTC', currency: 'USD' });
     const lastDay = new Date((start + 299 * 86400) * 1000);
-    const { file } = normalizeYahooChart(json, btc, new Date(lastDay.getTime() + 5 * 3600 * 1000));
-    expect(file.lastBarComplete).toBe(false);
+    const { file, warnings } = normalizeYahooChart(json, btc, new Date(lastDay.getTime() + 5 * 3600 * 1000));
+    expect(file.bars.t).toHaveLength(299);
+    expect(file.bars.t[298]).toBe(new Date((start + 298 * 86400) * 1000).toISOString().slice(0, 10));
+    expect(file.lastBarComplete).toBe(true);
+    expect(warnings.join()).toContain('尚未收盤');
+  });
+
+  it('股票：盤中抓到的今天 K 棒不寫入，收盤後才寫入', () => {
+    const json = yahooLike({
+      start: TW_START,
+      days: 300,
+      tz: 'Asia/Taipei',
+      currency: 'TWD',
+      extra: (r) => {
+        // 今天的收盤時間（台北 13:30 = UTC 05:30）
+        const lastOpen = TW_START + 299 * 86400;
+        (r.meta as { currentTradingPeriod: { regular: { end: number } } }).currentTradingPeriod.regular.end = lastOpen + 4.5 * 3600;
+      },
+    });
+    const lastOpenMs = (TW_START + 299 * 86400) * 1000;
+    const during = normalizeYahooChart(json, tw, new Date(lastOpenMs + 2 * 3600 * 1000)).file;
+    expect(during.bars.t).toHaveLength(299);
+    const after = normalizeYahooChart(json, tw, new Date(lastOpenMs + 6 * 3600 * 1000)).file;
+    expect(after.bars.t).toHaveLength(300);
   });
 
   it('輸出的 JSON 可以被正常讀回', () => {

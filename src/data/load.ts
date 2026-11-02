@@ -1,4 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { getAsset } from '../config/assets';
+import { mergeLiveBars } from './live/merge';
+import { getLiveState, hasLive, useLiveVersion } from './live/store';
 import { parseAssetFile } from './parse';
 import type { AssetDataFile, AssetSeries, DataManifest } from './types';
 
@@ -49,6 +52,21 @@ function toState<T>(e: unknown): LoadState<T> {
   return { status: 'error', message: e instanceof Error ? e.message : String(e) };
 }
 
+/**
+ * 有即時報價的標的（比特幣）：把每分鐘抓到的即時 K 棒接到歷史資料後面。
+ * 即時資料還沒抓到或抓取失敗時，照常使用歷史資料，並把狀態放在 data.live 讓畫面說明。
+ */
+function withLive(state: LoadState<AssetSeries>, id: string): LoadState<AssetSeries> {
+  if (state.status !== 'ready' || !hasLive(id)) return state;
+  const source = getAsset(id)!.live!.label;
+  const live = getLiveState(id);
+  if (!live?.bars) {
+    return { status: 'ready', data: { ...state.data, live: { source, fetchedAt: null, error: live?.error ?? null } } };
+  }
+  const merged = mergeLiveBars(state.data, live.bars, Date.now());
+  return { status: 'ready', data: { ...merged, live: { source, fetchedAt: live.fetchedAt, error: live.error } } };
+}
+
 export function useAsset(id: string | undefined): LoadState<AssetSeries> {
   const [state, setState] = useState<LoadState<AssetSeries>>({ status: 'loading' });
   useEffect(() => {
@@ -63,7 +81,9 @@ export function useAsset(id: string | undefined): LoadState<AssetSeries> {
       alive = false;
     };
   }, [id]);
-  return state;
+  const liveVersion = useLiveVersion(id ? [id] : []);
+  // liveVersion 每次即時資料更新就會變，讓合併結果重新計算
+  return useMemo(() => (id ? withLive(state, id) : state), [state, id, liveVersion]);
 }
 
 export function useAssets(ids: string[]): Record<string, LoadState<AssetSeries>> {
@@ -83,7 +103,11 @@ export function useAssets(ids: string[]): Record<string, LoadState<AssetSeries>>
       alive = false;
     };
   }, [key]);
-  return states;
+  const liveVersion = useLiveVersion(ids);
+  return useMemo(
+    () => Object.fromEntries(Object.entries(states).map(([id, st]) => [id, withLive(st, id)])),
+    [states, liveVersion],
+  );
 }
 
 export function useManifest(): DataManifest | null {

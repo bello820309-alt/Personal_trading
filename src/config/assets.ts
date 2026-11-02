@@ -48,6 +48,11 @@ export interface AssetConfig {
   /** 是否週末也交易（用來產生未來日期，給一目均衡表的雲層用） */
   tradesOnWeekends: boolean;
   costs: CostDefaults;
+  /**
+   * 即時報價：在瀏覽器裡直接向交易所的公開 API 取得最新 K 棒，每分鐘更新。
+   * 歷史資料仍來自每天抓的 Yahoo 資料，最新幾天由即時資料補上。
+   */
+  live?: { provider: 'binance'; symbol: string; label: string };
   /** 只使用這一天以後的資料（資料來源在這之前有問題時使用） */
   historyStart?: string;
   /** historyStart 的原因（會顯示在 App 裡） */
@@ -127,6 +132,7 @@ export const ASSETS: AssetConfig[] = [
     pricePrecision: 2,
     volume: { divisor: 1, unit: '美元', label: '成交值' },
     tradesOnWeekends: true,
+    live: { provider: 'binance', symbol: 'BTCUSDT', label: '幣安 BTC/USDT' },
     costs: {
       feeRate: 0.001,
       feeDiscount: 1,

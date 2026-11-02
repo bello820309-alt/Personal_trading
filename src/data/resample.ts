@@ -26,7 +26,7 @@ export function yearKey(date: string): string {
 
 /**
  * 日 K 轉週 K／月 K：開盤取第一天、收盤取最後一天、最高最低取極值、成交量加總。
- * K 棒的日期用該週（月）第一個交易日。
+ * K 棒的日期用該週（月）第一個交易日，endTime 記錄最後一個交易日（畫面上顯示成區間）。
  * 也會同步回傳每根新 K 棒的「最後一筆」索引，方便對應其他數列（例如還原收盤價）。
  */
 export function resample(candles: Candle[], tf: Timeframe): { candles: Candle[]; lastIndex: number[] } {
@@ -40,7 +40,7 @@ export function resample(candles: Candle[], tf: Timeframe): { candles: Candle[];
     const k = keyFn(c.time);
     if (!cur || k !== curKey) {
       if (cur) out.push(cur);
-      cur = { ...c };
+      cur = { ...c, endTime: c.time };
       curKey = k;
       lastIndex.push(i);
     } else {
@@ -48,6 +48,7 @@ export function resample(candles: Candle[], tf: Timeframe): { candles: Candle[];
       cur.low = Math.min(cur.low, c.low);
       cur.close = c.close;
       cur.volume += c.volume;
+      cur.endTime = c.time;
       lastIndex[lastIndex.length - 1] = i;
     }
   });

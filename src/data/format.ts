@@ -86,6 +86,26 @@ export function fmtDateTime(iso: string | null | undefined): string {
   }).format(d);
 }
 
+const clockFormat = new Intl.DateTimeFormat('zh-TW', {
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
+});
+
+/** 毫秒時間 → 「11/02 13:11」（使用裝置的時區） */
+export function fmtClock(ms: number | null | undefined): string {
+  if (ms === null || ms === undefined || !Number.isFinite(ms)) return '—';
+  return clockFormat.format(new Date(ms));
+}
+
+/** K 棒的日期；週 K、月 K 顯示區間，例如 2026/10/26～11/01 */
+export function fmtBarDate(time: string, endTime?: string): string {
+  if (!endTime || endTime === time) return fmtDate(time);
+  return `${fmtDate(time)}～${fmtDate(endTime).slice(endTime.slice(0, 4) === time.slice(0, 4) ? 5 : 0)}`;
+}
+
 /** 兩個 YYYY-MM-DD 之間相差幾天 */
 export function daysBetween(a: string, b: string): number {
   return Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86400000);

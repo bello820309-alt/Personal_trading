@@ -2,10 +2,10 @@ name: 更新行情資料並部署
 
 on:
   schedule:
-    # 美股收盤、比特幣日 K 收完之後（台北時間每天 08:23）
-    - cron: '23 0 * * *'
-    # 台股收盤之後（台北時間週一到週五 15:07）
-    - cron: '7 7 * * 1-5'
+    # 每小時檢查一次（每小時的第 17 分）。GitHub 的排程偶爾會延遲或跳過，所以多給幾次機會；
+    # 只有出現新的「已收盤」K 棒時才會 commit 並重新部署。
+    # 比特幣的即時價格是網頁直接向幣安取得（每分鐘），不依賴這個排程。
+    - cron: '17 * * * *'
   # 可以在 GitHub 的 Actions 頁面手動按「Run workflow」
   workflow_dispatch:
   push:
@@ -28,6 +28,8 @@ jobs:
     if: github.event_name != 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    outputs:
+      changed: ${{ steps.commit.outputs.changed }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -45,18 +47,21 @@ jobs:
         continue-on-error: true
         run: npm run validate-data
       - name: Commit 資料
+        id: commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add public/data
           if git diff --cached --quiet; then
-            echo "資料沒有變化，不需要 commit。"
+            echo "資料沒有變化，不需要 commit，也不需要重新部署。"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             git commit -m "data: 更新行情資料（$(date -u +'%Y-%m-%d %H:%M') UTC）"
             for i in 1 2 3; do
               git pull --rebase origin "${GITHUB_REF_NAME}" && git push origin "HEAD:${GITHUB_REF_NAME}" && break
               sleep $((i * 5))
             done
+            echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
       - name: 抓取失敗時通知
         if: steps.fetch.outcome == 'failure'
@@ -67,8 +72,9 @@ jobs:
   build:
     name: 測試與建置
     needs: data
-    # 用 GITHUB_TOKEN push 的 commit 不會觸發其他 workflow，所以抓完資料要在這裡接著部署
-    if: ${{ always() && (github.event_name == 'schedule' || github.ref_name == github.event.repository.default_branch) }}
+    # 用 GITHUB_TOKEN push 的 commit 不會觸發其他 workflow，所以抓完資料要在這裡接著部署。
+    # 排程執行時，只有資料有變動才部署；push 和手動執行則一律部署。
+    if: ${{ always() && (github.event_name != 'schedule' || needs.data.outputs.changed == 'true') && (github.event_name == 'schedule' || github.ref_name == github.event.repository.default_branch) }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     outputs:

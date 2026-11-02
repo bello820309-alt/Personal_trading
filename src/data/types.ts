@@ -6,6 +6,18 @@ export interface Candle {
   low: number;
   close: number;
   volume: number;
+  /** 週 K、月 K 才有：這根 K 棒涵蓋的最後一天 */
+  endTime?: string;
+}
+
+/** 即時報價的狀態（目前只有比特幣，來自幣安） */
+export interface LiveInfo {
+  /** 例如「幣安 BTC/USDT」 */
+  source: string;
+  /** 最近一次成功取得即時資料的時間（毫秒）；還沒成功過是 null */
+  fetchedAt: number | null;
+  /** 最近一次抓取失敗的原因；成功時是 null */
+  error: string | null;
 }
 
 export interface DividendEvent {
@@ -70,4 +82,6 @@ export interface AssetSeries {
   candles: Candle[];
   /** 對應每根 K 棒的還原權息收盤價 */
   adjClose: number[];
+  /** 有即時報價的標的才有 */
+  live?: LiveInfo;
 }

@@ -22,7 +22,7 @@ import {
 } from 'lightweight-charts';
 import type { AssetConfig } from '../../config/assets';
 import type { Candle } from '../../data/types';
-import { fmtCompact, fmtDate, fmtPct, fmtPrice, signClass } from '../../data/format';
+import { fmtBarDate, fmtCompact, fmtPct, fmtPrice, signClass } from '../../data/format';
 import { futureDates } from '../../data/resample';
 import type { ColorRole, IndicatorResult, LineOutput, Series } from '../../indicators/types';
 import { useResolvedTheme, useSettings } from '../../store/settings';
@@ -187,7 +187,7 @@ function PriceLegend({ bar, prev, asset, compact }: { bar: Candle; prev: Candle 
   );
   return (
     <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-      <span className="font-semibold text-fg">{fmtDate(bar.time)}</span>
+      <span className="font-semibold text-fg">{fmtBarDate(bar.time, bar.endTime)}</span>
       {!compact && item('開', bar.open)}
       {!compact && item('高', bar.high)}
       {!compact && item('低', bar.low)}

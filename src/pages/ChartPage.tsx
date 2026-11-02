@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AssetStateView } from '../components/AssetState';
 import { AssetTabs } from '../components/AssetTabs';
+import { DataTimeNote } from '../components/DataTimeNote';
 import { PriceChart, type ChartIndicator, type ChartMarker } from '../components/chart/PriceChart';
 import { ExplainSheet } from '../components/ExplainSheet';
 import { CloseIcon, InfoIcon, PlusIcon, SlidersIcon } from '../components/icons';
@@ -9,7 +10,7 @@ import { ArrowGuide, LineGuide } from '../components/LineGuide';
 import { ParamEditor } from '../components/ParamEditor';
 import { Card, Segmented, ToneBadge } from '../components/ui';
 import { DEFAULT_ASSET_ID, getAsset, type AssetConfig } from '../config/assets';
-import { fmtDate, fmtPct, fmtPrice, signClass } from '../data/format';
+import { fmtBarDate, fmtPct, fmtPrice, signClass } from '../data/format';
 import { useAsset } from '../data/load';
 import { TIMEFRAME_LABELS, type Timeframe } from '../data/resample';
 import type { AssetSeries, Candle } from '../data/types';
@@ -75,7 +76,6 @@ function ChartView({ asset, series }: { asset: AssetConfig; series: AssetSeries 
   const last = candles[n - 1]!;
   const lastPrev = candles[n - 2];
   const lastChange = lastPrev ? last.close / lastPrev.close - 1 : null;
-  const unfinished = !series.meta.lastBarComplete;
   const editing = computed.find((c) => c.def.id === editId);
 
   return (
@@ -89,10 +89,14 @@ function ChartView({ asset, series }: { asset: AssetConfig; series: AssetSeries 
             <span className="text-3xl font-bold text-fg tabular">{fmtPrice(last.close, asset)}</span>
             <span className={`text-base font-medium tabular ${signClass(lastChange)}`}>{fmtPct(lastChange)}</span>
           </div>
-          <div className="text-xs text-muted">
-            {fmtDate(last.time)} {s.timeframe === 'D' ? '收盤' : `${TIMEFRAME_LABELS[s.timeframe]}`}
-            {unfinished && <span className="ml-2 rounded bg-hot/15 px-1.5 py-0.5 text-hot">尚未收盤</span>}
-            {s.adjusted && <span className="ml-2 rounded bg-accent/15 px-1.5 py-0.5 text-accent">還原權息</span>}
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
+            <DataTimeNote series={series} />
+            {s.timeframe !== 'D' && (
+              <span>
+                ・最新一根{TIMEFRAME_LABELS[s.timeframe]}：{fmtBarDate(last.time, last.endTime)}
+              </span>
+            )}
+            {s.adjusted && <span className="rounded bg-accent/15 px-1.5 py-0.5 text-accent">還原權息</span>}
           </div>
         </div>
       </div>
@@ -348,7 +352,7 @@ function SignalList({
                 const move = later ? later.close / c.close - 1 : null;
                 return (
                   <tr key={x.index} className="border-t border-line">
-                    <td className="py-1.5 pr-2 text-fg">{fmtDate(c.time)}</td>
+                    <td className="py-1.5 pr-2 text-fg">{fmtBarDate(c.time, c.endTime)}</td>
                     <td className="py-1.5 pr-2">
                       <span className={`mr-1.5 rounded px-1.5 py-0.5 text-xs ${x.side === 'buy' ? 'bg-up/15 text-up' : 'bg-down/15 text-down'}`}>
                         {x.side === 'buy' ? '買' : '賣'}
