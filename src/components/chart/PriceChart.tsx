@@ -28,7 +28,7 @@ import type { ColorRole, IndicatorResult, LineOutput, Series } from '../../indic
 import { useResolvedTheme, useSettings } from '../../store/settings';
 import { getChartTheme, withAlpha, type ChartTheme } from '../../theme';
 import { BandFill, type BandPoint } from './bandFill';
-import { formatLineValue, lineColorAt, lineValueAt, orderedLines } from './legend';
+import { formatLegendValue, legendLabel, lineColorAt, lineValueAt, orderedLines } from './legend';
 
 export interface ChartIndicator {
   /** 指標 id（點圖例標題時傳給 onExplain） */
@@ -145,35 +145,43 @@ function IndicatorLegend({
   t,
   asset,
   onExplain,
+  single,
 }: {
   ci: ChartIndicator;
   index: number;
   t: ChartTheme;
   asset: AssetConfig;
   onExplain?: (key: string) => void;
+  /** 只顯示一行（放在副圖裡面時用，避免擋住線） */
+  single?: boolean;
 }) {
   const lines = orderedLines(ci.result);
   return (
-    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+    <div className={`flex items-center gap-x-2 gap-y-0.5 ${single ? 'flex-nowrap overflow-hidden whitespace-nowrap' : 'flex-wrap'}`}>
       {onExplain ? (
         <button
           type="button"
           onClick={() => onExplain(ci.key)}
-          className="pointer-events-auto font-semibold text-fg underline decoration-dotted underline-offset-2"
+          className="pointer-events-auto shrink-0 font-semibold text-fg underline decoration-dotted underline-offset-2"
         >
           {ci.title}
         </button>
       ) : (
-        <span className="font-semibold text-fg">{ci.title}</span>
+        <span className="shrink-0 font-semibold text-fg">{ci.title}</span>
       )}
       {lines.length === 0 && (ci.result.priceLevels?.length ?? 0) > 0 && <span className="text-muted">（圖上的點狀橫線）</span>}
-      {lines.map((l) => (
-        <span key={l.key} className="inline-flex items-center gap-1 whitespace-nowrap">
-          <Swatch line={l} color={resolveColor(t, lineColorAt(l, index))} />
-          {l.label !== ci.title && <span className="text-muted">{l.label}</span>}
-          <span className="text-fg">{formatLineValue(lineValueAt(l, index), l, asset)}</span>
-        </span>
-      ))}
+      {lines.map((l, i) => {
+        const label = legendLabel(l);
+        // 第一條線和標題同名（例如「成交量」）就不重複寫；其他線一律寫出名稱（例如 MACD 的訊號線）
+        const showLabel = !(i === 0 && label === ci.title);
+        return (
+          <span key={l.key} className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap">
+            <Swatch line={l} color={resolveColor(t, lineColorAt(l, index))} />
+            {showLabel && <span className="text-muted">{label}</span>}
+            <span className="text-fg">{formatLegendValue(lineValueAt(l, index), l, asset)}</span>
+          </span>
+        );
+      })}
     </div>
   );
 }
@@ -478,30 +486,35 @@ function PriceChartImpl({ candles, asset, indicators, markers, visibleBars, rang
   const bar = candles[idx];
   const overlays = indicators.filter((ci) => ci.placement === 'overlay');
   const panes = indicators.filter((ci) => ci.placement === 'pane');
-  const legendClass =
-    'pointer-events-none absolute left-1.5 z-10 max-w-[calc(100%-4.25rem)] space-y-0.5 rounded bg-surface/70 px-1.5 py-0.5 text-[11px] leading-snug tabular md:text-xs';
 
   return (
-    <div className="relative">
-      <div ref={containerRef} style={{ height }} className="w-full overflow-hidden rounded-lg border border-line" />
-      {/* 圖例：每個區塊左上角標出線的名稱、顏色與數值（類似 TradingView） */}
-      {bar && boxes[0] && (
-        <div className={legendClass} style={{ top: boxes[0].top + 4 }}>
+    <div>
+      {/* 主圖的圖例放在圖表「上方」，不蓋住 K 線：日期、開高低收，以及疊在 K 線上的指標 */}
+      {bar && (
+        <div className="mb-1.5 space-y-0.5 px-0.5 text-[11px] leading-snug tabular md:text-xs">
           <PriceLegend bar={bar} prev={candles[idx - 1]} asset={asset} compact={compact} />
           {overlays.map((ci) => (
             <IndicatorLegend key={ci.key} ci={ci} index={idx} t={t} asset={asset} onExplain={onExplain} />
           ))}
         </div>
       )}
-      {panes.map((ci, k) => {
-        const box = boxes[k + 1];
-        if (!box) return null;
-        return (
-          <div key={ci.key} className={legendClass} style={{ top: box.top + 3 }}>
-            <IndicatorLegend ci={ci} index={idx} t={t} asset={asset} onExplain={onExplain} />
-          </div>
-        );
-      })}
+      <div className="relative">
+        <div ref={containerRef} style={{ height }} className="w-full overflow-hidden rounded-lg border border-line" />
+        {/* 副圖的圖例：只佔一行，放在各副圖的左上角 */}
+        {panes.map((ci, k) => {
+          const box = boxes[k + 1];
+          if (!box) return null;
+          return (
+            <div
+              key={ci.key}
+              className="pointer-events-none absolute left-1.5 z-10 max-w-[calc(100%-4.25rem)] rounded bg-surface/70 px-1.5 text-[11px] leading-snug tabular md:text-xs"
+              style={{ top: box.top + 2 }}
+            >
+              <IndicatorLegend ci={ci} index={idx} t={t} asset={asset} onExplain={onExplain} single />
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

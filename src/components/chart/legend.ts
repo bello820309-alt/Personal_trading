@@ -1,5 +1,5 @@
 import type { AssetConfig } from '../../config/assets';
-import { fmtAuto, fmtNum, fmtVolume } from '../../data/format';
+import { fmtAuto, fmtCompact, fmtNum, fmtVolume } from '../../data/format';
 import type { IndicatorResult, LineOutput } from '../../indicators/types';
 
 /** 要顯示在圖例與說明裡的線（不含隱藏的線），依 legendOrder 排序 */
@@ -30,4 +30,15 @@ export function formatLineValue(v: number | null, line: LineOutput, asset: Asset
   if (line.unit === 'volume') return fmtVolume(v, asset);
   if (line.unit === 'percent') return `${fmtNum(v, 2)}%`;
   return fmtAuto(v);
+}
+
+/** 圖例用的精簡數值：成交量不重複寫單位（例如「39.5億」），節省空間 */
+export function formatLegendValue(v: number | null, line: LineOutput, asset: AssetConfig): string {
+  if (v !== null && line.unit === 'volume') return fmtCompact(v / asset.volume.divisor);
+  return formatLineValue(v, line, asset);
+}
+
+/** 圖例用的短名稱：拿掉括號裡的補充說明（例如「DIF（快線）」→「DIF」），完整說明在圖表下方 */
+export function legendLabel(line: LineOutput): string {
+  return line.label.replace(/（[^）]*）/g, '').trim() || line.label;
 }
