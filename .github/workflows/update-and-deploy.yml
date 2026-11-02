@@ -2,9 +2,11 @@ name: 更新行情資料並部署
 
 on:
   schedule:
-    # 每小時檢查一次（每小時的第 17 分）。GitHub 的排程偶爾會延遲或跳過，所以多給幾次機會；
+    # 每小時檢查一次。GitHub 的排程偶爾會延遲或跳過，所以多給幾次機會；
     # 只有出現新的「已收盤」K 棒時才會 commit 並重新部署。
     # 比特幣的即時價格是網頁直接向幣安取得（每分鐘），不依賴這個排程。
+    # 注意：下面的 cron 請由 repo 擁有者在 GitHub 網頁上修改。GitHub 用「最後一個修改 cron 的帳號」
+    # 執行排程，那個帳號沒有 repo 權限（例如 AI 工具的 commit）時，排程不會執行，也不會報錯。
     - cron: '17 * * * *'
   # 可以在 GitHub 的 Actions 頁面手動按「Run workflow」
   workflow_dispatch:
