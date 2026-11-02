@@ -1,6 +1,6 @@
 /*
  * 抓取所有標的的日線資料，寫到 public/data/。
- * 由 GitHub Actions 每天自動執行，也可以手動執行：npm run fetch-data
+ * 由 GitHub Actions 每小時執行（外部定時服務觸發），也可以手動執行：npm run fetch-data
  *
  * 安全機制：
  * - 任何一個標的抓取或驗證失敗，就保留上一版的資料，並在 manifest 標記為 stale。
@@ -11,6 +11,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ASSETS } from '../src/config/assets.ts';
 import type { AssetDataFile, DataManifest, ManifestEntry } from '../src/data/types.ts';
+import { sameMarketData } from './lib/compare.ts';
 import { fetchYahooChart } from './lib/yahoo.ts';
 import { normalizeYahooChart, stringifyAssetFile } from './lib/normalize.ts';
 import { validateAssetFile } from './lib/validate.ts';
@@ -43,11 +44,9 @@ async function main(): Promise<void> {
       const report = validateAssetFile(file, asset, prev, now, currency);
       for (const w of [...warnings, ...report.warnings]) console.log(`  ⚠ ${w}`);
       if (report.errors.length) throw new Error(`資料驗證失敗：${report.errors.join('；')}`);
-      // 沒有新的已收盤 K 棒就不改檔案（排程每小時跑一次，避免產生沒有意義的 commit）
-      const unchanged =
-        prev &&
-        JSON.stringify(prev.bars) === JSON.stringify(file.bars) &&
-        JSON.stringify(prev.events) === JSON.stringify(file.events);
+      // 行情沒有變化就不改檔案（每小時檢查一次，避免產生沒有意義的 commit 和部署）。
+      // Yahoo 的還原權息價每次都有很小的捨入差異，所以不能用「完全相等」來比較。
+      const unchanged = prev !== null && sameMarketData(prev, file);
       const saved = unchanged ? prev : file;
       if (!unchanged) writeFileSync(path, stringifyAssetFile(file));
       const n = saved.bars.t.length;

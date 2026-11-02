@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ASSETS, getAsset } from '../../src/config/assets';
 import type { AssetDataFile } from '../../src/data/types';
+import { sameMarketData } from './compare';
 import { fetchYahooChart } from './yahoo';
 import { normalizeYahooChart, stringifyAssetFile } from './normalize';
 import { validateAssetFile } from './validate';
@@ -206,6 +207,40 @@ describe('validateAssetFile', () => {
     const next = structuredClone(prev);
     for (const k of Object.keys(next.bars) as (keyof AssetDataFile['bars'])[]) next.bars[k] = next.bars[k].slice(0, 280) as never;
     expect(validateAssetFile(next, tw, prev, now).errors.join()).toContain('變少');
+  });
+});
+
+describe('sameMarketData（判斷要不要改檔案）', () => {
+  const now = new Date(Date.UTC(2024, 11, 1));
+  const make = (days = 300) =>
+    normalizeYahooChart(yahooLike({ start: TW_START, days, tz: 'Asia/Taipei', currency: 'TWD' }), tw, now).file;
+
+  it('還原權息價只差最後一位小數（Yahoo 每次回傳的捨入差異）視為相同，不改檔案', () => {
+    const prev = make();
+    const next = structuredClone(prev);
+    next.updatedAt = '2099-01-01T00:00:00.000Z';
+    next.bars.ac = next.bars.ac.map((x, i) => (i % 3 === 0 ? x + 0.0001 : x));
+    expect(sameMarketData(prev, next)).toBe(true);
+  });
+
+  it('多一根 K 棒、成交量被修正、出現新配息，都算有變動', () => {
+    const prev = make();
+    expect(sameMarketData(prev, make(301))).toBe(false);
+
+    const volume = structuredClone(prev);
+    volume.bars.v[volume.bars.v.length - 1] += 1;
+    expect(sameMarketData(prev, volume)).toBe(false);
+
+    const dividend = structuredClone(prev);
+    dividend.events.dividends.push({ date: '2024-10-01', amount: 1 });
+    expect(sameMarketData(prev, dividend)).toBe(false);
+  });
+
+  it('還原權息價整段差 0.3%（配息調整的量級）就算有變動', () => {
+    const prev = make();
+    const next = structuredClone(prev);
+    next.bars.ac = next.bars.ac.map((x) => x * 0.997);
+    expect(sameMarketData(prev, next)).toBe(false);
   });
 });
 
