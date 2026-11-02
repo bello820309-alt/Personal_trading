@@ -34,19 +34,36 @@
 3. 到 **Actions** 頁籤，選「更新行情資料並部署」→ **Run workflow**。
 4. 幾分鐘後網站會出現在：<https://bello820309-alt.github.io/Personal_trading/>
 
-之後每次 push 都會重新部署；排程每小時檢查一次，有新的收盤資料才會更新並重新部署。
+之後每次 push 都會重新部署；資料每小時檢查一次，有新的收盤資料才會更新並重新部署。
 
-### 如果排程沒有自動執行
+### 讓資料每小時自動更新（外部定時服務）
 
-GitHub 會用「最後一個修改 cron 那一行的帳號」來執行排程，這個帳號必須有這個 repo 的寫入權限。用 AI 工具（例如 Claude）建立的 commit 會算在工具的帳號名下，排程就不會執行，也不會出現錯誤訊息。
+這個 repo 的 GitHub 內建排程（workflow 裡的 `schedule`）一直沒有執行：由 repo 擁有者改過 cron 也一樣，GitHub 也沒有顯示任何錯誤。所以改用免費的 [cron-job.org](https://cron-job.org) 每小時呼叫 GitHub 的「Run workflow」API。
 
-解決方法：由 repo 擁有者在 GitHub 網頁上改一次 cron 的值。
+**1. 建立 token（只能操作這個 repo 的 Actions）**
 
-1. 打開 `.github/workflows/update-and-deploy.yml`，按右上角的鉛筆圖示（Edit）。
-2. 把 `- cron: '…'` 引號裡的第一個數字（分鐘）改成別的數字，例如 `17` 改成 `13`。
-3. 按 **Commit changes…**，直接 commit 到預設分支。
+1. 打開 <https://github.com/settings/personal-access-tokens/new>。
+2. **Token name** 隨意填（例如 `cron-job`）；**Expiration** 選最長的期限。
+3. **Repository access** 選 **Only select repositories**，再選 `Personal_trading`。
+4. **Permissions → Repository permissions → Actions** 選 **Read and write**（其他都不用改）。
+5. 按 **Generate token**，複製 `github_pat_` 開頭的那串文字（只會顯示一次）。
 
-之後到 **Actions** 頁面，下一個排定時間過後應該會看到事件為 `schedule` 的執行（GitHub 有時會晚 10～30 分鐘）。
+**2. 在 cron-job.org 建立排程**
+
+1. 註冊並登入 <https://console.cron-job.org/>，按 **Create cronjob**。
+2. **Title** 填 `更新行情資料`，**URL** 填：
+   `https://api.github.com/repos/bello820309-alt/Personal_trading/actions/workflows/update-and-deploy.yml/dispatches`
+3. **Execution schedule** 設成每小時一次（例如每小時的第 43 分）。
+4. 到 **Advanced**：
+   - **Request method**：`POST`
+   - **Headers**：
+     - `Accept`：`application/vnd.github+json`
+     - `Authorization`：`Bearer <剛剛複製的 token>`
+     - `X-GitHub-Api-Version`：`2022-11-28`
+   - **Request body**：`{"ref":"ccr-34fbc3aa-8mup3g","inputs":{"only_if_changed":"true"}}`
+5. 按 **Test run**，回應是 `204` 就成功了（Actions 頁面會多一筆執行），再按 **Create** 儲存。
+
+`only_if_changed` 讓沒有新資料的那幾次只抓資料、不重新部署。token 到期前 GitHub 會寄信提醒，到時重新產生一個，換掉 `Authorization` 那一行即可；token 如果外流，到 GitHub **Settings → Developer settings → Personal access tokens** 刪除就會失效。
 
 ### 安裝到手機
 
@@ -56,7 +73,7 @@ GitHub 會用「最後一個修改 cron 那一行的帳號」來執行排程，�
 ## 資料從哪裡來
 
 - 三個標的都使用 **Yahoo Finance** 的公開資料（免費、不需金鑰、提供分割調整與還原權息價格）：`0050.TW`、`VOO`、`BTC-USD`。
-- **GitHub Actions** 每小時檢查一次，只把「已收盤」的日 K 寫進 repo（有新資料才 commit 並重新部署）。也可以在 Actions 頁面手動執行。
+- **GitHub Actions** 每小時檢查一次（由外部定時服務觸發，見上方設定），只把「已收盤」的日 K 寫進 repo（有新資料才 commit 並重新部署）。也可以在 Actions 頁面手動執行。
 - **比特幣即時價格**：網頁開著時，每分鐘直接向幣安公開 API（BTC/USDT，不需要金鑰）取得最新 K 棒，接在歷史資料後面；成交量會換算到和 Yahoo 彙整資料同一個量級。抓不到時會清楚標示目前顯示的是哪個時間的資料。
 - 抓下來的資料會先**驗證**（日期順序、價格是否合理、單日漲跌是否異常、和上一版是否差太多），有問題就保留上一版資料、workflow 標示失敗，GitHub 會寄信通知。
 - 資料存在 `public/data/*.json`，每次更新都會 commit，所以可以追蹤歷史。

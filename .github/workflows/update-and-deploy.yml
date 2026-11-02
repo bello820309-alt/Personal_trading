@@ -2,14 +2,20 @@ name: 更新行情資料並部署
 
 on:
   schedule:
-    # 每小時檢查一次。GitHub 的排程偶爾會延遲或跳過，所以多給幾次機會；
-    # 只有出現新的「已收盤」K 棒時才會 commit 並重新部署。
+    # 每小時檢查一次，只有出現新的「已收盤」K 棒時才會 commit 並重新部署。
     # 比特幣的即時價格是網頁直接向幣安取得（每分鐘），不依賴這個排程。
-    # 注意：下面的 cron 請由 repo 擁有者在 GitHub 網頁上修改。GitHub 用「最後一個修改 cron 的帳號」
-    # 執行排程，那個帳號沒有 repo 權限（例如 AI 工具的 commit）時，排程不會執行，也不會報錯。
+    # 注意：這個 repo 的 GitHub 內建排程一直沒有執行（由 repo 擁有者改過 cron 也一樣，原因不明），
+    # 所以另外用外部定時服務每小時觸發 workflow_dispatch，設定方式見 README。
+    # 請不要用工具改下面這行，要改請由 repo 擁有者在 GitHub 網頁上修改。
     - cron: '13 * * * *'
-  # 可以在 GitHub 的 Actions 頁面手動按「Run workflow」
+  # 可以在 GitHub 的 Actions 頁面手動按「Run workflow」。
+  # 外部定時服務也是用這個方式觸發，並帶 only_if_changed=true（沒有新資料就不重新部署）。
   workflow_dispatch:
+    inputs:
+      only_if_changed:
+        description: '只有資料有變動才重新部署（給外部定時服務用，手動執行不用勾）'
+        type: boolean
+        default: false
   push:
     paths-ignore:
       - '**.md'
@@ -75,8 +81,8 @@ jobs:
     name: 測試與建置
     needs: data
     # 用 GITHUB_TOKEN push 的 commit 不會觸發其他 workflow，所以抓完資料要在這裡接著部署。
-    # 排程執行時，只有資料有變動才部署；push 和手動執行則一律部署。
-    if: ${{ always() && (github.event_name != 'schedule' || needs.data.outputs.changed == 'true') && (github.event_name == 'schedule' || github.ref_name == github.event.repository.default_branch) }}
+    # 排程或外部定時服務（only_if_changed）執行時，只有資料有變動才部署；push 和一般手動執行則一律部署。
+    if: ${{ always() && (needs.data.outputs.changed == 'true' || (github.event_name != 'schedule' && format('{0}', inputs.only_if_changed) != 'true')) && (github.event_name == 'schedule' || github.ref_name == github.event.repository.default_branch) }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     outputs:
