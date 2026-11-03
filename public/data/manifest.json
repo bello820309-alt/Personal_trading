@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-11-03T06:48:13.475Z",
+  "generatedAt": "2026-11-03T11:55:31.364Z",
   "assets": [
     {
       "id": "0050",
@@ -22,9 +22,9 @@
       "id": "BTC",
       "symbol": "BTC-USD",
       "status": "ok",
-      "updatedAt": "2026-11-02T10:51:43.048Z",
-      "lastDate": "2026-11-01",
-      "bars": 4429
+      "updatedAt": "2026-11-03T11:55:31.364Z",
+      "lastDate": "2026-11-02",
+      "bars": 4430
     }
   ]
 }
