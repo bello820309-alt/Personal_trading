@@ -6,7 +6,9 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ASSETS } from '../src/config/assets.ts';
+import type { FxDataFile } from '../src/data/fx.ts';
 import type { AssetDataFile, DataManifest } from '../src/data/types.ts';
+import { FX_ID, validateFx } from './lib/fx.ts';
 import { validateAssetFile } from './lib/validate.ts';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -59,6 +61,18 @@ for (const asset of ASSETS) {
       for (let i = from; i < Math.min(n, from + 8); i++) console.log(`    ${t[i]}  ${c[i]}`);
     }
   }
+}
+
+// 匯率（AI 模擬交易用）：缺少或有問題只顯示警告，不算失敗
+const fxPath = join(dataDir, `${FX_ID}.json`);
+if (existsSync(fxPath)) {
+  const fx = JSON.parse(readFileSync(fxPath, 'utf8')) as FxDataFile;
+  const errors = validateFx(fx, null);
+  const n = fx.t.length;
+  console.log(`\n${errors.length ? '⚠' : '✓'} 匯率 ${FX_ID}（${fx.symbol}）：${n} 天，${fx.t[0]} ～ ${fx.t[n - 1]}，最新 ${fx.c[n - 1]}，抓取時間 ${fx.updatedAt}`);
+  for (const e of errors) console.log(`  ⚠ ${e}`);
+} else {
+  console.log(`\n⚠ 找不到匯率資料（${FX_ID}.json）`);
 }
 
 if (failed) process.exitCode = 1;
