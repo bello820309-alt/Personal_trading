@@ -52,7 +52,7 @@ export function Dashboard() {
       </div>
 
       <Card>
-        <SectionTitle sub="每個指標用白話描述目前的狀態。指標之間常常意見不一致，這很正常：它們看的面向不同。">
+        <SectionTitle sub="每個指標用白話描述目前的狀態，參數用各市場常用的設定（例如 RSI：0050 用 6 天，VOO 和比特幣用 14 天），其他頁面用的天數不同時，數字也會不同。指標之間常常意見不一致，這很正常：它們看的面向不同。">
           各指標目前怎麼說
         </SectionTitle>
         <div className="mb-4">

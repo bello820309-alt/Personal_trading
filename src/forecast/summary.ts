@@ -60,6 +60,25 @@ export function checkPoints(r: CheckResult): CheckPoint[] {
   return [dir, band];
 }
 
+/**
+ * 「所以這些數字要怎麼用？」：依照回頭檢驗的結果，告訴新手哪個數字比較值得參考。
+ * 第一句講「上漲的比例」和中位數，第二句講「八成的情況落在」這個範圍。
+ */
+export function usageTips(r: CheckResult): string[] {
+  const [dir, band] = checkPoints(r);
+  const first =
+    dir!.tone === 'good'
+      ? '「上漲的比例」過去有一點參考價值，但還是常常猜錯，不要只靠它決定買賣。'
+      : '「上漲的比例」和中位數過去沒有比「一直猜漲」準，不要拿來當買賣訊號，看看就好。';
+  const second =
+    band!.tone === 'good'
+      ? '比較有用的是「八成的情況落在」這個範圍：它大致抓得到之後可能漲跌多少，可以先想想「如果跌到範圍的下緣，我受得了嗎？」，再決定要投入多少。'
+      : band!.tone === 'meh'
+        ? '「八成的情況落在」這個範圍偏寬，實際上通常不會那麼極端，可以當成保守的估計，用來想想最壞的情況。'
+        : '要注意實際的漲跌常常超出「八成的情況落在」這個範圍，想最壞的情況時，要預留比範圍更大的空間。';
+  return [first, second];
+}
+
 /** 回頭檢驗的結論：和「一直猜漲」比，以及預測範圍準不準 */
 export function summarizeCheck(r: CheckResult): string[] {
   const out: string[] = [];

@@ -184,6 +184,13 @@ function DcaView({
         <LadderEditor plan={plan} asset={asset} nowPrice={nowPrice} onChange={save} onReset={() => setDcaPlan(asset.id, null)} />
       </Card>
 
+      <Fold title="預設的階梯怎麼來的？金額怎麼換成自己的資金？" sub="預設只是例子，可以照自己的資金和想法改。">
+        <DefaultsHelp asset={asset} />
+      </Fold>
+      <Fold title="「跌越多買越多」和「順勢操作」不是相反嗎？" sub="兩種不同的想法，目的不一樣。">
+        <TrendVsDca />
+      </Fold>
+
       <Card>
         <H2>回測期間</H2>
         <div className="space-y-3">
@@ -256,6 +263,53 @@ function DcaView({
         回測是用過去的價格算的，未來不一定一樣。價格階梯要配合自己的資金和能承受的風險：跌越多買越多，代表跌很久的時候需要準備更多錢。
       </Notice>
     </div>
+  );
+}
+
+/* ───────── 說明 ───────── */
+
+function DefaultsHelp({ asset }: { asset: AssetConfig }) {
+  const base = defaultPlan(asset.id, 1).baseAmount;
+  const usd = asset.currency === 'USD';
+  return (
+    <ul className="list-disc space-y-2 pl-5 text-sm leading-relaxed text-fg">
+      {asset.id === 'BTC' ? (
+        <li>
+          比特幣的預設是一個例子：基準價格 80,000 美元、每週買 100 美元；跌到 70,000、60,000 每週改買 120、150 美元；漲到 90,000、100,000
+          只買 50、30 美元；漲到 110,000 以上每週賣出持有的 10%，120,000 以上賣 20%。
+        </li>
+      ) : (
+        <li>
+          基準價格是你<strong className="font-semibold">第一次打開這頁時的價格</strong>（取前 3 位數字），之後就存起來，不會每天跟著價格變。往上、往下每 5%
+          一階：跌 5%、10% 每期買基準金額的 1.2 倍、1.5 倍；漲 5%、10% 只買 0.5 倍、0.3 倍；漲 15% 以上每期賣出持有的 10%，漲 20% 以上賣 20%。
+        </li>
+      )}
+      <li>
+        預設金額（每週 {money(base, asset)}）只是例子。換成自己的資金時，先算每一期要投多少：
+        {usd
+          ? '例如你有 3 萬美元（約 100 萬台幣），打算花一年（52 週）慢慢投入，3 萬 ÷ 52 ≈ 每週 580 美元。'
+          : '例如你有 100 萬元，打算花一年（52 週）慢慢投入，100 萬 ÷ 52 ≈ 每週 19,000 元。'}
+        但跌深的時候一期最多會買到 1.5 倍，基本金額最好再少一點（例如{usd ? '每週 450 美元' : '每週 15,000 元'}），才不會錢不夠。
+      </li>
+      <li>決定好之後，把基準金額改成這個數字，其他每一階也照同樣的倍數放大：例如原本是基準 1.5 倍的那一階，就改成新金額的 1.5 倍。</li>
+      <li>跌得越深，每期買得越多，要預留比較多的現金。下面回測的「價格與每次買賣」圖，下方的柱子就是每一期買了多少。</li>
+      <li>階梯的價位也可以照自己的想法改，例如用過去一年的高低點或整數關卡；改完會重新回測。</li>
+    </ul>
+  );
+}
+
+function TrendVsDca() {
+  return (
+    <ul className="list-disc space-y-2 pl-5 text-sm leading-relaxed text-fg">
+      <li>
+        <strong className="font-semibold">順勢操作</strong>（均線、MACD 這類趨勢指標）：想抓到一段上漲。跌勢中先不買、甚至先賣，等趨勢轉好再進場。好處是比較能避開大跌；缺點是常常買在比較高的地方，盤整時也容易被來回洗。
+      </li>
+      <li>
+        <strong className="font-semibold">定期定額、動態定投</strong>：不判斷方向，長期分批買。跌的時候多買一點，是為了把平均成本壓低。前提是相信這個標的長期會往上（例如追蹤大盤的
+        ETF），而且手上有足夠的現金撐過很長的下跌；如果標的一直跌下去，就會越買越虧。
+      </li>
+      <li>兩種沒有誰對誰錯。重要的是先想清楚一筆錢要用哪一種方法、打算放多久，判斷時用同一套規則，不要用定投的理由買、卻用短線的理由賣。</li>
+    </ul>
   );
 }
 

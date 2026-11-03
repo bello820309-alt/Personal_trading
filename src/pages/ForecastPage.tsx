@@ -6,7 +6,7 @@ import { PriceChart, type ChartIndicator } from '../components/chart/PriceChart'
 import { Card, Fold, Notice, PageTitle, Segmented, Spinner } from '../components/ui';
 import { DEFAULT_ASSET_ID, getAsset, type AssetConfig } from '../config/assets';
 import { FEATURES, analogForecast, horizonsFor, walkForwardCheck, type CheckResult, type Forecast, type HorizonKey } from '../forecast/analog';
-import { checkPoints, describeNow, summarizeCheck, type CheckTone } from '../forecast/summary';
+import { checkPoints, describeNow, summarizeCheck, usageTips, type CheckTone } from '../forecast/summary';
 import { fmtDate, fmtNum, fmtPct, fmtPrice, signClass } from '../data/format';
 import { useAsset } from '../data/load';
 import { completedLength } from '../data/parse';
@@ -200,6 +200,12 @@ function ForecastView({
           ) : (
             <Spinner label="正在檢驗…" />
           )}
+          {hc && (
+            <div className="mt-2 border-t border-line pt-2 text-sm leading-relaxed">
+              <span className="font-medium text-fg">所以怎麼用？</span>
+              <span className="text-muted">{usageTips(hc).join('')}</span>
+            </div>
+          )}
         </div>
       </Card>
 
@@ -245,6 +251,10 @@ function ForecastView({
             </tbody>
           </table>
         </div>
+        <p className="mt-2 text-xs leading-relaxed text-muted">
+          這裡的 RSI 固定用 14 天（國際常用的設定），每個標的都一樣，才能互相比較。
+          {asset.market === 'tw' ? '總覽和圖表上 0050 用台股常用的 RSI(6)，天數不同，數字也會不同：天數越短，數字跳得越大。' : ''}
+        </p>
         <h3 className="mt-4 mb-2 text-sm font-semibold text-fg">最像現在的 10 個日子</h3>
         <div className="table-scroll">
           <table className="w-full text-sm tabular">
