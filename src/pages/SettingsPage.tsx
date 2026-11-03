@@ -64,7 +64,7 @@ export function SettingsPage() {
       </Card>
 
       <Card>
-        <SectionTitle sub="日 K 資料由 GitHub Actions 每小時檢查一次（收盤後寫入）；比特幣在網頁開著時每分鐘直接向幣安取得即時價格。">資料</SectionTitle>
+        <SectionTitle sub="日 K 資料在收盤後自動更新（通常 1～2 小時內）；比特幣在網頁開著時每分鐘直接向幣安取得即時價格。">資料</SectionTitle>
         <div className="table-scroll">
           <table className="w-full min-w-[420px] text-sm">
             <thead>

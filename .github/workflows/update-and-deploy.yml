@@ -2,10 +2,10 @@ name: 更新行情資料並部署
 
 on:
   schedule:
-    # 每小時檢查一次，只有出現新的「已收盤」K 棒時才會 commit 並重新部署。
+    # 只有出現新的「已收盤」K 棒時才會 commit 並重新部署。
     # 比特幣的即時價格是網頁直接向幣安取得（每分鐘），不依賴這個排程。
-    # 注意：這個 repo 的 GitHub 內建排程一直沒有執行（由 repo 擁有者改過 cron 也一樣，原因不明），
-    # 所以另外用外部定時服務每小時觸發 workflow_dispatch，設定方式見 README。
+    # 注意：這個 repo 的 GitHub 內建排程很不穩定（常常延遲或跳過，原因不明），
+    # 所以另外由外部觸發 workflow_dispatch（目前是 Claude 的排程任務，每天兩次；也可以改用 cron-job.org，見 README）。
     # 請不要用工具改下面這行，要改請由 repo 擁有者在 GitHub 網頁上修改。
     - cron: '13 * * * *'
   # 可以在 GitHub 的 Actions 頁面手動按「Run workflow」。
