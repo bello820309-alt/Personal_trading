@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   CandlestickSeries,
   ColorType,
@@ -22,13 +22,16 @@ import {
 } from 'lightweight-charts';
 import type { AssetConfig } from '../../config/assets';
 import type { Candle } from '../../data/types';
-import { fmtBarDate, fmtCompact, fmtPct, fmtPrice, signClass } from '../../data/format';
+import { fmtBarDate, fmtCompact, fmtNum, fmtPct, fmtPrice, signClass } from '../../data/format';
+import { indexOfTime, rangeStats, type RangeStats } from '../../data/range';
 import { futureDates } from '../../data/resample';
 import type { ColorRole, IndicatorResult, LineOutput, Series } from '../../indicators/types';
 import { useResolvedTheme, useSettings } from '../../store/settings';
 import { getChartTheme, withAlpha, type ChartTheme } from '../../theme';
+import { CloseIcon, RulerIcon } from '../icons';
 import { BandFill, type BandPoint } from './bandFill';
 import { formatLegendValue, legendLabel, lineColorAt, lineValueAt, orderedLines } from './legend';
+import { RangeShade, type ShadeRange } from './rangeShade';
 
 export interface ChartIndicator {
   /** 指標 id（點圖例標題時傳給 onExplain） */
@@ -57,7 +60,22 @@ interface Props {
   compact?: boolean;
   /** 點圖例上的指標名稱時呼叫（例如打開解說） */
   onExplain?: (key: string) => void;
+  /** 顯示「區間漲跌」工具：點兩根 K 棒，看那段期間漲跌多少 */
+  measurable?: boolean;
+  /** K 棒的單位，例如「日 K」「週 K」（區間漲跌顯示「共幾根」用） */
+  barUnit?: string;
+  /** 最後一根 K 棒是否已經收盤（還沒收盤時，區間的終點價格標成「目前」） */
+  lastBarComplete?: boolean;
 }
+
+/** 區間漲跌的選取狀態；用日期記錄，比特幣每分鐘更新資料時也不會跑掉 */
+interface MeasureState {
+  on: boolean;
+  start: string | null;
+  end: string | null;
+}
+
+const MEASURE_OFF: MeasureState = { on: false, start: null, end: null };
 
 interface PaneBox {
   top: number;
@@ -205,6 +223,121 @@ function PriceLegend({ bar, prev, asset, compact }: { bar: Candle; prev: Candle 
   );
 }
 
+/** 月/日（例如 10/06），區間漲跌的最高、最低用 */
+const shortDate = (time: string) => time.slice(5).replace('-', '/');
+
+/** 起點、終點往前／往後移一根的小按鈕（手機上 K 棒很窄，點不準時用來微調） */
+function NudgeButton({ label, onClick, children }: { label: string; onClick: () => void; children: ReactNode }) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      onClick={onClick}
+      className="rounded px-1.5 py-0.5 text-sm leading-none font-semibold text-accent hover:bg-accent/15"
+    >
+      {children}
+    </button>
+  );
+}
+
+/**
+ * 「區間漲跌」的說明與結果，放在圖表上方（不蓋住 K 線）。
+ * 一打開就是固定的版面（還沒選的地方先顯示「—」），選的過程中圖表不會一直上下跳。
+ */
+function MeasurePanel({
+  candles,
+  startIdx,
+  stats,
+  previewing,
+  asset,
+  barUnit,
+  lastBarComplete,
+  onClose,
+  onNudge,
+}: {
+  candles: Candle[];
+  startIdx: number;
+  stats: RangeStats | null;
+  previewing: boolean;
+  asset: AssetConfig;
+  barUnit?: string;
+  lastBarComplete?: boolean;
+  onClose: () => void;
+  onNudge: (which: 'from' | 'to', delta: -1 | 1) => void;
+}) {
+  const first = stats ? candles[stats.from] : startIdx >= 0 ? candles[startIdx] : undefined;
+  const last = stats ? candles[stats.to] : undefined;
+  const done = !!stats && !previewing;
+  const live = !!stats && stats.to === candles.length - 1 && lastBarComplete === false;
+  const endLabel = live ? '目前' : '收盤';
+  const sign = stats ? (stats.change > 0 ? '+' : stats.change < 0 ? '-' : '') : '';
+  // 漲跌金額和價格用一樣的小數位數（比特幣價格不顯示小數，漲跌也不顯示）
+  const digits = asset.market === 'crypto' && first && Math.abs(first.open) >= 1000 ? 0 : asset.pricePrecision;
+  const tone = !stats ? 'bg-surface-2 text-muted' : `${stats.change > 0 ? 'bg-up/10' : stats.change < 0 ? 'bg-down/10' : 'bg-surface-2'} ${signClass(stats.change)}`;
+  const box = 'rounded-md border border-line bg-surface px-1 py-1';
+  const date = (c: Candle | undefined, placeholder: string) => (c ? fmtBarDate(c.time, c.endTime) : placeholder);
+
+  const note = !first
+    ? '點一下圖表上「起點」的那根 K 棒。'
+    : !stats
+      ? '再點一下「終點」的那根 K 棒。'
+      : previewing
+        ? '預覽中：點一下確定終點。'
+        : `＝ ${shortDate(first.time)} 開盤買進、抱到 ${shortDate(last!.endTime ?? last!.time)} ${live ? '現在（還沒收盤）' : '收盤'}的漲跌。`;
+
+  return (
+    <div className="mb-2 rounded-lg border border-accent/40 bg-accent/5 px-3 py-2 text-xs tabular" role="status" aria-live="polite">
+      <div className="flex items-center gap-1.5">
+        <RulerIcon width={15} height={15} className="shrink-0 text-accent" />
+        <span className="shrink-0 font-semibold text-fg">區間漲跌</span>
+        {done && <span className="min-w-0 truncate text-[11px] text-muted">‹ › 可微調，再點圖表可重選</span>}
+        <button type="button" onClick={onClose} aria-label="關閉區間漲跌" className="-my-1 ml-auto shrink-0 p-1 text-muted hover:text-fg">
+          <CloseIcon width={16} height={16} />
+        </button>
+      </div>
+      <div className="mt-1.5 grid grid-cols-3 gap-1.5 text-center leading-snug">
+        <div className={box}>
+          <div>
+            <span className="text-muted">開盤</span>{' '}
+            <span className="font-medium text-fg">{first ? fmtPrice(first.open, asset) : '—'}</span>
+          </div>
+          <div className="flex min-h-[22px] items-center justify-center text-[11px] text-muted">
+            {first && !previewing && <NudgeButton label="起點往前一根" onClick={() => onNudge('from', -1)}>‹</NudgeButton>}
+            <span>{date(first, '選起點')}</span>
+            {first && !previewing && <NudgeButton label="起點往後一根" onClick={() => onNudge('from', 1)}>›</NudgeButton>}
+          </div>
+        </div>
+        <div className={`rounded-md px-1 py-1 ${tone}`}>
+          <div className="font-semibold">{stats ? `${sign}${fmtNum(Math.abs(stats.change), digits)}` : '—'}</div>
+          <div className="text-[11px] font-semibold">{stats ? fmtPct(stats.changePct) : '漲跌'}</div>
+        </div>
+        <div className={box}>
+          <div>
+            <span className="text-muted">{endLabel}</span>{' '}
+            <span className="font-medium text-fg">{stats ? fmtPrice(stats.endPrice, asset) : '—'}</span>
+          </div>
+          <div className="flex min-h-[22px] items-center justify-center text-[11px] text-muted">
+            {done && <NudgeButton label="終點往前一根" onClick={() => onNudge('to', -1)}>‹</NudgeButton>}
+            <span>{date(last, '選終點')}</span>
+            {done && <NudgeButton label="終點往後一根" onClick={() => onNudge('to', 1)}>›</NudgeButton>}
+          </div>
+        </div>
+      </div>
+      <p className="mt-1.5 text-muted">
+        {stats ? (
+          <>
+            {stats.days === 0 ? '同一天' : `相隔 ${stats.days} 天`}・共 {stats.bars} 根{barUnit ?? ' K 棒'}・最高 {fmtPrice(stats.high, asset)}（
+            {shortDate(candles[stats.highIdx]!.time)}）・最低 {fmtPrice(stats.low, asset)}（{shortDate(candles[stats.lowIdx]!.time)}）
+          </>
+        ) : (
+          '選好起點和終點後，這裡會顯示相隔幾天，以及這段期間的最高價和最低價。'
+        )}
+      </p>
+      <p className="mt-0.5 text-muted">{note}</p>
+    </div>
+  );
+}
+
 /** 依顯示平移量，把指標數列轉成圖表資料（平移到未來的部分使用預先產生的未來日期） */
 function timeAt(j: number, candles: Candle[], future: string[]): string | undefined {
   if (j < 0) return undefined;
@@ -249,7 +382,19 @@ function buildHistogramData(
   });
 }
 
-function PriceChartImpl({ candles, asset, indicators, markers, visibleBars, rangeKey, compact, onExplain }: Props) {
+function PriceChartImpl({
+  candles,
+  asset,
+  indicators,
+  markers,
+  visibleBars,
+  rangeKey,
+  compact,
+  onExplain,
+  measurable,
+  barUnit,
+  lastBarComplete,
+}: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const savedRange = useRef<{ key: string; range: LogicalRange } | null>(null);
   const theme = useResolvedTheme();
@@ -259,6 +404,12 @@ function PriceChartImpl({ candles, asset, indicators, markers, visibleBars, rang
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
   /** 每個區塊（主圖、副圖）在容器裡的位置，用來放圖例 */
   const [boxes, setBoxes] = useState<PaneBox[]>([]);
+  const [measure, setMeasure] = useState<MeasureState>(MEASURE_OFF);
+  /** 給圖表的點擊事件讀（不用因為開關工具就重建圖表） */
+  const measureOnRef = useRef(false);
+  /** 每個區塊各一個「區間標示」，以及目前要畫的區間（圖表重建時沿用） */
+  const shadesRef = useRef<RangeShade[]>([]);
+  const shadeRef = useRef<ShadeRange | null>(null);
 
   const paneCount = indicators.filter((i) => i.placement === 'pane').length;
   const mainHeight = compact ? 240 : isMobile ? 300 : 420;
@@ -407,6 +558,12 @@ function PriceChartImpl({ candles, asset, indicators, markers, visibleBars, rang
       panes[i]!.setStretchFactor(1);
       panes[i]!.priceScale('right').applyOptions({ scaleMargins: { top: 0.08, bottom: 0.04 } });
     }
+    // 「區間漲跌」的直線和底色：每個區塊各畫一份，直線才會貫穿整張圖
+    shadesRef.current = panes.map((p) => {
+      const shade = new RangeShade(shadeRef.current);
+      p.attachPrimitive(shade);
+      return shade;
+    });
 
     if (markers && markers.length) {
       const list: SeriesMarker<Time>[] = markers
@@ -471,15 +628,47 @@ function PriceChartImpl({ candles, asset, indicators, markers, visibleBars, rang
     };
     chart.subscribeCrosshairMove(onMove);
 
+    // 區間漲跌：點第一下選起點、第二下選終點；選好之後再點就重新選起點
+    const onClick = (param: MouseEventParams<Time>) => {
+      if (!measureOnRef.current || !param.point || param.logical === undefined) return;
+      const time = candles[Math.max(0, Math.min(n - 1, Math.round(param.logical)))]!.time;
+      setMeasure((m) => {
+        if (!m.on) return m;
+        return m.start === null || m.end !== null ? { on: true, start: time, end: null } : { on: true, start: m.start, end: time };
+      });
+    };
+    chart.subscribeClick(onClick);
+    // 圖表套件把 0.5 秒內在同一個位置的第二下當成「雙擊」，不會觸發一般點擊；在這裡也當成一次點擊
+    chart.subscribeDblClick(onClick);
+
     return () => {
       ro.disconnect();
       cancelAnimationFrame(raf1);
       cancelAnimationFrame(raf2);
       ts.unsubscribeVisibleLogicalRangeChange(onRange);
       chart.unsubscribeCrosshairMove(onMove);
+      chart.unsubscribeClick(onClick);
+      chart.unsubscribeDblClick(onClick);
+      shadesRef.current = [];
       chart.remove();
     };
   }, [candles, asset, indicators, markers, visibleBars, rangeKey, compact, theme, colorMode, isMobile, mainHeight, paneHeight]);
+
+  // 換標的、週期或區間時，清掉已選的區間（工具保持開著）
+  useEffect(() => {
+    setMeasure((m) => (m.start === null && m.end === null ? m : { on: m.on, start: null, end: null }));
+  }, [rangeKey]);
+
+  // 工具開著時，按 Esc 可以關掉
+  useEffect(() => {
+    measureOnRef.current = measure.on;
+    if (!measure.on) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMeasure(MEASURE_OFF);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [measure.on]);
 
   const t = getChartTheme(theme, colorMode);
   const idx = hoverIdx !== null && hoverIdx < candles.length ? hoverIdx : candles.length - 1;
@@ -487,15 +676,78 @@ function PriceChartImpl({ candles, asset, indicators, markers, visibleBars, rang
   const overlays = indicators.filter((ci) => ci.placement === 'overlay');
   const panes = indicators.filter((ci) => ci.placement === 'pane');
 
+  // 區間漲跌：起點已選、終點還沒選時，用十字線的位置當終點預覽
+  const startIdx = measure.on && measure.start ? indexOfTime(candles, measure.start) : -1;
+  const endFixed = measure.on && measure.end ? indexOfTime(candles, measure.end) : -1;
+  const previewing = startIdx >= 0 && endFixed < 0 && hoverIdx !== null;
+  const endIdx = endFixed >= 0 ? endFixed : previewing ? Math.min(hoverIdx!, candles.length - 1) : -1;
+  const stats = startIdx >= 0 && endIdx >= 0 ? rangeStats(candles, startIdx, endIdx) : null;
+  const shade: ShadeRange | null =
+    startIdx >= 0
+      ? {
+          from: startIdx,
+          to: endIdx >= 0 ? endIdx : null,
+          color: !stats ? t.accent : stats.change > 0 ? t.up : stats.change < 0 ? t.down : t.textMuted,
+        }
+      : null;
+  const shadeKey = shade ? `${shade.from}|${shade.to}|${shade.color}` : '';
+
+  /** ‹ › 微調：「from」是比較早的那根、「to」是比較晚的那根；兩根最近可以是同一根 */
+  const nudge = (which: 'from' | 'to', delta: -1 | 1) => {
+    setMeasure((m) => {
+      const a = m.start ? indexOfTime(candles, m.start) : -1;
+      if (!m.on || a < 0) return m;
+      const last = candles.length - 1;
+      const b = m.end ? indexOfTime(candles, m.end) : -1;
+      if (b < 0) return { ...m, start: candles[Math.max(0, Math.min(last, a + delta))]!.time };
+      let from = Math.min(a, b);
+      let to = Math.max(a, b);
+      if (which === 'from') from = Math.max(0, Math.min(to, from + delta));
+      else to = Math.max(from, Math.min(last, to + delta));
+      return { on: true, start: candles[from]!.time, end: candles[to]!.time };
+    });
+  };
+  useEffect(() => {
+    shadeRef.current = shade;
+    for (const s of shadesRef.current) s.setRange(shade);
+    // shade 每次 render 都是新物件；內容（shadeKey）有變才需要重畫
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shadeKey]);
+
   return (
     <div>
+      {measurable && measure.on && (
+        <MeasurePanel
+          candles={candles}
+          startIdx={startIdx}
+          stats={stats}
+          previewing={previewing}
+          asset={asset}
+          barUnit={barUnit}
+          lastBarComplete={lastBarComplete}
+          onClose={() => setMeasure(MEASURE_OFF)}
+          onNudge={nudge}
+        />
+      )}
       {/* 主圖的圖例放在圖表「上方」，不蓋住 K 線：日期、開高低收，以及疊在 K 線上的指標 */}
       {bar && (
-        <div className="mb-1.5 space-y-0.5 px-0.5 text-[11px] leading-snug tabular md:text-xs">
-          <PriceLegend bar={bar} prev={candles[idx - 1]} asset={asset} compact={compact} />
-          {overlays.map((ci) => (
-            <IndicatorLegend key={ci.key} ci={ci} index={idx} t={t} asset={asset} onExplain={onExplain} />
-          ))}
+        <div className="mb-1.5 flex items-start gap-2 px-0.5">
+          <div className="min-w-0 flex-1 space-y-0.5 text-[11px] leading-snug tabular md:text-xs">
+            <PriceLegend bar={bar} prev={candles[idx - 1]} asset={asset} compact={compact} />
+            {overlays.map((ci) => (
+              <IndicatorLegend key={ci.key} ci={ci} index={idx} t={t} asset={asset} onExplain={onExplain} />
+            ))}
+          </div>
+          {measurable && !measure.on && (
+            <button
+              type="button"
+              onClick={() => setMeasure({ on: true, start: null, end: null })}
+              className="inline-flex shrink-0 items-center gap-1 rounded-full border border-line bg-surface px-2.5 py-1 text-xs text-fg hover:bg-surface-2"
+            >
+              <RulerIcon width={14} height={14} className="text-accent" />
+              區間漲跌
+            </button>
+          )}
         </div>
       )}
       <div className="relative">

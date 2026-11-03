@@ -67,6 +67,13 @@ export const CloseIcon = (p: IconProps) => (
   </svg>
 );
 
+export const RulerIcon = (p: IconProps) => (
+  <svg {...base({ width: 18, height: 18, ...p })}>
+    <path d="M3 16.5 16.5 3 21 7.5 7.5 21z" />
+    <path d="M7.5 12l2 2M10.5 9l2 2M13.5 6l2 2" />
+  </svg>
+);
+
 export const SlidersIcon = (p: IconProps) => (
   <svg {...base({ width: 18, height: 18, ...p })}>
     <path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0" />

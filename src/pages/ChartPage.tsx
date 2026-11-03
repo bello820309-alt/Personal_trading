@@ -183,9 +183,12 @@ function ChartView({ asset, series }: { asset: AssetConfig; series: AssetSeries 
         visibleBars={visibleBars}
         rangeKey={rangeKey}
         onExplain={setExplainId}
+        measurable
+        barUnit={TIMEFRAME_LABELS[s.timeframe]}
+        lastBarComplete={series.meta.lastBarComplete}
       />
       <p className="text-xs leading-relaxed text-muted">
-        小技巧：圖裡每個區塊的左上角會標出線的名稱、顏色和數值；手指按住圖表左右移動，可以看每一天的數值，點名稱可以看解說。兩指可以縮放。圖上的箭頭是所選指標的經典訊號，不是投資建議。
+        小技巧：圖裡每個區塊的左上角會標出線的名稱、顏色和數值；手指按住圖表左右移動，可以看每一天的數值，點名稱可以看解說。兩指可以縮放。按圖表右上方的「區間漲跌」，再點兩根 K 棒（例如 10/1 和 11/1），就能看到這段期間漲跌多少。圖上的箭頭是所選指標的經典訊號，不是投資建議。
         {asset.historyNote ? ` ${asset.historyNote}` : ''}
       </p>
 
