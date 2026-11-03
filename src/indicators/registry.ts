@@ -24,10 +24,15 @@ import { obvIndicator } from './volume/obv';
 import { volumeIndicator } from './volume/volume';
 import { fibonacciIndicator } from './levels/fibonacci';
 import { pivotIndicator } from './levels/pivot';
+import { fearGreedIndicator } from './crypto/fearGreed';
+import { fundingIndicator } from './crypto/funding';
+import { mvrvIndicator } from './crypto/mvrv';
+import { activeAddressesIndicator, hashRibbonsIndicator } from './crypto/onchainTrend';
 import {
   CATEGORY_ORDER,
   resolveParams,
   type Category,
+  type IndicatorContext,
   type IndicatorDef,
   type IndicatorResult,
   type Params,
@@ -73,6 +78,12 @@ export const INDICATORS: IndicatorDef[] = [
   // 價位
   fibonacciIndicator,
   pivotIndicator,
+  // 比特幣專屬（情緒、合約、鏈上）
+  fearGreedIndicator,
+  fundingIndicator,
+  mvrvIndicator,
+  activeAddressesIndicator,
+  hashRibbonsIndicator,
 ] as IndicatorDef[];
 
 const BY_ID = new Map(INDICATORS.map((d) => [d.id, d]));
@@ -81,11 +92,22 @@ export function getIndicator(id: string | null | undefined): IndicatorDef | unde
   return id ? BY_ID.get(id) : undefined;
 }
 
-export function indicatorsByCategory(): { category: Category; items: IndicatorDef[] }[] {
+/** 這個指標能不能用在這個標的（例如鏈上資料只有比特幣有） */
+export function supportsAsset(def: IndicatorDef, assetId: string | undefined): boolean {
+  return !def.assets || (!!assetId && def.assets.includes(assetId));
+}
+
+/** 需要的額外資料都已經載入了 */
+export function hasRequiredData(def: IndicatorDef, ctx?: IndicatorContext): boolean {
+  return !def.requires || def.requires.every((k) => !!ctx?.extra?.series[k]);
+}
+
+/** 依分類列出指標；有給標的時，只列出這個標的能用的 */
+export function indicatorsByCategory(assetId?: string): { category: Category; items: IndicatorDef[] }[] {
   return CATEGORY_ORDER.map((category) => ({
     category,
-    items: INDICATORS.filter((d) => d.category === category),
-  }));
+    items: INDICATORS.filter((d) => d.category === category && (assetId === undefined || supportsAsset(d, assetId))),
+  })).filter((g) => g.items.length > 0);
 }
 
 export interface ComputedIndicator {
@@ -99,9 +121,10 @@ export function computeIndicator(
   candles: Candle[],
   market: Market,
   custom?: Params | null,
+  ctx?: IndicatorContext,
 ): ComputedIndicator {
   const params = resolveParams(def, market, custom);
-  return { def, params, result: def.compute(candles, params) };
+  return { def, params, result: def.compute(candles, params, ctx) };
 }
 
 export function signalsOf(ci: ComputedIndicator, candles: Candle[]): Signal[] {

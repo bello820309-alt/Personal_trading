@@ -23,7 +23,7 @@ import { defaultCosts } from '../backtest/strategies';
 import { eventRows, regimeShares } from '../backtest/eventStudy';
 import { REGIME_LABELS, eventsFor, fedUpperAt, type Regime } from '../data/events';
 import { daysBetween, fmtDate, fmtNum, fmtPct, signClass } from '../data/format';
-import { useAsset } from '../data/load';
+import { useAsset, useExtra } from '../data/load';
 import { completedLength } from '../data/parse';
 import { indexRange, isIsoDate } from '../data/range';
 import type { AssetSeries, Candle } from '../data/types';
@@ -181,9 +181,11 @@ function RankView({
 }) {
   const n = completedLength(series);
   const lastTime = series.candles[n - 1]?.time ?? '';
+  // 比特幣專屬的策略（情緒、合約、鏈上）要等額外資料載入後才加入排行
+  const extra = useExtra(asset.id);
   // 比特幣網頁開著時每分鐘更新即時價格，但排行只用已收盤的 K 棒：收盤資料有變才重算
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const prep = useMemo(() => prepareStrategies(series, asset), [asset, n, lastTime]);
+  const prep = useMemo(() => prepareStrategies(series, asset, { extra }), [asset, n, lastTime, extra]);
   const cfg = useMemo(() => defaultCosts(asset), [asset]);
   const presets = useMemo(() => buildPresets(prep.candles, asset.id), [prep, asset.id]);
   const first = prep.candles[0]?.time ?? '';

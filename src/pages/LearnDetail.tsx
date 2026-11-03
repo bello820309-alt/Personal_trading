@@ -7,11 +7,12 @@ import { Notice, Spinner, ToneBadge } from '../components/ui';
 import { ASSETS, DEFAULT_ASSET_ID, getAsset, type AssetConfig } from '../config/assets';
 import { defaultCosts, runIndicatorBacktest } from '../backtest/strategies';
 import { getContent } from '../content';
-import { fmtNum, fmtPct } from '../data/format';
-import { useAsset, useAssets } from '../data/load';
+import { lastDate } from '../data/extra';
+import { fmtDate, fmtNum, fmtPct } from '../data/format';
+import { useAsset, useAssets, useExtra } from '../data/load';
 import type { AssetSeries } from '../data/types';
 import { barsForRange } from '../data/useSeries';
-import { INDICATORS, computeIndicator, describeOf, getIndicator, signalsOf } from '../indicators/registry';
+import { INDICATORS, computeIndicator, describeOf, getIndicator, hasRequiredData, signalsOf, supportsAsset } from '../indicators/registry';
 import { CATEGORY_LABELS, type IndicatorDef } from '../indicators/types';
 import { Link, navigate, useLocation, withQuery } from '../router';
 import { useSettings } from '../store/settings';
@@ -42,7 +43,9 @@ export function LearnDetail({ id }: { id: string }) {
   const { query } = useLocation();
   const lastAsset = useSettings((s) => s.lastAsset);
   if (!def || !c) return <NotFound />;
-  const asset = getAsset(query.get('asset')) ?? getAsset(lastAsset) ?? getAsset(DEFAULT_ASSET_ID)!;
+  const picked = getAsset(query.get('asset')) ?? getAsset(lastAsset) ?? getAsset(DEFAULT_ASSET_ID)!;
+  // 比特幣專屬的指標（情緒、合約、鏈上）一律用比特幣示範
+  const asset = supportsAsset(def, picked.id) ? picked : getAsset(def.assets![0])!;
   const idx = INDICATORS.findIndex((d) => d.id === def.id);
   const prev = INDICATORS[idx - 1];
   const next = INDICATORS[idx + 1];
@@ -188,7 +191,11 @@ function LiveExample({ def, asset }: { def: IndicatorDef; asset: AssetConfig }) 
   return (
     <Section title="實際看看（真實資料，最近一年）">
       <div className="mb-3">
-        <AssetTabs value={asset.id} onChange={(id) => navigate(withQuery(`/learn/${def.id}`, { asset: id }), { replace: true })} />
+        {def.assets ? (
+          <p className="text-sm text-muted">這個指標的資料只有{def.assets.map((id) => getAsset(id)?.name ?? id).join('、')}有，所以用{asset.name}示範。</p>
+        ) : (
+          <AssetTabs value={asset.id} onChange={(id) => navigate(withQuery(`/learn/${def.id}`, { asset: id }), { replace: true })} />
+        )}
       </div>
       {state.status === 'ready' ? <LiveChart def={def} asset={asset} series={state.data} /> : <AssetStateView state={state} name={asset.name} />}
     </Section>
@@ -199,7 +206,12 @@ function LiveChart({ def, asset, series }: { def: IndicatorDef; asset: AssetConf
   const addIndicator = useSettings((s) => s.addIndicator);
   const update = useSettings((s) => s.update);
   const candles = series.candles;
-  const ci = useMemo(() => computeIndicator(def, candles, asset.market, null), [def, candles, asset.market]);
+  const extra = useExtra(asset.id);
+  const ci = useMemo(() => computeIndicator(def, candles, asset.market, null, { extra }), [def, candles, asset.market, extra]);
+  const sources = (def.requires ?? []).flatMap((k) => {
+    const s = extra?.series[k];
+    return s ? [`${s.label}：${s.source}，資料到 ${fmtDate(lastDate(s))}`] : [];
+  });
   const indicators = useMemo<ChartIndicator[]>(
     () => [{ key: def.id, title: def.shortName, result: ci.result, placement: def.placement }],
     [ci, def],
@@ -228,6 +240,7 @@ function LiveChart({ def, asset, series }: { def: IndicatorDef; asset: AssetConf
           </>
         )}
       </div>
+      {sources.length > 0 && <p className="mt-2 text-xs leading-relaxed text-muted">資料來源：{sources.join('；')}（每天由 GitHub Actions 更新）。</p>}
       {d && (
         <div className="mt-3 rounded-lg border border-line px-3 py-2">
           <div className="flex items-center gap-2">
@@ -254,15 +267,20 @@ function LiveChart({ def, asset, series }: { def: IndicatorDef; asset: AssetConf
 
 /** 三個標的「近 10 年」的回測摘要（預設參數、預設成本） */
 function BacktestSummary({ def }: { def: IndicatorDef }) {
-  const states = useAssets(ASSETS.map((a) => a.id));
+  // 比特幣專屬的指標只回測比特幣，而且要等額外資料載入
+  const assets = ASSETS.filter((a) => supportsAsset(def, a.id));
+  const states = useAssets(assets.map((a) => a.id));
+  const extra = useExtra(def.requires ? 'BTC' : undefined);
   const rows = useMemo(
     () =>
-      ASSETS.map((asset) => {
+      assets.map((asset) => {
         const st = states[asset.id];
-        if (!st || st.status !== 'ready') return { asset, res: null, status: st?.status ?? 'loading' };
-        return { asset, res: runIndicatorBacktest(st.data, asset, def, null, '10Y', defaultCosts(asset)), status: 'ready' };
+        const ctx = { extra: asset.extraData ? extra : null };
+        if (!st || st.status !== 'ready' || !hasRequiredData(def, ctx)) return { asset, res: null, status: st?.status === 'ready' ? 'loading' : (st?.status ?? 'loading') };
+        return { asset, res: runIndicatorBacktest(st.data, asset, def, null, '10Y', defaultCosts(asset), ctx), status: 'ready' };
       }),
-    [states, def],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [states, def, extra],
   );
   if (rows.every((r) => r.status === 'loading')) return <Spinner label="正在計算回測…" />;
   if (rows.every((r) => r.status !== 'ready' && r.status !== 'loading')) {

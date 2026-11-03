@@ -2,8 +2,9 @@ import type { AssetConfig } from '../config/assets';
 import { completedLength } from '../data/parse';
 import { indexRange } from '../data/range';
 import { adjustCandles } from '../data/resample';
+import type { ExtraDataFile } from '../data/extra';
 import type { AssetSeries, Candle } from '../data/types';
-import { computeIndicator, signalsOf, STRATEGY_INDICATORS } from '../indicators/registry';
+import { computeIndicator, hasRequiredData, signalsOf, STRATEGY_INDICATORS, supportsAsset } from '../indicators/registry';
 import type { IndicatorDef, Signal } from '../indicators/types';
 import { runBacktest, type BacktestConfig } from './engine';
 import { periodsPerYear, type EquityMetrics } from './metrics';
@@ -28,11 +29,16 @@ export interface Prepared {
   strategies: PreparedStrategy[];
 }
 
-export function prepareStrategies(series: AssetSeries, asset: AssetConfig, defs: IndicatorDef[] = STRATEGY_INDICATORS): Prepared {
+/**
+ * 預設用所有「這個標的能用」的策略；比特幣專屬的策略（情緒、合約、鏈上）要等額外資料載入後才加入。
+ */
+export function prepareStrategies(series: AssetSeries, asset: AssetConfig, opts: { extra?: ExtraDataFile | null; defs?: IndicatorDef[] } = {}): Prepared {
   const n = completedLength(series);
   const candles = adjustCandles(series.candles, series.adjClose).slice(0, n);
+  const ctx = { extra: opts.extra ?? null };
+  const defs = opts.defs ?? STRATEGY_INDICATORS.filter((d) => supportsAsset(d, asset.id) && hasRequiredData(d, ctx));
   const strategies = defs.map((def) => {
-    const ci = computeIndicator(def, candles, asset.market, null);
+    const ci = computeIndicator(def, candles, asset.market, null, ctx);
     return { def, signals: signalsOf(ci, candles) };
   });
   return { candles, ppy: periodsPerYear(candles.map((c) => c.time)), strategies };

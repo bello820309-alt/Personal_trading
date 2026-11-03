@@ -1,12 +1,41 @@
 import { Card, PageTitle, Segmented, SectionTitle } from '../components/ui';
 import { ASSETS } from '../config/assets';
 import { fmtDate, fmtDateTime } from '../data/format';
-import { useManifest } from '../data/load';
+import { lastDate } from '../data/extra';
+import { useExtra, useManifest } from '../data/load';
 import { getIndicator } from '../indicators/registry';
 import { Link } from '../router';
 import { DEFAULT_SETTINGS, useSettings, type ColorMode, type ThemeMode } from '../store/settings';
 
 const STATUS_LABEL = { ok: '正常', stale: '更新失敗（顯示舊資料）', missing: '尚無資料' } as const;
+
+/** 比特幣的額外資料（情緒、合約、鏈上）：來源與最新日期 */
+function ExtraDataTable() {
+  const extra = useExtra('BTC');
+  if (!extra) return null;
+  return (
+    <div className="table-scroll mt-4">
+      <table className="w-full min-w-[420px] text-sm">
+        <thead>
+          <tr className="text-left text-xs text-muted">
+            <th className="py-1 pr-2 font-normal">比特幣的額外資料</th>
+            <th className="py-1 pr-2 font-normal">來源</th>
+            <th className="py-1 font-normal">最新日期</th>
+          </tr>
+        </thead>
+        <tbody>
+          {Object.entries(extra.series).map(([key, s]) => (
+            <tr key={key} className="border-t border-line">
+              <td className="py-1.5 pr-2 text-fg">{s.label}</td>
+              <td className="py-1.5 pr-2 text-xs text-muted">{s.source}</td>
+              <td className="py-1.5 text-fg tabular">{fmtDate(lastDate(s))}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
 export function SettingsPage() {
   const s = useSettings();
@@ -93,6 +122,7 @@ export function SettingsPage() {
             </tbody>
           </table>
         </div>
+        <ExtraDataTable />
         <p className="mt-2 text-xs text-muted">
           日 K 資料最後一次更新：{manifest ? fmtDateTime(manifest.generatedAt) : '—'}（台北時間）。
           <Link to="/basics/data-source" className="ml-1 text-accent">

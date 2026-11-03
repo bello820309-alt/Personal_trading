@@ -22,7 +22,7 @@ import { MIN_TRADES, prepareStrategies } from '../backtest/rank';
 import { defaultCosts } from '../backtest/strategies';
 import { EVENT_GROUP_LABELS, REGIME_LABELS, REGIME_RULE, UPCOMING_FOMC, eventsFor, fedUpperAt, type EventGroup } from '../data/events';
 import { fmtDate, fmtPct, signClass } from '../data/format';
-import { useAsset } from '../data/load';
+import { useAsset, useExtra } from '../data/load';
 import { completedLength } from '../data/parse';
 import type { AssetSeries } from '../data/types';
 import { navigate, useLocation, withQuery } from '../router';
@@ -58,9 +58,10 @@ const pctCell = (v: number | null) => <span className={signClass(v)}>{v === null
 function EventsView({ asset, series, group, onGroup }: { asset: AssetConfig; series: AssetSeries; group: EventGroup | null; onGroup: (g: EventGroup) => void }) {
   const n = completedLength(series);
   const lastTime = series.candles[n - 1]?.time ?? '';
+  const extra = useExtra(asset.id);
   // 只用已收盤的 K 棒；收盤資料有變才重算
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const prep = useMemo(() => prepareStrategies(series, asset), [asset, n, lastTime]);
+  const prep = useMemo(() => prepareStrategies(series, asset, { extra }), [asset, n, lastTime, extra]);
   const cfg = useMemo(() => defaultCosts(asset), [asset]);
   const events = useMemo(() => eventsFor(asset.id), [asset.id]);
   const rows = useMemo(() => eventRows(prep.candles, events), [prep, events]);

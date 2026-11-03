@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import * as ti from 'technicalindicators';
 import type { Candle } from '../data/types';
-import { syntheticCandles } from './testUtils';
+import { syntheticCandles, syntheticExtra } from './testUtils';
 import { INDICATORS, computeIndicator, describeOf, getIndicator, signalsOf } from './registry';
 import { atrWilder, ema, highest, lowest, sma, stdev } from './math/core';
 import { rsiSeries } from './momentum/rsi';
@@ -320,10 +320,12 @@ describe('其他指標（手算或性質驗證）', () => {
 });
 
 describe('所有指標的共通檢查', () => {
+  // 比特幣專屬的指標需要額外資料（情緒、資金費率、鏈上），這裡給合成的
+  const ctx = syntheticExtra(candles);
   for (const def of INDICATORS) {
     it(`${def.id}：長度一致、說明可產生、訊號依時間排序`, () => {
       for (const market of ['tw', 'us', 'crypto'] as const) {
-        const ci = computeIndicator(def, candles, market);
+        const ci = computeIndicator(def, candles, market, null, ctx);
         for (const line of ci.result.lines) expect(line.values.length).toBe(candles.length);
         const summary = describeOf(ci, candles);
         expect(summary, `${def.id} describe`).not.toBeNull();
@@ -341,12 +343,13 @@ describe('因果性：只用前段資料算出的結果，必須和用完整資�
   const full = syntheticCandles(700, 7);
   const cut = 450;
   const prefix = full.slice(0, cut);
+  const extraCtx = syntheticExtra(full);
   for (const def of INDICATORS) {
     if (def.id === 'fibonacci') continue; // 價位是依「最近 N 根」重新找高低點，不是逐日數列
     it(def.id, () => {
       for (const market of ['tw', 'us', 'crypto'] as const) {
-        const a = computeIndicator(def, full, market);
-        const b = computeIndicator(def, prefix, market);
+        const a = computeIndicator(def, full, market, null, extraCtx);
+        const b = computeIndicator(def, prefix, market, null, extraCtx);
         for (const line of b.result.lines) {
           const fullLine = getLine(a.result, line.key);
           for (let i = 0; i < cut; i++) {

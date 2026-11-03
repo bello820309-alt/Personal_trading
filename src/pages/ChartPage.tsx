@@ -14,11 +14,11 @@ import { ParamEditor } from '../components/ParamEditor';
 import { Card, Segmented, ToneBadge } from '../components/ui';
 import { DEFAULT_ASSET_ID, getAsset, type AssetConfig } from '../config/assets';
 import { fmtBarDate, fmtPct, fmtPrice, signClass } from '../data/format';
-import { useAsset } from '../data/load';
+import { useAsset, useExtra } from '../data/load';
 import { TIMEFRAME_LABELS, type Timeframe } from '../data/resample';
 import type { AssetSeries, Candle } from '../data/types';
 import { barsForRange, useDisplayCandles } from '../data/useSeries';
-import { computeIndicator, describeOf, getIndicator, signalsOf, type ComputedIndicator } from '../indicators/registry';
+import { computeIndicator, describeOf, getIndicator, signalsOf, supportsAsset, type ComputedIndicator } from '../indicators/registry';
 import type { Signal } from '../indicators/types';
 import { Link, navigate, withQuery } from '../router';
 import { RANGE_LABELS, useSettings, type RangeKey } from '../store/settings';
@@ -50,13 +50,16 @@ function ChartView({ asset, series }: { asset: AssetConfig; series: AssetSeries 
   const [explainId, setExplainId] = useState<string | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
 
+  // 比特幣的額外資料（情緒、合約、鏈上）；比特幣專屬的指標換到股票時不顯示
+  const extra = useExtra(asset.id);
+  const ctx = useMemo(() => ({ extra }), [extra]);
   const computed = useMemo<ComputedIndicator[]>(
     () =>
       s.chartIndicators.flatMap((ci) => {
         const def = getIndicator(ci.id);
-        return def ? [computeIndicator(def, candles, asset.market, ci.params)] : [];
+        return def && supportsAsset(def, asset.id) ? [computeIndicator(def, candles, asset.market, ci.params, ctx)] : [];
       }),
-    [candles, s.chartIndicators, asset.market],
+    [candles, s.chartIndicators, asset.market, asset.id, ctx],
   );
 
   const chartIndicators = useMemo<ChartIndicator[]>(
@@ -230,6 +233,7 @@ function ChartView({ asset, series }: { asset: AssetConfig; series: AssetSeries 
       <IndicatorPicker
         open={pickerOpen}
         onClose={() => setPickerOpen(false)}
+        assetId={asset.id}
         activeIds={s.chartIndicators.map((x) => x.id)}
         onAdd={s.addIndicator}
         onRemove={s.removeIndicator}

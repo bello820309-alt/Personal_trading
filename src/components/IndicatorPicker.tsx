@@ -8,12 +8,15 @@ import { Sheet } from './ui';
 export function IndicatorPicker({
   open,
   onClose,
+  assetId,
   activeIds,
   onAdd,
   onRemove,
 }: {
   open: boolean;
   onClose: () => void;
+  /** 只列出這個標的能用的指標（例如鏈上資料只有比特幣有） */
+  assetId?: string;
   activeIds: string[];
   onAdd: (id: string) => void;
   onRemove: (id: string) => void;
@@ -21,7 +24,7 @@ export function IndicatorPicker({
   const [q, setQ] = useState('');
   const groups = useMemo(() => {
     const query = q.trim().toLowerCase();
-    return indicatorsByCategory()
+    return indicatorsByCategory(assetId)
       .map((g) => ({
         ...g,
         items: g.items.filter((d) => {
@@ -31,7 +34,7 @@ export function IndicatorPicker({
         }),
       }))
       .filter((g) => g.items.length > 0);
-  }, [q]);
+  }, [q, assetId]);
 
   return (
     <Sheet open={open} onClose={onClose} title="加入指標">

@@ -7,7 +7,7 @@ import { Card, Notice, PageTitle, Segmented, SectionTitle, Spinner, ToneBadge } 
 import { ASSETS, DEFAULT_ASSET_ID, getAsset, MARKET_LABELS, type AssetConfig } from '../config/assets';
 import { equityMetrics, periodsPerYear, type EquityMetrics } from '../backtest/metrics';
 import { fmtDate, fmtDateTime, fmtMoney, fmtNum, fmtPct, fmtPrice, signClass } from '../data/format';
-import { useAssets, useManifest, type LoadState } from '../data/load';
+import { useAssets, useExtra, useManifest, type LoadState } from '../data/load';
 import { completedLength } from '../data/parse';
 import type { AssetSeries } from '../data/types';
 import { computeIndicator, describeOf, indicatorsByCategory } from '../indicators/registry';
@@ -129,7 +129,7 @@ function AssetCard({ asset, state }: { asset: AssetConfig; state: LoadState<Asse
 }
 
 /** 預設只顯示新手最常接觸的幾個指標，避免一次看到 25 個太混亂 */
-const FEATURED = ['sma', 'ma-cross', 'macd', 'dmi', 'rsi', 'kd', 'bollinger', 'volume'];
+const FEATURED = ['sma', 'ma-cross', 'macd', 'dmi', 'rsi', 'kd', 'bollinger', 'volume', 'fear-greed'];
 
 function StateItem({ def, d }: { def: IndicatorDef; d: StateSummary | null }) {
   return (
@@ -153,13 +153,15 @@ function StateItem({ def, d }: { def: IndicatorDef; d: StateSummary | null }) {
 function IndicatorStates({ asset, series }: { asset: AssetConfig; series: AssetSeries }) {
   const [showAll, setShowAll] = useState(false);
   const candles = series.candles;
+  // 比特幣另外有情緒、合約、鏈上的指標
+  const extra = useExtra(asset.id);
   const groups = useMemo(
     () =>
-      indicatorsByCategory().map((g) => ({
+      indicatorsByCategory(asset.id).map((g) => ({
         category: g.category,
-        items: g.items.map((def) => ({ def, d: describeOf(computeIndicator(def, candles, asset.market, null), candles) })),
+        items: g.items.map((def) => ({ def, d: describeOf(computeIndicator(def, candles, asset.market, null, { extra }), candles) })),
       })),
-    [candles, asset.market],
+    [candles, asset.market, asset.id, extra],
   );
   const all = groups.flatMap((g) => g.items);
   const featured = FEATURED.flatMap((id) => all.filter((x) => x.def.id === id));

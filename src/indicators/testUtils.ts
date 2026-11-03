@@ -1,4 +1,30 @@
+import { toCompact, type ExtraDataFile } from '../data/extra';
 import type { Candle } from '../data/types';
+import type { IndicatorContext } from './types';
+
+/**
+ * 只給單元測試用的「合成比特幣額外資料」（情緒、資金費率、鏈上），日期和 K 棒一致，
+ * 數值是會穿越各個門檻的波浪，用來驗證比特幣專屬指標的計算與訊號。不是真實資料。
+ */
+export function syntheticExtra(candles: Candle[]): IndicatorContext {
+  const t = candles.map((c) => c.time);
+  const wave = (f: (i: number) => number) => toCompact(t, t.map((_, i) => f(i)));
+  const s = (label: string, c: ReturnType<typeof toCompact>) => ({ label, unit: '', source: 'test', ...c });
+  const extra: ExtraDataFile = {
+    schemaVersion: 1,
+    asset: 'BTC',
+    updatedAt: '2026-01-01T00:00:00Z',
+    series: {
+      fng: s('fng', wave((i) => Math.round(50 + 45 * Math.sin(i / 25)))),
+      funding: s('funding', wave((i) => 0.0003 * Math.sin(i / 20) + 0.00005)),
+      mvrv: s('mvrv', wave((i) => 2.2 + 1.8 * Math.sin(i / 40))),
+      activeAddresses: s('activeAddresses', wave((i) => 700000 + 200000 * Math.sin(i / 30))),
+      txCount: s('txCount', wave((i) => 300000 + 50000 * Math.sin(i / 30))),
+      hashRate: s('hashRate', wave((i) => 1e8 * (1 + i / 1000) * (1 + 0.1 * Math.sin(i / 15)))),
+    },
+  };
+  return { extra };
+}
 
 /**
  * 只給單元測試用的「合成價格序列」（固定亂數種子、每次都一樣），

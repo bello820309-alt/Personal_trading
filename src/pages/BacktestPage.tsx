@@ -12,10 +12,10 @@ import type { BacktestConfig, Trade } from '../backtest/engine';
 import { defaultCosts, PERIOD_LABELS, runIndicatorBacktest, type CustomPeriod, type PeriodKey } from '../backtest/strategies';
 import { summarizeBacktest } from '../backtest/summary';
 import { fmtDate, fmtMoney, fmtNum, fmtPct, fmtPrice, signClass } from '../data/format';
-import { useAsset } from '../data/load';
+import { useAsset, useExtra } from '../data/load';
 import { isIsoDate } from '../data/range';
 import type { AssetSeries } from '../data/types';
-import { getIndicator, indicatorsByCategory } from '../indicators/registry';
+import { getIndicator, hasRequiredData, indicatorsByCategory, supportsAsset } from '../indicators/registry';
 import { CATEGORY_LABELS, type IndicatorDef, type Params } from '../indicators/types';
 import { Link, navigate, useLocation, withQuery } from '../router';
 import { useResolvedTheme, useSettings } from '../store/settings';
@@ -28,7 +28,8 @@ export function BacktestPage() {
   const lastAsset = useSettings((s) => s.lastAsset);
   const asset = getAsset(query.get('asset')) ?? getAsset(lastAsset) ?? getAsset(DEFAULT_ASSET_ID)!;
   const def = getIndicator(query.get('strategy'));
-  const strategyDef = def && def.strategy ? def : getIndicator('ma-cross')!;
+  // 比特幣專屬的策略（例如恐懼貪婪指數）換到股票時，改回預設的均線交叉
+  const strategyDef = def && def.strategy && supportsAsset(def, asset.id) ? def : getIndicator('ma-cross')!;
   const period = (PERIODS as string[]).includes(query.get('period') ?? '') ? (query.get('period') as PeriodKey) : '10Y';
   // 從策略排行榜點進來時會帶自訂期間（from、to）
   const qFrom = query.get('from');
@@ -183,9 +184,12 @@ function BacktestView({
 
   const cFrom = custom?.from;
   const cTo = custom?.to;
+  const extra = useExtra(asset.id);
+  const ctx = useMemo(() => ({ extra }), [extra]);
+  const waitingExtra = !hasRequiredData(def, ctx);
   const res = useMemo(
-    () => runIndicatorBacktest(series, asset, def, params, cFrom && cTo ? { from: cFrom, to: cTo } : period, cfg),
-    [series, asset, def, params, period, cFrom, cTo, cfg],
+    () => runIndicatorBacktest(series, asset, def, params, cFrom && cTo ? { from: cFrom, to: cTo } : period, cfg, ctx),
+    [series, asset, def, params, period, cFrom, cTo, cfg, ctx],
   );
   const periodKey = custom ? `${custom.from}~${custom.to}` : period;
   const summary = useMemo(() => summarizeBacktest(res, asset, def.strategy!.name), [res, asset, def]);
@@ -229,7 +233,7 @@ function BacktestView({
                 onChange={(e) => onStrategy(e.target.value)}
                 className="mt-1 w-full rounded-lg border border-line bg-surface-2 px-3 py-2 text-sm text-fg"
               >
-                {indicatorsByCategory().map((g) => {
+                {indicatorsByCategory(asset.id).map((g) => {
                   const items = g.items.filter((d) => d.strategy);
                   if (!items.length) return null;
                   return (
@@ -324,6 +328,8 @@ function BacktestView({
           </div>
         </div>
       </Card>
+
+      {waitingExtra && <Notice tone="warn">這個策略需要比特幣的額外資料（情緒、合約、鏈上），正在載入或暫時讀不到，結果會是空的。</Notice>}
 
       <Card>
         <h2 className="mb-2 text-base font-semibold text-fg">白話結論</h2>

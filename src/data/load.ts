@@ -3,6 +3,7 @@ import { getAsset } from '../config/assets';
 import { mergeLiveBars } from './live/merge';
 import { getLiveState, hasLive, useLiveVersion } from './live/store';
 import { parseAssetFile } from './parse';
+import type { ExtraDataFile } from './extra';
 import type { AssetDataFile, AssetSeries, DataManifest } from './types';
 
 const BASE = import.meta.env.BASE_URL;
@@ -108,6 +109,35 @@ export function useAssets(ids: string[]): Record<string, LoadState<AssetSeries>>
     () => Object.fromEntries(Object.entries(states).map(([id, st]) => [id, withLive(st, id)])),
     [states, liveVersion],
   );
+}
+
+const extraCache = new Map<string, Promise<ExtraDataFile | null>>();
+
+/** 額外資料（比特幣的情緒、合約、鏈上）；沒有或讀取失敗時是 null，不影響其他功能 */
+export function loadExtra(id: string): Promise<ExtraDataFile | null> {
+  if (!getAsset(id)?.extraData) return Promise.resolve(null);
+  let p = extraCache.get(id);
+  if (!p) {
+    p = getJson<ExtraDataFile>(`data/${id}_extra.json`).catch(() => {
+      extraCache.delete(id);
+      return null;
+    });
+    extraCache.set(id, p);
+  }
+  return p;
+}
+
+export function useExtra(id: string | undefined): ExtraDataFile | null {
+  const [data, setData] = useState<{ id: string; file: ExtraDataFile | null } | null>(null);
+  useEffect(() => {
+    if (!id) return;
+    let alive = true;
+    loadExtra(id).then((file) => alive && setData({ id, file }));
+    return () => {
+      alive = false;
+    };
+  }, [id]);
+  return data && data.id === id ? data.file : null;
 }
 
 export function useManifest(): DataManifest | null {

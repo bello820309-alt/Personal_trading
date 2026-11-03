@@ -1,11 +1,12 @@
 import type { Candle } from '../data/types';
+import type { ExtraDataFile, ExtraKey } from '../data/extra';
 import type { Market } from '../config/assets';
 
 /** 指標數列：和 K 棒一一對應，暖身期（資料還不夠算）為 null */
 export type Num = number | null;
 export type Series = Num[];
 
-export type Category = 'trend' | 'momentum' | 'volatility' | 'volume' | 'levels';
+export type Category = 'trend' | 'momentum' | 'volatility' | 'volume' | 'levels' | 'crypto';
 
 export const CATEGORY_LABELS: Record<Category, string> = {
   trend: '趨勢',
@@ -13,6 +14,7 @@ export const CATEGORY_LABELS: Record<Category, string> = {
   volatility: '波動',
   volume: '量能',
   levels: '價位',
+  crypto: '比特幣專屬（情緒、合約、鏈上）',
 };
 
 export const CATEGORY_INTRO: Record<Category, string> = {
@@ -21,9 +23,15 @@ export const CATEGORY_INTRO: Record<Category, string> = {
   volatility: '衡量價格晃動有多大，不分漲跌。',
   volume: '從成交量看資金進出，搭配價格一起解讀。',
   levels: '找出可能的支撐、壓力價位。',
+  crypto: '不是從 K 線算出來的，而是比特幣才有的資料：市場情緒、合約的資金費率、區塊鏈上的活動。只有比特幣可以用。',
 };
 
-export const CATEGORY_ORDER: Category[] = ['trend', 'momentum', 'volatility', 'volume', 'levels'];
+export const CATEGORY_ORDER: Category[] = ['trend', 'momentum', 'volatility', 'volume', 'levels', 'crypto'];
+
+/** 計算指標時可以用到的額外資料（目前只有比特幣的情緒、合約、鏈上資料） */
+export interface IndicatorContext {
+  extra?: ExtraDataFile | null;
+}
 
 export type ParamValue = number | string | number[];
 export type Params = Record<string, ParamValue>;
@@ -155,7 +163,11 @@ export interface IndicatorDef<P extends Params = Params> {
   /** 不同市場的常用設定 */
   marketDefaults?: Partial<Record<Market, Partial<P>>>;
   presets?: { label: string; values: Partial<P> }[];
-  compute(candles: Candle[], params: P): IndicatorResult;
+  /** 只有這些標的可以用（例如比特幣的鏈上資料）；沒寫代表所有標的都可以 */
+  assets?: string[];
+  /** 需要的額外資料（public/data/BTC_extra.json 裡的哪幾項） */
+  requires?: ExtraKey[];
+  compute(candles: Candle[], params: P, ctx?: IndicatorContext): IndicatorResult;
   signals?(candles: Candle[], result: IndicatorResult, params: P): Signal[];
   describe?(candles: Candle[], result: IndicatorResult, params: P): StateSummary | null;
   /** 回測用的經典規則（使用 signals() 的買賣訊號） */

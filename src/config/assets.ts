@@ -53,6 +53,8 @@ export interface AssetConfig {
    * 歷史資料仍來自每天抓的 Yahoo 資料，最新幾天由即時資料補上。
    */
   live?: { provider: 'binance'; symbol: string; label: string };
+  /** 有額外資料（public/data/{id}_extra.json：市場情緒、合約、鏈上），目前只有比特幣 */
+  extraData?: boolean;
   /** 只使用這一天以後的資料（資料來源在這之前有問題時使用） */
   historyStart?: string;
   /** historyStart 的原因（會顯示在 App 裡） */
@@ -133,6 +135,7 @@ export const ASSETS: AssetConfig[] = [
     volume: { divisor: 1, unit: '美元', label: '成交值' },
     tradesOnWeekends: true,
     live: { provider: 'binance', symbol: 'BTCUSDT', label: '幣安 BTC/USDT' },
+    extraData: true,
     costs: {
       feeRate: 0.001,
       feeDiscount: 1,

@@ -4,7 +4,7 @@ import { indexRange } from '../data/range';
 import { adjustCandles } from '../data/resample';
 import type { AssetSeries, Candle } from '../data/types';
 import { computeIndicator, signalsOf, type ComputedIndicator } from '../indicators/registry';
-import type { IndicatorDef, Params, Signal } from '../indicators/types';
+import type { IndicatorContext, IndicatorDef, Params, Signal } from '../indicators/types';
 import { runBacktest, type BacktestConfig, type BacktestResult } from './engine';
 import { periodsPerYear } from './metrics';
 
@@ -65,10 +65,11 @@ export function runIndicatorBacktest(
   params: Params | null,
   period: PeriodSpec,
   cfg: BacktestConfig,
+  ctx?: IndicatorContext,
 ): IndicatorBacktest {
   const n = completedLength(series);
   const candles = adjustCandles(series.candles, series.adjClose).slice(0, n);
-  const computed = computeIndicator(def, candles, asset.market, params);
+  const computed = computeIndicator(def, candles, asset.market, params, ctx);
   const signals = signalsOf(computed, candles);
   let start: number;
   let end = n - 1;
