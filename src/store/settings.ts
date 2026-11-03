@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { create } from 'zustand';
+import { sanitizePlan, type DcaPlan } from '../backtest/dca';
 import type { Timeframe } from '../data/resample';
 import type { Params } from '../indicators/types';
 
@@ -45,6 +46,8 @@ export interface SettingsData {
   lastAsset: string;
   /** 圖表上標示消息面事件（FOMC、選舉、減半…） */
   showEvents: boolean;
+  /** 動態定投的價格階梯（每個標的各一份；沒有就用預設） */
+  dcaPlans: Record<string, DcaPlan>;
 }
 
 export const DEFAULT_SETTINGS: SettingsData = {
@@ -61,7 +64,18 @@ export const DEFAULT_SETTINGS: SettingsData = {
   range: '1Y',
   lastAsset: '0050',
   showEvents: false,
+  dcaPlans: {},
 };
+
+function sanitizePlans(raw: unknown): Record<string, DcaPlan> {
+  if (!raw || typeof raw !== 'object') return {};
+  const out: Record<string, DcaPlan> = {};
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    const p = sanitizePlan(v);
+    if (p) out[k] = p;
+  }
+  return out;
+}
 
 const STORAGE_KEY = 'ta-settings-v1';
 
@@ -84,6 +98,7 @@ function sanitize(raw: unknown): SettingsData {
     range: pick(s.range, ['3M', '6M', '1Y', '3Y', '5Y', 'ALL'] as const, d.range),
     lastAsset: typeof s.lastAsset === 'string' ? s.lastAsset : d.lastAsset,
     showEvents: typeof s.showEvents === 'boolean' ? s.showEvents : d.showEvents,
+    dcaPlans: sanitizePlans(s.dcaPlans),
   };
 }
 
@@ -109,6 +124,8 @@ interface SettingsStore extends SettingsData {
   addIndicator(id: string): void;
   removeIndicator(id: string): void;
   setIndicatorParams(id: string, params: Params | null): void;
+  /** 存某個標的的價格階梯；null = 還原成預設 */
+  setDcaPlan(assetId: string, plan: DcaPlan | null): void;
   reset(): void;
 }
 
@@ -124,6 +141,13 @@ export const useSettings = create<SettingsStore>((set) => ({
     })),
   setIndicatorParams: (id, params) =>
     set((s) => ({ chartIndicators: s.chartIndicators.map((x) => (x.id === id ? { ...x, params } : x)) })),
+  setDcaPlan: (assetId, plan) =>
+    set((s) => {
+      const next = { ...s.dcaPlans };
+      if (plan) next[assetId] = plan;
+      else delete next[assetId];
+      return { dcaPlans: next };
+    }),
   reset: () => set({ ...DEFAULT_SETTINGS }),
 }));
 
@@ -138,6 +162,7 @@ useSettings.subscribe((s) => {
     range: s.range,
     lastAsset: s.lastAsset,
     showEvents: s.showEvents,
+    dcaPlans: s.dcaPlans,
   });
 });
 

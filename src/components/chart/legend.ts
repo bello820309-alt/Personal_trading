@@ -1,5 +1,5 @@
 import type { AssetConfig } from '../../config/assets';
-import { fmtAuto, fmtCompact, fmtNum, fmtVolume } from '../../data/format';
+import { fmtAuto, fmtCompact, fmtMoney, fmtNum, fmtVolume } from '../../data/format';
 import type { IndicatorResult, LineOutput } from '../../indicators/types';
 
 /** 要顯示在圖例與說明裡的線（不含隱藏的線），依 legendOrder 排序 */
@@ -29,6 +29,7 @@ export function formatLineValue(v: number | null, line: LineOutput, asset: Asset
   if (v === null) return '—';
   if (line.unit === 'volume') return fmtVolume(v, asset);
   if (line.unit === 'percent') return `${fmtNum(v, 2)}%`;
+  if (line.unit === 'money') return fmtMoney(v, asset, Number.isInteger(v) ? 0 : 2);
   return fmtAuto(v);
 }
 

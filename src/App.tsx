@@ -11,6 +11,7 @@ import { GlossaryPage } from './pages/GlossaryPage';
 import { BacktestPage } from './pages/BacktestPage';
 import { RankPage } from './pages/RankPage';
 import { EventsPage } from './pages/EventsPage';
+import { DcaPage } from './pages/DcaPage';
 import { ForecastPage } from './pages/ForecastPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { NotFound } from './pages/NotFound';
@@ -26,6 +27,7 @@ const ROUTES: { pattern: string; render: (p: Record<string, string>) => ReactEle
   { pattern: '/backtest', render: () => <BacktestPage /> },
   { pattern: '/backtest/rank', render: () => <RankPage /> },
   { pattern: '/backtest/events', render: () => <EventsPage /> },
+  { pattern: '/backtest/dca', render: () => <DcaPage /> },
   { pattern: '/forecast', render: () => <ForecastPage /> },
   { pattern: '/settings', render: () => <SettingsPage /> },
 ];

@@ -2,6 +2,7 @@ import { useMemo, type ReactNode } from 'react';
 import { AssetStateView } from '../components/AssetState';
 import { AssetTabs } from '../components/AssetTabs';
 import { BacktestTabs } from '../components/BacktestTabs';
+import { PeriodPicker } from '../components/PeriodPicker';
 import { Card, Notice, PageTitle, Segmented } from '../components/ui';
 import { getAsset, type AssetConfig } from '../config/assets';
 import {
@@ -61,28 +62,6 @@ export function RankPage() {
       ) : (
         <AssetStateView state={state} name={asset.name} />
       )}
-    </div>
-  );
-}
-
-function Chips({ items, activeKey, onPick, withDates }: { items: PeriodPreset[]; activeKey: string; onPick: (p: PeriodPreset) => void; withDates?: boolean }) {
-  return (
-    <div className="flex flex-wrap gap-1.5">
-      {items.map((p) => {
-        const on = p.key === activeKey;
-        return (
-          <button
-            key={p.key}
-            type="button"
-            aria-pressed={on}
-            onClick={() => onPick(p)}
-            className={`rounded-full border px-2.5 py-1 text-xs whitespace-nowrap ${on ? 'border-accent bg-accent font-medium text-accent-contrast' : 'border-line bg-surface text-fg hover:bg-surface-2'}`}
-          >
-            {p.label}
-            {withDates && <span className="ml-1 opacity-70">{`${fmtDate(p.from).slice(2)}～${fmtDate(p.to).slice(2)}`}</span>}
-          </button>
-        );
-      })}
     </div>
   );
 }
@@ -212,45 +191,16 @@ function RankView({
       <Card>
         <H2>選擇期間</H2>
         <div className="space-y-3">
-          <Segmented<string>
-            size="sm"
-            ariaLabel="最近一段時間"
-            value={active.key}
-            onChange={(k) => pick(presets.find((x) => x.key === k)!)}
-            options={presets.filter((x) => x.group === 'recent').map((x) => ({ value: x.key, label: x.label }))}
+          <PeriodPicker
+            presets={presets}
+            activeKey={active.key}
+            from={active.from}
+            to={active.to}
+            first={first}
+            last={last}
+            onPick={pick}
+            onCustom={setCustom}
           />
-          <div>
-            <div className="mb-1.5 text-xs text-muted">單一年度</div>
-            <Chips items={presets.filter((x) => x.group === 'year')} activeKey={active.key} onPick={pick} />
-          </div>
-          {presets.some((x) => x.group === 'phase') && (
-            <div>
-              <div className="mb-1.5 text-xs text-muted">有名的大漲／大跌行情（起訖日是那段期間收盤價的最高點或最低點）</div>
-              <Chips items={presets.filter((x) => x.group === 'phase')} activeKey={active.key} onPick={pick} withDates />
-            </div>
-          )}
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs text-muted">自訂</span>
-            <input
-              type="date"
-              aria-label="開始日期"
-              min={first}
-              max={last}
-              value={active.from}
-              onChange={(e) => setCustom(e.target.value, active.to)}
-              className="rounded-lg border border-line bg-surface-2 px-2 py-1 text-sm text-fg"
-            />
-            <span className="text-muted">～</span>
-            <input
-              type="date"
-              aria-label="結束日期"
-              min={first}
-              max={last}
-              value={active.to}
-              onChange={(e) => setCustom(active.from, e.target.value)}
-              className="rounded-lg border border-line bg-surface-2 px-2 py-1 text-sm text-fg"
-            />
-          </div>
           {range ? (
             <p className="text-xs text-muted">
               實際回測：{fmtDate(prep.candles[rs]!.time)}～{fmtDate(prep.candles[re]!.time)}（{daysBetween(prep.candles[rs]!.time, prep.candles[re]!.time)} 天、

@@ -1,6 +1,23 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { TONE_LABELS, type Tone } from '../indicators/types';
-import { CloseIcon } from './icons';
+import { ChevronRightIcon, CloseIcon } from './icons';
+
+/** 收合的區塊：點標題才展開，展開時才畫裡面的內容（圖表、長表格不會拖慢頁面） */
+export function Fold({ title, sub, children }: { title: string; sub?: string; children: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <details className="rounded-xl border border-line bg-surface" open={open} onToggle={(e) => setOpen(e.currentTarget.open)}>
+      <summary className="flex cursor-pointer list-none items-start gap-2 px-4 py-3 [&::-webkit-details-marker]:hidden">
+        <ChevronRightIcon className={`mt-0.5 h-4 w-4 shrink-0 text-muted transition-transform ${open ? 'rotate-90' : ''}`} />
+        <span className="min-w-0">
+          <span className="block text-base font-semibold text-fg">{title}</span>
+          {sub && <span className="mt-0.5 block text-xs leading-relaxed text-muted">{sub}</span>}
+        </span>
+      </summary>
+      {open && <div className="border-t border-line px-4 py-3">{children}</div>}
+    </details>
+  );
+}
 
 /** 分段選擇按鈕（例如 日K／週K／月K） */
 export function Segmented<T extends string>({

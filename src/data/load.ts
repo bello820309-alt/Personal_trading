@@ -14,8 +14,20 @@ export type LoadState<T> =
   | { status: 'missing'; message: string }
   | { status: 'error'; message: string };
 
-const assetCache = new Map<string, Promise<AssetSeries>>();
-let manifestCache: Promise<DataManifest | null> | null = null;
+/**
+ * 資料讀進來之後在記憶體裡放多久，就要重新向伺服器確認一次。
+ * 每次打開網頁都會拿最新的檔案；這個設定是給「網頁或手機 App 一直開著」的情況：
+ * 放在背景好幾天再切回來時，會自動換成最新的收盤資料，所有計算（指標、回測、預測）跟著重算。
+ */
+export const DATA_MAX_AGE_MS = 30 * 60 * 1000;
+
+interface CacheEntry<T> {
+  p: Promise<T>;
+  at: number;
+}
+
+const assetCache = new Map<string, CacheEntry<AssetSeries>>();
+const manifestCache = new Map<string, CacheEntry<DataManifest>>();
 
 class MissingDataError extends Error {}
 
@@ -26,21 +38,46 @@ async function getJson<T>(path: string): Promise<T> {
   return (await res.json()) as T;
 }
 
-export function loadAsset(id: string): Promise<AssetSeries> {
-  let p = assetCache.get(id);
-  if (!p) {
-    p = getJson<AssetDataFile>(`data/${id}.json`).then(parseAssetFile);
-    p.catch(() => assetCache.delete(id));
-    assetCache.set(id, p);
-  }
+/**
+ * 有快取而且還不舊就直接用；太舊就重新抓。重新抓失敗（例如離線）時繼續用手上的資料，
+ * 第一次就抓不到時才回報錯誤（並清掉快取，下次重試）。
+ */
+export function cachedLoad<T>(cache: Map<string, CacheEntry<T>>, key: string, load: () => Promise<T>, now = Date.now()): Promise<T> {
+  const hit = cache.get(key);
+  if (hit && now - hit.at < DATA_MAX_AGE_MS) return hit.p;
+  const prev = hit?.p;
+  const p: Promise<T> = load().catch((e: unknown) => {
+    if (prev) return prev;
+    if (cache.get(key)?.p === p) cache.delete(key);
+    throw e;
+  });
+  cache.set(key, { p, at: now });
   return p;
 }
 
+export function loadAsset(id: string): Promise<AssetSeries> {
+  return cachedLoad(assetCache, id, () => getJson<AssetDataFile>(`data/${id}.json`).then(parseAssetFile));
+}
+
 export function loadManifest(): Promise<DataManifest | null> {
-  if (!manifestCache) {
-    manifestCache = getJson<DataManifest>('data/manifest.json').catch(() => null);
-  }
-  return manifestCache;
+  return cachedLoad(manifestCache, 'manifest', () => getJson<DataManifest>('data/manifest.json')).catch(() => null);
+}
+
+/**
+ * 網頁從背景切回前景時、以及開著的時候每隔一段時間，呼叫 check（太舊的資料會重新抓）。
+ * 回傳取消註冊的函式。
+ */
+function onRefreshTick(check: () => void): () => void {
+  if (typeof document === 'undefined') return () => {};
+  const tick = () => {
+    if (document.visibilityState === 'visible') check();
+  };
+  document.addEventListener('visibilitychange', tick);
+  const timer = window.setInterval(tick, DATA_MAX_AGE_MS);
+  return () => {
+    document.removeEventListener('visibilitychange', tick);
+    window.clearInterval(timer);
+  };
 }
 
 function toState<T>(e: unknown): LoadState<T> {
@@ -74,12 +111,13 @@ export function useAsset(id: string | undefined): LoadState<AssetSeries> {
     if (!id) return;
     let alive = true;
     setState({ status: 'loading' });
-    loadAsset(id).then(
-      (data) => alive && setState({ status: 'ready', data }),
-      (e) => alive && setState(toState(e)),
-    );
+    // 同一份資料就不更新畫面，避免沒必要的重算
+    const apply = (data: AssetSeries) => alive && setState((s) => (s.status === 'ready' && s.data === data ? s : { status: 'ready', data }));
+    loadAsset(id).then(apply, (e) => alive && setState(toState(e)));
+    const stop = onRefreshTick(() => loadAsset(id).then(apply, () => {}));
     return () => {
       alive = false;
+      stop();
     };
   }, [id]);
   const liveVersion = useLiveVersion(id ? [id] : []);
@@ -94,14 +132,21 @@ export function useAssets(ids: string[]): Record<string, LoadState<AssetSeries>>
   );
   useEffect(() => {
     let alive = true;
-    for (const id of key.split(',').filter(Boolean)) {
+    const ids = key.split(',').filter(Boolean);
+    const apply = (id: string, data: AssetSeries) =>
+      alive && setStates((s) => (s[id]?.status === 'ready' && (s[id] as { data: AssetSeries }).data === data ? s : { ...s, [id]: { status: 'ready', data } }));
+    for (const id of ids) {
       loadAsset(id).then(
-        (data) => alive && setStates((s) => ({ ...s, [id]: { status: 'ready', data } })),
+        (data) => apply(id, data),
         (e) => alive && setStates((s) => ({ ...s, [id]: toState<AssetSeries>(e) })),
       );
     }
+    const stop = onRefreshTick(() => {
+      for (const id of ids) loadAsset(id).then((data) => apply(id, data), () => {});
+    });
     return () => {
       alive = false;
+      stop();
     };
   }, [key]);
   const liveVersion = useLiveVersion(ids);
@@ -111,20 +156,12 @@ export function useAssets(ids: string[]): Record<string, LoadState<AssetSeries>>
   );
 }
 
-const extraCache = new Map<string, Promise<ExtraDataFile | null>>();
+const extraCache = new Map<string, CacheEntry<ExtraDataFile>>();
 
 /** 額外資料（比特幣的情緒、合約、鏈上）；沒有或讀取失敗時是 null，不影響其他功能 */
 export function loadExtra(id: string): Promise<ExtraDataFile | null> {
   if (!getAsset(id)?.extraData) return Promise.resolve(null);
-  let p = extraCache.get(id);
-  if (!p) {
-    p = getJson<ExtraDataFile>(`data/${id}_extra.json`).catch(() => {
-      extraCache.delete(id);
-      return null;
-    });
-    extraCache.set(id, p);
-  }
-  return p;
+  return cachedLoad(extraCache, id, () => getJson<ExtraDataFile>(`data/${id}_extra.json`)).catch(() => null);
 }
 
 export function useExtra(id: string | undefined): ExtraDataFile | null {
@@ -132,9 +169,12 @@ export function useExtra(id: string | undefined): ExtraDataFile | null {
   useEffect(() => {
     if (!id) return;
     let alive = true;
-    loadExtra(id).then((file) => alive && setData({ id, file }));
+    const apply = (file: ExtraDataFile | null) => alive && setData((d) => (d && d.id === id && d.file === file ? d : { id, file }));
+    loadExtra(id).then(apply);
+    const stop = onRefreshTick(() => loadExtra(id).then(apply));
     return () => {
       alive = false;
+      stop();
     };
   }, [id]);
   return data && data.id === id ? data.file : null;
@@ -144,9 +184,12 @@ export function useManifest(): DataManifest | null {
   const [m, setM] = useState<DataManifest | null>(null);
   useEffect(() => {
     let alive = true;
-    loadManifest().then((x) => alive && setM(x));
+    const apply = (x: DataManifest | null) => alive && setM((old) => (old === x ? old : x));
+    loadManifest().then(apply);
+    const stop = onRefreshTick(() => loadManifest().then(apply));
     return () => {
       alive = false;
+      stop();
     };
   }, []);
   return m;

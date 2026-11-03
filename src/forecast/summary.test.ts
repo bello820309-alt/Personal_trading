@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { CheckResult, HorizonKey } from './analog';
-import { bandNote, summarizeCheck } from './summary';
+import { checkPoints, summarizeCheck } from './summary';
 
 const mk = (key: HorizonKey, label: string, hit: number, alwaysUp: number, coverage: number): CheckResult => ({
   horizon: { key, label, bars: 21 },
@@ -26,18 +26,19 @@ describe('summarizeCheck', () => {
   });
 });
 
-describe('bandNote', () => {
-  it('列出每個時間長度，只要有一個太窄就提醒', () => {
-    const note = bandNote([mk('1w', '1 週後', 0.5, 0.5, 0.7), mk('1m', '1 個月後', 0.5, 0.5, 0.65), mk('3m', '3 個月後', 0.5, 0.5, 0.59)]);
-    expect(note).toContain('1 週 70%、1 個月 65%、3 個月 59%');
-    expect(note).toContain('太窄');
+describe('checkPoints：預測數字旁邊的兩個重點', () => {
+  it('猜漲跌和一直猜漲比較', () => {
+    expect(checkPoints(mk('1m', '1 個月後', 0.62, 0.55, 0.8))[0]!.tone).toBe('good');
+    expect(checkPoints(mk('1m', '1 個月後', 0.55, 0.56, 0.8))[0]!.tone).toBe('meh');
+    const bad = checkPoints(mk('1m', '1 個月後', 0.46, 0.53, 0.8))[0]!;
+    expect(bad.tone).toBe('bad');
+    expect(bad.detail).toContain('猜對 46%');
+    expect(bad.detail).toContain('53%');
   });
 
-  it('接近 80% 時說明大致可信', () => {
-    expect(bandNote([mk('1m', '1 個月後', 0.5, 0.5, 0.88), mk('3m', '3 個月後', 0.5, 0.5, 0.83)])).toContain('大致可信');
-  });
-
-  it('沒有結果時不顯示', () => {
-    expect(bandNote([])).toBe('');
+  it('範圍太窄、偏寬、剛好', () => {
+    expect(checkPoints(mk('1m', '1 個月後', 0.5, 0.5, 0.6))[1]!.tone).toBe('bad');
+    expect(checkPoints(mk('1m', '1 個月後', 0.5, 0.5, 0.95))[1]!.tone).toBe('meh');
+    expect(checkPoints(mk('1m', '1 個月後', 0.5, 0.5, 0.88))[1]!.tone).toBe('good');
   });
 });

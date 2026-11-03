@@ -1,5 +1,5 @@
 import { memo, useEffect, useRef } from 'react';
-import { ColorType, CrosshairMode, LineSeries, PriceScaleMode, createChart, type PriceFormat } from 'lightweight-charts';
+import { ColorType, CrosshairMode, LineSeries, LineStyle, PriceScaleMode, createChart, type PriceFormat } from 'lightweight-charts';
 import { useResolvedTheme, useSettings } from '../../store/settings';
 import { getChartTheme, withAlpha } from '../../theme';
 
@@ -11,6 +11,7 @@ export interface LineSpec {
   points: { time: string; value: number }[];
   /** 在右邊的價格軸顯示最後的數值（線很多時可以關掉，避免標籤擠成一團） */
   showLastValue?: boolean;
+  dashed?: boolean;
 }
 
 /** 簡單的多線折線圖（資產曲線、績效比較用） */
@@ -54,6 +55,7 @@ function LineChartImpl({
       const s = chart.addSeries(LineSeries, {
         color: l.color,
         lineWidth: l.width ?? 2,
+        lineStyle: l.dashed ? LineStyle.Dashed : LineStyle.Solid,
         priceLineVisible: false,
         lastValueVisible: l.showLastValue ?? true,
         crosshairMarkerVisible: l.showLastValue ?? true,

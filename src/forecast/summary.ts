@@ -1,6 +1,6 @@
 import type { AssetConfig } from '../config/assets';
 import type { Candle } from '../data/types';
-import { fmtDate, fmtNum, fmtPct, fmtPrice } from '../data/format';
+import { fmtDate, fmtNum, fmtPct } from '../data/format';
 import type { CheckResult, Forecast } from './analog';
 
 /* 走勢預測的白話說明：全部依照計算出來的數字，用固定規則寫成句子 */
@@ -30,36 +30,34 @@ export function describeNow(f: Forecast, candles: Candle[], asset: AssetConfig):
   );
 }
 
-export function summarizeForecast(f: Forecast, candles: Candle[], asset: AssetConfig): string[] {
-  const price = candles[f.target]!.close;
-  const firstYear = candles[0]!.time.slice(0, 4);
-  const out: string[] = [];
-  out.push(
-    `從 ${firstYear} 年以來的資料裡，找出 ${f.analogs.length} 個和現在最像的日子（彼此至少相隔 1 個月，而且之後 3 個月的結果都已經知道），再看它們之後怎麼走。`,
-  );
-  const m = f.horizons.find((h) => h.horizon.key === '1m')!;
-  const s = m.stats;
-  out.push(
-    `它們之後 1 個月：${fmtPct(s.up, 0, false)} 上漲，中位數 ${fmtPct(s.median)}；八成的情況介於 ${fmtPct(s.p10)} 和 ${fmtPct(s.p90)} 之間，` +
-      `換算成價格大約是 ${fmtPrice(price * (1 + s.p10), asset)} ～ ${fmtPrice(price * (1 + s.p90), asset)}。`,
-  );
-  const others = f.horizons.filter((h) => h.horizon.key !== '1m');
-  out.push(others.map((h) => `${h.horizon.label}：${fmtPct(h.stats.up, 0, false)} 上漲，中位數 ${fmtPct(h.stats.median)}`).join('；') + '。');
-  return out;
+export type CheckTone = 'good' | 'meh' | 'bad';
+
+export interface CheckPoint {
+  tone: CheckTone;
+  title: string;
+  detail: string;
 }
 
-/** 放在預測數字旁邊的提醒：這個「八成範圍」過去實際上準不準 */
-export function bandNote(check: CheckResult[]): string {
-  if (check.length === 0) return '';
-  const parts = check.map((r) => `${r.horizon.label.replace(/後$/, '')} ${fmtPct(r.coverage, 0, false)}`).join('、');
-  const cov = check.map((r) => r.coverage);
-  const tail =
-    Math.min(...cov) < 0.7
-      ? '低於 80% 代表範圍估得太窄，真實的漲跌常常超出這個範圍。'
-      : Math.min(...cov) > 0.9
-        ? '都超過 80%，範圍估得偏寬，屬於保守的估計。'
-        : '接近 80%，範圍大致可信，但仍有大約兩成的機會跑到範圍外面。';
-  return `這個範圍準不準？回頭檢驗時，實際結果落在「八成範圍」裡的比例：${parts}（理想是 80%）。${tail}`;
+/** 回頭檢驗的兩個重點，放在預測數字旁邊：猜漲跌準不準、範圍準不準 */
+export function checkPoints(r: CheckResult): CheckPoint[] {
+  const diff = r.hit - r.alwaysUp;
+  const hit = fmtPct(r.hit, 0, false);
+  const up = fmtPct(r.alwaysUp, 0, false);
+  const cov = fmtPct(r.coverage, 0, false);
+  const dirDetail = `過去 ${r.tests} 次猜對 ${hit}；每次都猜「漲」也能猜對 ${up}`;
+  const dir: CheckPoint =
+    diff >= 0.05
+      ? { tone: 'good', title: '猜漲跌：有一點參考價值', detail: dirDetail }
+      : diff > -0.03
+        ? { tone: 'meh', title: '猜漲跌：沒有比較準', detail: dirDetail }
+        : { tone: 'bad', title: '猜漲跌：不可靠', detail: dirDetail };
+  const band: CheckPoint =
+    r.coverage < 0.7
+      ? { tone: 'bad', title: '範圍：估得太窄', detail: `實際只有 ${cov} 落在八成範圍裡（理想是 80%），真實的漲跌常常更大` }
+      : r.coverage > 0.9
+        ? { tone: 'meh', title: '範圍：偏寬、比較保守', detail: `實際有 ${cov} 落在八成範圍裡（理想是 80%）` }
+        : { tone: 'good', title: '範圍：大致準確', detail: `實際有 ${cov} 落在八成範圍裡（理想是 80%）` };
+  return [dir, band];
 }
 
 /** 回頭檢驗的結論：和「一直猜漲」比，以及預測範圍準不準 */

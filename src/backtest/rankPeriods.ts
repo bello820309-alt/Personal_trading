@@ -53,6 +53,7 @@ export function buildPresets(candles: readonly Candle[], assetId: string): Perio
   const out: PeriodPreset[] = [];
   for (const [key, label, years] of [
     ['1Y', '近 1 年', 1],
+    ['2Y', '近 2 年', 2],
     ['3Y', '近 3 年', 3],
     ['5Y', '近 5 年', 5],
   ] as const) {

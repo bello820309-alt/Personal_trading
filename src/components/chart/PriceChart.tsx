@@ -151,6 +151,7 @@ function panePriceFormat(line: LineOutput, asset: AssetConfig, fixedScale: boole
     return { type: 'custom', minMove: 1, formatter: (v: number) => fmtCompact(v / asset.volume.divisor) };
   }
   if (line.unit === 'percent') return { type: 'price', precision: 2, minMove: 0.01 };
+  if (line.unit === 'money') return { type: 'custom', minMove: 0.01, formatter: (v: number) => fmtCompact(v) };
   if (fixedScale) return { type: 'price', precision: 1, minMove: 0.1 };
   if (asset.market === 'crypto') return { type: 'price', precision: 0, minMove: 1 };
   return { type: 'price', precision: 2, minMove: 0.01 };

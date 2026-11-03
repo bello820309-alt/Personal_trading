@@ -81,7 +81,7 @@ export interface LineOutput {
   /** 只用來計算訊號或顯示數值，不畫在圖上 */
   hidden?: boolean;
   /** 數值是成交量（顯示時套用標的的單位，例如台股的「張」） */
-  unit?: 'volume' | 'percent' | 'price';
+  unit?: 'volume' | 'percent' | 'price' | 'money';
 }
 
 export interface FillOutput {
