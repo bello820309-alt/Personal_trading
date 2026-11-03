@@ -67,6 +67,14 @@ export const CloseIcon = (p: IconProps) => (
   </svg>
 );
 
+/** 走勢預測：實線是過去，虛線是未來的可能範圍 */
+export const ForecastIcon = (p: IconProps) => (
+  <svg {...base(p)}>
+    <path d="M3 17l4-5 3 2 4-6" />
+    <path d="M14 8l3 2 4-3M14 8l3 6 4 1" strokeDasharray="2 2.2" />
+  </svg>
+);
+
 export const RulerIcon = (p: IconProps) => (
   <svg {...base({ width: 18, height: 18, ...p })}>
     <path d="M3 16.5 16.5 3 21 7.5 7.5 21z" />

@@ -123,6 +123,9 @@ function AssetCard({ asset, state }: { asset: AssetConfig; state: LoadState<Asse
         <Link to={withQuery('/backtest', { asset: asset.id })} className="text-accent">
           回測
         </Link>
+        <Link to={withQuery('/forecast', { asset: asset.id })} className="text-accent">
+          走勢預測
+        </Link>
       </div>
     </Card>
   );

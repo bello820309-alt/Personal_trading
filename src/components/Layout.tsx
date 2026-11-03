@@ -1,6 +1,6 @@
 import type { ComponentType, ReactNode, SVGProps } from 'react';
 import { Link, useLocation } from '../router';
-import { BookIcon, ChartIcon, FlaskIcon, GearIcon, HomeIcon, LogoMark } from './icons';
+import { BookIcon, ChartIcon, FlaskIcon, ForecastIcon, GearIcon, HomeIcon, LogoMark } from './icons';
 
 interface NavItem {
   to: string;
@@ -21,6 +21,7 @@ const NAV: NavItem[] = [
     match: (p) => p.startsWith('/learn') || p.startsWith('/basics') || p.startsWith('/glossary'),
   },
   { to: '/backtest/rank', label: '回測', short: '回測', icon: FlaskIcon, match: (p) => p.startsWith('/backtest') },
+  { to: '/forecast', label: '走勢預測', short: '預測', icon: ForecastIcon, match: (p) => p.startsWith('/forecast') },
   { to: '/settings', label: '設定與關於', short: '設定', icon: GearIcon, match: (p) => p.startsWith('/settings') },
 ];
 
@@ -87,7 +88,7 @@ export function Layout({ children }: { children: ReactNode }) {
         className="safe-bottom fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface/95 backdrop-blur md:hidden"
         aria-label="主選單"
       >
-        <div className="grid grid-cols-5">
+        <div className="grid grid-cols-6">
           {NAV.map((item) => {
             const active = item.match(path);
             const Icon = item.icon;

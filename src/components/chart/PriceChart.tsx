@@ -199,7 +199,11 @@ function IndicatorLegend({
         <span className="shrink-0 font-semibold text-fg">{ci.title}</span>
       )}
       {lines.length === 0 && (ci.result.priceLevels?.length ?? 0) > 0 && <span className="text-muted">（圖上的點狀橫線）</span>}
+      {lines.length > 0 && lines.every((l) => (l.shift ?? 0) > 0 && lineValueAt(l, index) === null) ? (
+        <span className="text-muted">（把十字線移到右邊的未來日期，就會顯示數值）</span>
+      ) : null}
       {lines.map((l, i) => {
+        if ((l.shift ?? 0) > 0 && lines.every((x) => (x.shift ?? 0) > 0 && lineValueAt(x, index) === null)) return null;
         const label = legendLabel(l);
         // 第一條線和標題同名（例如「成交量」）就不重複寫；其他線一律寫出名稱（例如 MACD 的訊號線）
         const showLabel = !(i === 0 && label === ci.title);
@@ -648,7 +652,8 @@ function PriceChartImpl({
         return;
       }
       const idx = Math.round(param.logical);
-      setHoverIdx(idx < 0 ? null : Math.min(idx, n - 1));
+      // 有畫到未來的線（例如預測範圍、一目均衡表的雲）時，十字線可以移到未來的日期看數值
+      setHoverIdx(idx < 0 ? null : Math.min(idx, n - 1 + maxShift));
     };
     chart.subscribeCrosshairMove(onMove);
 
@@ -695,8 +700,12 @@ function PriceChartImpl({
   }, [measure.on]);
 
   const t = getChartTheme(theme, colorMode);
-  const idx = hoverIdx !== null && hoverIdx < candles.length ? hoverIdx : candles.length - 1;
-  const bar = candles[idx];
+  const idx = hoverIdx !== null ? hoverIdx : candles.length - 1;
+  /** 十字線在未來的日期（最後一根 K 棒的右邊）時，那是第幾天之後 */
+  const aheadBars = Math.max(0, idx - (candles.length - 1));
+  const bar = candles[Math.min(idx, candles.length - 1)];
+  const futureDate =
+    aheadBars > 0 && bar ? futureDates(candles[candles.length - 1]!.time, aheadBars, asset.tradesOnWeekends)[aheadBars - 1] : undefined;
   const overlays = indicators.filter((ci) => ci.placement === 'overlay');
   const panes = indicators.filter((ci) => ci.placement === 'pane');
 
@@ -757,7 +766,14 @@ function PriceChartImpl({
       {bar && (
         <div className="mb-1.5 flex items-start gap-2 px-0.5">
           <div className="min-w-0 flex-1 space-y-0.5 text-[11px] leading-snug tabular md:text-xs">
-            <PriceLegend bar={bar} prev={candles[idx - 1]} asset={asset} compact={compact} />
+            {futureDate ? (
+              <div>
+                <span className="font-semibold text-fg">{fmtBarDate(futureDate)}</span>
+                <span className="ml-2 text-muted">未來（{aheadBars} 根 K 棒之後，還沒發生）</span>
+              </div>
+            ) : (
+              <PriceLegend bar={bar} prev={candles[idx - 1]} asset={asset} compact={compact} />
+            )}
             {overlays.map((ci) => (
               <IndicatorLegend key={ci.key} ci={ci} index={idx} t={t} asset={asset} onExplain={onExplain} />
             ))}

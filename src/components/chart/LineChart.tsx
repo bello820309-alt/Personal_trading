@@ -9,6 +9,8 @@ export interface LineSpec {
   color: string;
   width?: 1 | 2 | 3;
   points: { time: string; value: number }[];
+  /** 在右邊的價格軸顯示最後的數值（線很多時可以關掉，避免標籤擠成一團） */
+  showLastValue?: boolean;
 }
 
 /** 簡單的多線折線圖（資產曲線、績效比較用） */
@@ -53,7 +55,8 @@ function LineChartImpl({
         color: l.color,
         lineWidth: l.width ?? 2,
         priceLineVisible: false,
-        lastValueVisible: true,
+        lastValueVisible: l.showLastValue ?? true,
+        crosshairMarkerVisible: l.showLastValue ?? true,
         priceFormat,
       });
       s.setData(l.points.map((p) => ({ time: p.time, value: p.value })));
