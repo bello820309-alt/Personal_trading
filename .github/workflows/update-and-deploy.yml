@@ -54,6 +54,10 @@ jobs:
       - name: 檢查資料
         continue-on-error: true
         run: npm run validate-data
+      # 比特幣的額外資料（恐懼貪婪指數、資金費率、鏈上資料）；失敗時保留上一版，不影響行情資料
+      - name: 抓取比特幣額外資料（情緒、合約、鏈上）
+        continue-on-error: true
+        run: npm run fetch-extra
       - name: Commit 資料
         id: commit
         run: |

@@ -13,6 +13,7 @@
     "test:watch": "vitest",
     "fetch-data": "tsx scripts/fetch-data.ts",
     "validate-data": "tsx scripts/validate-data.ts",
+    "fetch-extra": "tsx scripts/fetch-extra.ts",
     "icons": "node scripts/generate-icons.mjs"
   },
   "dependencies": {
