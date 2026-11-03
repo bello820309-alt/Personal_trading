@@ -20,6 +20,8 @@ import {
 import { buildPresets, type PeriodPreset } from '../backtest/rankPeriods';
 import { summarizeAdjacent, summarizeRanking, summarizeYearly } from '../backtest/rankSummary';
 import { defaultCosts } from '../backtest/strategies';
+import { eventRows, regimeShares } from '../backtest/eventStudy';
+import { REGIME_LABELS, eventsFor, fedUpperAt, type Regime } from '../data/events';
 import { daysBetween, fmtDate, fmtNum, fmtPct, signClass } from '../data/format';
 import { useAsset } from '../data/load';
 import { completedLength } from '../data/parse';
@@ -260,6 +262,8 @@ function RankView({
 
       {result && <RankResults asset={asset} candles={prep.candles} result={result} sort={sort} go={go} />}
 
+      {result && <PeriodNews asset={asset} candles={prep.candles} start={rs} end={re} />}
+
       {result && (
         <Card>
           <H2 sub="事後挑出的冠軍，換到另一段期間不一定還是冠軍。這裡用相鄰、同樣長度的期間實際檢驗一次。">冠軍換一段期間還有效嗎？</H2>
@@ -356,6 +360,56 @@ function RankView({
         </Link>
       </Notice>
     </div>
+  );
+}
+
+const REGIME_ORDER: Regime[] = ['hiking', 'cutting', 'steady'];
+
+/** 這段期間發生了哪些大事、處在什麼利率環境 */
+function PeriodNews({ asset, candles, start, end }: { asset: AssetConfig; candles: Candle[]; start: number; end: number }) {
+  const events = useMemo(() => eventsFor(asset.id), [asset.id]);
+  const from = candles[start]!.time;
+  const to = candles[end]!.time;
+  const rows = useMemo(() => eventRows(candles, events).filter((r) => r.event.date >= from && r.event.date <= to), [candles, events, from, to]);
+  const shares = useMemo(() => regimeShares(candles, start, end), [candles, start, end]);
+  const notable = rows.filter((r) => r.event.group !== 'hold');
+  const holds = rows.length - notable.length;
+  const rateFrom = fedUpperAt(from);
+  const rateTo = fedUpperAt(to);
+  return (
+    <Card>
+      <H2 sub="這段期間發生了哪些大事、處在什麼利率環境，可以對照上面的排行一起看。">這段期間的消息面</H2>
+      <p className="text-sm leading-relaxed text-fg">
+        利率環境：
+        {REGIME_ORDER.filter((r) => shares[r] > 0.005)
+          .map((r) => `${REGIME_LABELS[r]} ${fmtPct(shares[r], 0, false)}`)
+          .join('、')}
+        ；聯準會利率上限
+        {rateFrom === rateTo ? `維持 ${rateTo.toFixed(2)}%` : `從 ${rateFrom.toFixed(2)}% 變成 ${rateTo.toFixed(2)}%`}。
+      </p>
+      {notable.length ? (
+        <ul className="mt-3 space-y-1.5">
+          {[...notable]
+            .reverse()
+            .slice(0, 15)
+            .map((r) => (
+              <li key={`${r.event.date}|${r.event.title}`} className="flex items-baseline gap-2 text-sm">
+                <span className="shrink-0 text-xs text-muted tabular">{fmtDate(r.event.date)}</span>
+                <span className="min-w-0 flex-1 text-fg">{r.event.title}</span>
+                <span className="shrink-0 text-xs text-muted tabular">
+                  後 7 天 <span className={signClass(r.returns.after7)}>{r.returns.after7 === null ? '還沒到' : fmtPct(r.returns.after7)}</span>
+                </span>
+              </li>
+            ))}
+        </ul>
+      ) : (
+        <p className="mt-2 text-sm text-muted">這段期間沒有清單裡的大事。</p>
+      )}
+      {holds > 0 && <p className="mt-2 text-xs text-muted">另外還開了 {holds} 次利率不變的 FOMC 會議。</p>}
+      <Link to={withQuery('/backtest/events', { asset: asset.id })} className="mt-3 inline-block text-sm text-accent">
+        看所有事件前後的統計，以及不同利率環境下的策略勝率 →
+      </Link>
+    </Card>
   );
 }
 

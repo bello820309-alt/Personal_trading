@@ -3,6 +3,9 @@ import { AssetStateView } from '../components/AssetState';
 import { AssetTabs } from '../components/AssetTabs';
 import { DataTimeNote } from '../components/DataTimeNote';
 import { PriceChart, type ChartIndicator, type ChartMarker } from '../components/chart/PriceChart';
+import { buildEventMarkers } from '../components/chart/eventMarkers';
+import { EventLegend } from '../components/EventLegend';
+import { eventsFor } from '../data/events';
 import { ExplainSheet } from '../components/ExplainSheet';
 import { CloseIcon, InfoIcon, PlusIcon, SlidersIcon } from '../components/icons';
 import { IndicatorPicker } from '../components/IndicatorPicker';
@@ -69,6 +72,13 @@ function ChartView({ asset, series }: { asset: AssetConfig; series: AssetSeries 
   const signals = useMemo(() => (signalCi ? signalsOf(signalCi, candles) : []), [signalCi, candles]);
   const markers = useMemo<ChartMarker[]>(() => signals.map((x) => ({ index: x.index, side: x.side })), [signals]);
 
+  const events = useMemo(() => eventsFor(asset.id), [asset.id]);
+  const eventMarks = useMemo(() => (s.showEvents ? buildEventMarkers(candles, events) : null), [s.showEvents, candles, events]);
+  const eventGroups = useMemo(
+    () => (['hike', 'cut', 'election', 'halving', 'crypto', 'macro'] as const).filter((g) => events.some((e) => e.group === g)),
+    [events],
+  );
+
   const visibleBars = barsForRange(candles, s.range);
   const rangeKey = `${asset.id}|${s.timeframe}|${s.range}`;
 
@@ -119,6 +129,10 @@ function ChartView({ asset, series }: { asset: AssetConfig; series: AssetSeries 
         <label className="inline-flex items-center gap-1.5 text-sm text-muted">
           <input type="checkbox" checked={s.adjusted} onChange={(e) => s.update({ adjusted: e.target.checked })} />
           還原權息
+        </label>
+        <label className="inline-flex items-center gap-1.5 text-sm text-muted">
+          <input type="checkbox" checked={s.showEvents} onChange={(e) => s.update({ showEvents: e.target.checked })} />
+          標示消息面事件
         </label>
       </div>
 
@@ -186,7 +200,17 @@ function ChartView({ asset, series }: { asset: AssetConfig; series: AssetSeries 
         measurable
         barUnit={TIMEFRAME_LABELS[s.timeframe]}
         lastBarComplete={series.meta.lastBarComplete}
+        eventMarkers={eventMarks?.markers}
+        eventNotes={eventMarks?.notes}
       />
+      {eventMarks && (
+        <div className="-mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+          <EventLegend groups={eventGroups} />
+          <Link to={withQuery('/backtest/events', { asset: asset.id })} className="text-xs text-accent">
+            事件前後的統計 →
+          </Link>
+        </div>
+      )}
       <p className="text-xs leading-relaxed text-muted">
         小技巧：圖裡每個區塊的左上角會標出線的名稱、顏色和數值；手指按住圖表左右移動，可以看每一天的數值，點名稱可以看解說。兩指可以縮放。按圖表右上方的「區間漲跌」，再點兩根 K 棒（例如 10/1 和 11/1），就能看到這段期間漲跌多少。圖上的箭頭是所選指標的經典訊號，不是投資建議。
         {asset.historyNote ? ` ${asset.historyNote}` : ''}

@@ -48,6 +48,13 @@ export interface ChartMarker {
   text?: string;
 }
 
+/** 消息面事件的標記：K 線上方一個小圓點加一個字（例如「升」） */
+export interface EventMarker {
+  index: number;
+  text: string;
+  color: ColorRole;
+}
+
 interface Props {
   candles: Candle[];
   asset: AssetConfig;
@@ -66,6 +73,10 @@ interface Props {
   barUnit?: string;
   /** 最後一根 K 棒是否已經收盤（還沒收盤時，區間的終點價格標成「目前」） */
   lastBarComplete?: boolean;
+  /** 消息面事件的標記 */
+  eventMarkers?: EventMarker[];
+  /** 十字線停在某根 K 棒時，在圖例下方顯示那天的事件（K 棒位置 → 事件名稱） */
+  eventNotes?: Map<number, string[]>;
 }
 
 /** 區間漲跌的選取狀態；用日期記錄，比特幣每分鐘更新資料時也不會跑掉 */
@@ -394,6 +405,8 @@ function PriceChartImpl({
   measurable,
   barUnit,
   lastBarComplete,
+  eventMarkers,
+  eventNotes,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const savedRange = useRef<{ key: string; range: LogicalRange } | null>(null);
@@ -565,21 +578,32 @@ function PriceChartImpl({
       return shade;
     });
 
-    if (markers && markers.length) {
-      const list: SeriesMarker<Time>[] = markers
+    const markerList: (SeriesMarker<Time> & { index: number })[] = [
+      ...(markers ?? [])
         .filter((m) => m.index >= 0 && m.index < n)
-        .sort((a, b) => a.index - b.index)
         .map((m) => ({
+          index: m.index,
           time: candles[m.index]!.time,
-          position: m.side === 'buy' ? 'belowBar' : 'aboveBar',
-          shape: m.side === 'buy' ? 'arrowUp' : 'arrowDown',
+          position: m.side === 'buy' ? ('belowBar' as const) : ('aboveBar' as const),
+          shape: m.side === 'buy' ? ('arrowUp' as const) : ('arrowDown' as const),
           color: m.side === 'buy' ? t.up : t.down,
           // 手機畫面窄，只畫箭頭、不畫文字，避免標記擠在一起
           text: compact || isMobile ? '' : (m.text ?? (m.side === 'buy' ? '買' : '賣')),
           size: compact || isMobile ? 0.7 : 1,
-        }));
-      createSeriesMarkers(candleSeries, list);
-    }
+        })),
+      ...(eventMarkers ?? [])
+        .filter((m) => m.index >= 0 && m.index < n)
+        .map((m) => ({
+          index: m.index,
+          time: candles[m.index]!.time,
+          position: 'aboveBar' as const,
+          shape: 'circle' as const,
+          color: resolveColor(t, m.color),
+          text: m.text,
+          size: compact || isMobile ? 0.6 : 0.8,
+        })),
+    ].sort((a, b) => a.index - b.index);
+    if (markerList.length) createSeriesMarkers(candleSeries, markerList.map(({ index: _i, ...m }) => m));
 
     const ts = chart.timeScale();
     const saved = savedRange.current && savedRange.current.key === rangeKey ? savedRange.current.range : null;
@@ -652,7 +676,7 @@ function PriceChartImpl({
       shadesRef.current = [];
       chart.remove();
     };
-  }, [candles, asset, indicators, markers, visibleBars, rangeKey, compact, theme, colorMode, isMobile, mainHeight, paneHeight]);
+  }, [candles, asset, indicators, markers, eventMarkers, visibleBars, rangeKey, compact, theme, colorMode, isMobile, mainHeight, paneHeight]);
 
   // 換標的、週期或區間時，清掉已選的區間（工具保持開著）
   useEffect(() => {
@@ -736,6 +760,11 @@ function PriceChartImpl({
             <PriceLegend bar={bar} prev={candles[idx - 1]} asset={asset} compact={compact} />
             {overlays.map((ci) => (
               <IndicatorLegend key={ci.key} ci={ci} index={idx} t={t} asset={asset} onExplain={onExplain} />
+            ))}
+            {eventNotes?.get(idx)?.map((note) => (
+              <div key={note} className="text-hot">
+                ● {note}
+              </div>
             ))}
           </div>
           {measurable && !measure.on && (

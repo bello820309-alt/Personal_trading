@@ -1,13 +1,14 @@
 import { Link, withQuery } from '../router';
 
-/** 回測頁上方的切換：策略排行榜／單一策略回測 */
-export function BacktestTabs({ active, assetId }: { active: 'rank' | 'single'; assetId: string }) {
+/** 回測頁上方的切換：策略排行榜／單一策略回測／消息面 */
+export function BacktestTabs({ active, assetId }: { active: 'rank' | 'single' | 'events'; assetId: string }) {
   const items = [
     { key: 'rank', to: withQuery('/backtest/rank', { asset: assetId }), label: '策略排行榜' },
-    { key: 'single', to: withQuery('/backtest', { asset: assetId }), label: '單一策略回測' },
+    { key: 'single', to: withQuery('/backtest', { asset: assetId }), label: '單一策略' },
+    { key: 'events', to: withQuery('/backtest/events', { asset: assetId }), label: '消息面' },
   ] as const;
   return (
-    <nav aria-label="回測方式" className="mb-4 inline-flex max-w-full rounded-lg border border-line bg-surface p-0.5">
+    <nav aria-label="回測方式" className="mb-4 inline-flex max-w-full overflow-x-auto rounded-lg border border-line bg-surface p-0.5">
       {items.map((it) => {
         const on = it.key === active;
         return (
@@ -15,7 +16,7 @@ export function BacktestTabs({ active, assetId }: { active: 'rank' | 'single'; a
             key={it.key}
             to={it.to}
             aria-current={on ? 'page' : undefined}
-            className={`rounded-md px-3 py-1.5 text-sm whitespace-nowrap transition-colors ${on ? 'bg-accent font-medium text-accent-contrast' : 'text-muted hover:text-fg'}`}
+            className={`shrink-0 rounded-md px-3 py-1.5 text-sm whitespace-nowrap transition-colors ${on ? 'bg-accent font-medium text-accent-contrast' : 'text-muted hover:text-fg'}`}
           >
             {it.label}
           </Link>

@@ -43,6 +43,8 @@ export interface SettingsData {
   timeframe: Timeframe;
   range: RangeKey;
   lastAsset: string;
+  /** 圖表上標示消息面事件（FOMC、選舉、減半…） */
+  showEvents: boolean;
 }
 
 export const DEFAULT_SETTINGS: SettingsData = {
@@ -58,6 +60,7 @@ export const DEFAULT_SETTINGS: SettingsData = {
   timeframe: 'D',
   range: '1Y',
   lastAsset: '0050',
+  showEvents: false,
 };
 
 const STORAGE_KEY = 'ta-settings-v1';
@@ -80,6 +83,7 @@ function sanitize(raw: unknown): SettingsData {
     timeframe: pick(s.timeframe, ['D', 'W', 'M'] as const, d.timeframe),
     range: pick(s.range, ['3M', '6M', '1Y', '3Y', '5Y', 'ALL'] as const, d.range),
     lastAsset: typeof s.lastAsset === 'string' ? s.lastAsset : d.lastAsset,
+    showEvents: typeof s.showEvents === 'boolean' ? s.showEvents : d.showEvents,
   };
 }
 
@@ -133,6 +137,7 @@ useSettings.subscribe((s) => {
     timeframe: s.timeframe,
     range: s.range,
     lastAsset: s.lastAsset,
+    showEvents: s.showEvents,
   });
 });
 
