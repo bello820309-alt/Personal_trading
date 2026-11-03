@@ -1,5 +1,6 @@
 import type { AssetConfig } from '../config/assets';
 import { completedLength } from '../data/parse';
+import { indexRange } from '../data/range';
 import { adjustCandles } from '../data/resample';
 import type { AssetSeries, Candle } from '../data/types';
 import { computeIndicator, signalsOf, type ComputedIndicator } from '../indicators/registry';
@@ -44,6 +45,14 @@ export interface IndicatorBacktest extends BacktestResult {
   computed: ComputedIndicator;
 }
 
+/** 自訂期間（YYYY-MM-DD，含頭尾），例如從策略排行榜點進來時 */
+export interface CustomPeriod {
+  from: string;
+  to: string;
+}
+
+export type PeriodSpec = PeriodKey | CustomPeriod;
+
 /**
  * 用「還原權息」後的日 K 回測某個指標的經典規則。
  * 指標會用全部歷史資料計算（暖身期充足），交易只在選定的期間內進行；
@@ -54,15 +63,22 @@ export function runIndicatorBacktest(
   asset: AssetConfig,
   def: IndicatorDef,
   params: Params | null,
-  period: PeriodKey,
+  period: PeriodSpec,
   cfg: BacktestConfig,
 ): IndicatorBacktest {
   const n = completedLength(series);
   const candles = adjustCandles(series.candles, series.adjClose).slice(0, n);
   const computed = computeIndicator(def, candles, asset.market, params);
   const signals = signalsOf(computed, candles);
-  const end = n - 1;
-  const start = periodStartIndex(candles, end, period);
+  let start: number;
+  let end = n - 1;
+  if (typeof period === 'string') {
+    start = periodStartIndex(candles, end, period);
+  } else {
+    const r = indexRange(candles, period.from, period.to);
+    start = r?.start ?? 0;
+    end = r?.end ?? end;
+  }
   const ppy = periodsPerYear(candles.map((c) => c.time));
   return { ...runBacktest(candles, signals, start, end, cfg, ppy), candles, signals, computed };
 }

@@ -9,6 +9,7 @@ import { LearnDetail } from './pages/LearnDetail';
 import { BasicsPage } from './pages/BasicsPage';
 import { GlossaryPage } from './pages/GlossaryPage';
 import { BacktestPage } from './pages/BacktestPage';
+import { RankPage } from './pages/RankPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { NotFound } from './pages/NotFound';
 
@@ -21,6 +22,7 @@ const ROUTES: { pattern: string; render: (p: Record<string, string>) => ReactEle
   { pattern: '/basics/:id', render: (p) => <BasicsPage id={p.id!} /> },
   { pattern: '/glossary', render: () => <GlossaryPage /> },
   { pattern: '/backtest', render: () => <BacktestPage /> },
+  { pattern: '/backtest/rank', render: () => <RankPage /> },
   { pattern: '/settings', render: () => <SettingsPage /> },
 ];
 

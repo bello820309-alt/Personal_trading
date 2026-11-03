@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AssetStateView } from '../components/AssetState';
 import { AssetTabs } from '../components/AssetTabs';
+import { BacktestTabs } from '../components/BacktestTabs';
 import { LineChart, type LineSpec } from '../components/chart/LineChart';
 import { PriceChart, type ChartIndicator, type ChartMarker } from '../components/chart/PriceChart';
 import { ExplainSheet } from '../components/ExplainSheet';
@@ -8,10 +9,11 @@ import { ParamEditor } from '../components/ParamEditor';
 import { Card, Notice, PageTitle, Segmented } from '../components/ui';
 import { DEFAULT_ASSET_ID, getAsset, type AssetConfig } from '../config/assets';
 import type { BacktestConfig, Trade } from '../backtest/engine';
-import { defaultCosts, PERIOD_LABELS, runIndicatorBacktest, type PeriodKey } from '../backtest/strategies';
+import { defaultCosts, PERIOD_LABELS, runIndicatorBacktest, type CustomPeriod, type PeriodKey } from '../backtest/strategies';
 import { summarizeBacktest } from '../backtest/summary';
 import { fmtDate, fmtMoney, fmtNum, fmtPct, fmtPrice, signClass } from '../data/format';
 import { useAsset } from '../data/load';
+import { isIsoDate } from '../data/range';
 import type { AssetSeries } from '../data/types';
 import { getIndicator, indicatorsByCategory } from '../indicators/registry';
 import { CATEGORY_LABELS, type IndicatorDef, type Params } from '../indicators/types';
@@ -28,21 +30,30 @@ export function BacktestPage() {
   const def = getIndicator(query.get('strategy'));
   const strategyDef = def && def.strategy ? def : getIndicator('ma-cross')!;
   const period = (PERIODS as string[]).includes(query.get('period') ?? '') ? (query.get('period') as PeriodKey) : '10Y';
+  // 從策略排行榜點進來時會帶自訂期間（from、to）
+  const qFrom = query.get('from');
+  const qTo = query.get('to');
+  const custom: CustomPeriod | null = isIsoDate(qFrom) && isIsoDate(qTo) && qFrom <= qTo ? { from: qFrom, to: qTo } : null;
   const state = useAsset(asset.id);
 
-  const go = (patch: { asset?: string; strategy?: string; period?: string }) =>
+  const go = (patch: { asset?: string; strategy?: string; period?: string; custom?: CustomPeriod | null }) => {
+    const c = patch.custom === undefined ? custom : patch.custom;
     navigate(
       withQuery('/backtest', {
         asset: patch.asset ?? asset.id,
         strategy: patch.strategy ?? strategyDef.id,
-        period: patch.period ?? period,
+        period: c ? null : (patch.period ?? period),
+        from: c?.from,
+        to: c?.to,
       }),
       { replace: true },
     );
+  };
 
   return (
     <div>
       <PageTitle sub="把指標的經典買賣規則套用在過去的真實價格上，看看結果如何，並和「買了一直抱著」比較。">回測</PageTitle>
+      <BacktestTabs active="single" assetId={asset.id} />
       <div className="mb-4">
         <AssetTabs value={asset.id} onChange={(id) => go({ asset: id })} />
       </div>
@@ -53,8 +64,9 @@ export function BacktestPage() {
           series={state.data}
           def={strategyDef}
           period={period}
+          custom={custom}
           onStrategy={(id) => go({ strategy: id })}
-          onPeriod={(p) => go({ period: p })}
+          onPeriod={(p) => go({ period: p, custom: null })}
         />
       ) : (
         <AssetStateView state={state} name={asset.name} />
@@ -146,6 +158,7 @@ function BacktestView({
   series,
   def,
   period,
+  custom,
   onStrategy,
   onPeriod,
 }: {
@@ -153,6 +166,7 @@ function BacktestView({
   series: AssetSeries;
   def: IndicatorDef;
   period: PeriodKey;
+  custom: CustomPeriod | null;
   onStrategy: (id: string) => void;
   onPeriod: (p: PeriodKey) => void;
 }) {
@@ -167,7 +181,13 @@ function BacktestView({
   const [logScale, setLogScale] = useState(asset.market === 'crypto');
   useEffect(() => setParams(null), [def.id]);
 
-  const res = useMemo(() => runIndicatorBacktest(series, asset, def, params, period, cfg), [series, asset, def, params, period, cfg]);
+  const cFrom = custom?.from;
+  const cTo = custom?.to;
+  const res = useMemo(
+    () => runIndicatorBacktest(series, asset, def, params, cFrom && cTo ? { from: cFrom, to: cTo } : period, cfg),
+    [series, asset, def, params, period, cFrom, cTo, cfg],
+  );
+  const periodKey = custom ? `${custom.from}~${custom.to}` : period;
   const summary = useMemo(() => summarizeBacktest(res, asset, def.strategy!.name), [res, asset, def]);
   const m = res.metrics;
   const b = res.benchmarkMetrics;
@@ -244,13 +264,24 @@ function BacktestView({
             <div>
               <span className="text-xs text-muted">回測期間</span>
               <div className="mt-1">
-                <Segmented<PeriodKey>
+                <Segmented<string>
                   size="sm"
-                  value={period}
-                  onChange={onPeriod}
-                  options={PERIODS.map((p) => ({ value: p, label: PERIOD_LABELS[p] }))}
+                  value={custom ? 'CUSTOM' : period}
+                  onChange={(v) => v !== 'CUSTOM' && onPeriod(v as PeriodKey)}
+                  options={[
+                    ...PERIODS.map((p) => ({ value: p as string, label: PERIOD_LABELS[p] })),
+                    ...(custom ? [{ value: 'CUSTOM', label: '自訂' }] : []),
+                  ]}
                 />
               </div>
+              {custom && (
+                <p className="mt-1.5 text-xs text-muted">
+                  自訂期間：{fmtDate(custom.from)}～{fmtDate(custom.to)}（從策略排行榜帶過來的）。
+                  <Link to={withQuery('/backtest/rank', { asset: asset.id, p: 'custom', from: custom.from, to: custom.to })} className="ml-1 text-accent">
+                    回到排行榜
+                  </Link>
+                </p>
+              )}
             </div>
             <details className="rounded-lg border border-line px-3 py-2">
               <summary className="cursor-pointer text-sm text-fg">本金與交易成本</summary>
@@ -372,7 +403,7 @@ function BacktestView({
           indicators={chartIndicators}
           markers={markers}
           visibleBars={res.endIndex - res.startIndex + 1}
-          rangeKey={`bt|${asset.id}|${period}|${def.id}`}
+          rangeKey={`bt|${asset.id}|${periodKey}|${def.id}`}
           compact
         />
         <p className="mt-2 text-xs text-muted">箭頭標在「實際成交」的那一天（訊號出現的隔天開盤）。價格為還原權息後的價格，所以會和券商報價不同。</p>

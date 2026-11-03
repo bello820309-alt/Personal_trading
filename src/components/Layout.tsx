@@ -20,7 +20,7 @@ const NAV: NavItem[] = [
     icon: BookIcon,
     match: (p) => p.startsWith('/learn') || p.startsWith('/basics') || p.startsWith('/glossary'),
   },
-  { to: '/backtest', label: '回測', short: '回測', icon: FlaskIcon, match: (p) => p.startsWith('/backtest') },
+  { to: '/backtest/rank', label: '回測', short: '回測', icon: FlaskIcon, match: (p) => p.startsWith('/backtest') },
   { to: '/settings', label: '設定與關於', short: '設定', icon: GearIcon, match: (p) => p.startsWith('/settings') },
 ];
 
