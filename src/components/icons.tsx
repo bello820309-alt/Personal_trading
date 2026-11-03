@@ -68,6 +68,15 @@ export const CloseIcon = (p: IconProps) => (
 );
 
 /** 走勢預測：實線是過去，虛線是未來的可能範圍 */
+export const LabIcon = (p: IconProps) => (
+  <svg {...base(p)}>
+    <rect x="4" y="8" width="16" height="11" rx="3" />
+    <path d="M12 8V5.5" />
+    <circle cx="12" cy="4.2" r="1.2" />
+    <path d="M9.5 12.5v1M14.5 12.5v1M9.5 16h5" />
+  </svg>
+);
+
 export const ForecastIcon = (p: IconProps) => (
   <svg {...base(p)}>
     <path d="M3 17l4-5 3 2 4-6" />

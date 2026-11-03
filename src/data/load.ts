@@ -21,7 +21,7 @@ export type LoadState<T> =
  */
 export const DATA_MAX_AGE_MS = 30 * 60 * 1000;
 
-interface CacheEntry<T> {
+export interface CacheEntry<T> {
   p: Promise<T>;
   at: number;
 }
@@ -29,9 +29,9 @@ interface CacheEntry<T> {
 const assetCache = new Map<string, CacheEntry<AssetSeries>>();
 const manifestCache = new Map<string, CacheEntry<DataManifest>>();
 
-class MissingDataError extends Error {}
+export class MissingDataError extends Error {}
 
-async function getJson<T>(path: string): Promise<T> {
+export async function getJson<T>(path: string): Promise<T> {
   const res = await fetch(`${BASE}${path}`, { cache: 'no-cache' });
   if (res.status === 404) throw new MissingDataError('資料尚未產生');
   if (!res.ok) throw new Error(`讀取資料失敗（HTTP ${res.status}）`);
@@ -67,7 +67,7 @@ export function loadManifest(): Promise<DataManifest | null> {
  * 網頁從背景切回前景時、以及開著的時候每隔一段時間，呼叫 check（太舊的資料會重新抓）。
  * 回傳取消註冊的函式。
  */
-function onRefreshTick(check: () => void): () => void {
+export function onRefreshTick(check: () => void): () => void {
   if (typeof document === 'undefined') return () => {};
   const tick = () => {
     if (document.visibilityState === 'visible') check();

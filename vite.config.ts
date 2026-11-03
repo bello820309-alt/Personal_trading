@@ -36,9 +36,19 @@ export default defineConfig({
       workbox: {
         // 行情資料不放進預先快取，改用「網路優先、離線時用快取」。
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
-        globIgnores: ['**/data/**'],
+        globIgnores: ['**/data/**', '**/lab/**'],
         navigateFallback: 'index.html',
         runtimeCaching: [
+          {
+            // AI 模擬交易的紀錄：一樣是網路優先，離線時用上次看到的
+            urlPattern: /\/lab\/[^/]+\.json$/,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'lab-data',
+              networkTimeoutSeconds: 8,
+              expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 60 },
+            },
+          },
           {
             urlPattern: /\/data\/[^/]+\.json$/,
             handler: 'NetworkFirst',

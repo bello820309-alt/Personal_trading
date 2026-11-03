@@ -14,7 +14,9 @@
     "fetch-data": "tsx scripts/fetch-data.ts",
     "validate-data": "tsx scripts/validate-data.ts",
     "fetch-extra": "tsx scripts/fetch-extra.ts",
-    "icons": "node scripts/generate-icons.mjs"
+    "icons": "node scripts/generate-icons.mjs",
+    "lab": "tsx scripts/lab/cli.ts",
+    "lab:browse": "node scripts/lab/browse.cjs"
   },
   "dependencies": {
     "lightweight-charts": "5.2.1",

@@ -13,6 +13,7 @@ import { RankPage } from './pages/RankPage';
 import { EventsPage } from './pages/EventsPage';
 import { DcaPage } from './pages/DcaPage';
 import { ForecastPage } from './pages/ForecastPage';
+import { LabPage } from './pages/LabPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { NotFound } from './pages/NotFound';
 
@@ -29,6 +30,7 @@ const ROUTES: { pattern: string; render: (p: Record<string, string>) => ReactEle
   { pattern: '/backtest/events', render: () => <EventsPage /> },
   { pattern: '/backtest/dca', render: () => <DcaPage /> },
   { pattern: '/forecast', render: () => <ForecastPage /> },
+  { pattern: '/lab', render: () => <LabPage /> },
   { pattern: '/settings', render: () => <SettingsPage /> },
 ];
 
