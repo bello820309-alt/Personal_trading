@@ -15,6 +15,25 @@ export function maDisplayPeriods(p: MaParams): number[] {
   return [...set].sort((a, b) => a - b).slice(0, 7);
 }
 
+/**
+ * 價格在一部分均線之上、一部分之下時，看是哪一種（均線由短到長排列）：
+ * - 跌破所有短天期、還在長天期之上：長期上升趨勢裡的回檔（不是盤整，短期其實在跌）
+ * - 站上所有短天期、還在長天期之下：長期下跌趨勢裡的反彈
+ * - 交錯（上上下下）：方向不明，才是整理或轉折
+ */
+export function phaseText(close: number, vals: { label: string; v: number }[]): string {
+  const flags = vals.map((x) => close > x.v);
+  const firstAbove = flags.indexOf(true);
+  const firstBelow = flags.indexOf(false);
+  if (firstAbove > 0 && flags.slice(firstAbove).every(Boolean)) {
+    return `短天期均線都在價格上面、長天期在下面：短期在跌，長期仍向上，屬於長期上升趨勢裡的回檔。如果再跌破 ${vals[firstAbove]!.label}，長期趨勢也可能轉弱。`;
+  }
+  if (firstBelow > 0 && flags.slice(firstBelow).every((f) => !f)) {
+    return `價格站上短天期均線、但還在長天期均線下面：短期在漲，長期仍向下，屬於長期下跌趨勢裡的反彈。要能再站上 ${vals[firstBelow]!.label}，長期趨勢才可能轉強。`;
+  }
+  return '長短期方向不一致，屬於整理或轉折階段。';
+}
+
 function describeMa(prefix: string, candles: Candle[], r: IndicatorResult): StateSummary | null {
   const n = candles.length;
   if (n === 0) return null;
@@ -41,7 +60,7 @@ function describeMa(prefix: string, candles: Candle[], r: IndicatorResult): Stat
     const parts: string[] = [];
     if (above.length) parts.push(`在 ${above.map((x) => x.label).join('、')} 之上`);
     if (below.length) parts.push(`在 ${below.map((x) => x.label).join('、')} 之下`);
-    detail = `收盤價${parts.join('，')}。${tone === 'neutral' ? '長短期方向不一致，屬於整理或轉折階段。' : ''}`;
+    detail = `收盤價${parts.join('，')}。${tone === 'neutral' ? phaseText(close, vals) : ''}`;
   }
   const longest = vals[vals.length - 1]!;
   detail += ` 距離 ${longest.label}（${fmtNum(longest.v)}）${fmtPct(close / longest.v - 1)}。`;
