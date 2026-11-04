@@ -415,20 +415,43 @@ export function firstRunAt(exp: LabExperiment): number {
   return zonedTime(exp.start, exp.runTime, TAIPEI);
 }
 
-/** 對照組的買單：第一天操作時間，照比例把本金買進每個標的，之後不動 */
-export function benchmarkOrders(exp: LabExperiment): LabOrder[] {
-  const placedAt = new Date(firstRunAt(exp)).toISOString();
-  return Object.entries(exp.benchmark.weights)
-    .filter(([, w]) => w > 0)
-    .map(([asset, w], i) => ({
-      id: `bench-${i + 1}`,
-      placedAt,
-      day: exp.start,
-      asset,
-      side: 'buy' as const,
-      amount: Math.floor(exp.capital * w),
-      reason: exp.benchmark.intro,
-    }));
+/** 這位參加者可以買賣的標的 */
+export function agentAssets(exp: LabExperiment, agentId: string): string[] {
+  const a = exp.agents.find((x) => x.id === agentId);
+  return a?.assets?.length ? a.assets.filter((id) => exp.assets.includes(id)) : exp.assets;
+}
+
+/** 這位參加者是不是只專攻一檔；是的話回傳那一檔 */
+export function specialtyOf(exp: LabExperiment, agentId: string): string | null {
+  const list = agentAssets(exp, agentId);
+  return list.length === 1 ? list[0]! : null;
+}
+
+/**
+ * 對照組的買單：從第一天開始，每隔 everyDays 天在操作時間買一次，分 tranches 次照比例把本金買完，之後不動。
+ * weights 可以換掉（例如「只買 0050」的對照）。
+ */
+export function benchmarkOrders(exp: LabExperiment, weights: Record<string, number> = exp.benchmark.weights): LabOrder[] {
+  const n = Math.max(1, Math.floor(exp.benchmark.tranches ?? 1));
+  const every = Math.max(1, Math.floor(exp.benchmark.everyDays ?? 7));
+  const out: LabOrder[] = [];
+  for (let k = 0; k < n; k++) {
+    const day = addDays(exp.start, k * every);
+    const placedAt = new Date(zonedTime(day, exp.runTime, TAIPEI)).toISOString();
+    for (const [asset, w] of Object.entries(weights)) {
+      if (!(w > 0)) continue;
+      out.push({
+        id: `bench-${k + 1}-${asset}`,
+        placedAt,
+        day,
+        asset,
+        side: 'buy',
+        amount: Math.floor((exp.capital * w) / n),
+        reason: exp.benchmark.intro,
+      });
+    }
+  }
+  return out;
 }
 
 export interface Standing {

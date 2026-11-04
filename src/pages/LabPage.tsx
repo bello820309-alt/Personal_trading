@@ -4,6 +4,7 @@ import { Card, Fold, Notice, PageTitle, Segmented, Spinner } from '../components
 import { getAsset, type AssetConfig } from '../config/assets';
 import { fmtPct, signClass } from '../data/format';
 import {
+  agentAssets,
   benchmarkOrders,
   dayNumber,
   equitySeries,
@@ -12,6 +13,7 @@ import {
   pendingOrders,
   phaseOf,
   settleOrders,
+  specialtyOf,
   standing,
   type EquityPoint,
   type LabMarket,
@@ -25,28 +27,38 @@ import { Link, navigate, useLocation, withQuery } from '../router';
 import { useResolvedTheme, useSettings } from '../store/settings';
 import { getChartTheme } from '../theme';
 
-type Tint = 'accent' | 'hot' | 'muted';
-const DOT: Record<Tint, string> = { accent: 'bg-accent', hot: 'bg-hot', muted: 'bg-muted' };
-const AGENT_TINTS: Tint[] = ['accent', 'hot'];
-
 interface Participant {
   id: string;
   name: string;
   intro: string;
-  tint: Tint;
+  /** 第幾位（決定顏色）；對照組是 -1 */
+  slot: number;
   bench: boolean;
+  /** 可以買賣什麼，例如「三檔都可以」「只買 0050」 */
+  scope: string;
   orders: LabOrder[];
   fills: LabFill[];
   journal: LabJournalEntry[];
   now: Standing;
   series: EquityPoint[];
+  /** 專攻一檔的參加者：同一檔「分批買進不動」的成績 */
+  ref?: { name: string; returnPct: number; value: number };
+}
+
+/** 每位參加者的顏色（和圖表上的線一樣） */
+function useColors(): (p: Participant) => string {
+  const theme = useResolvedTheme();
+  const colorMode = useSettings((s) => s.colorMode);
+  const t = getChartTheme(theme, colorMode);
+  const palette = [t.accent, t.hot, t.series[2]!, t.series[3]!, t.series[4]!, t.series[5]!, t.series[0]!];
+  return (p) => (p.bench ? t.textMuted : palette[p.slot % palette.length]!);
 }
 
 export function LabPage() {
   const state = useLab();
   return (
     <div>
-      <PageTitle sub="兩個新手 AI 只靠這個網站學技術分析，各拿虛擬的 100 萬台幣操作一個月，每天記下怎麼想、怎麼做。">
+      <PageTitle sub="五個新手 AI 只靠這個網站學技術分析，各拿虛擬的 100 萬台幣操作一個月：兩位三檔都可以買，三位各專攻一檔。每天記下怎麼想、怎麼做。">
         AI 模擬交易實驗
       </PageTitle>
       {state.status === 'ready' ? (
@@ -94,6 +106,7 @@ function LabView({ data }: { data: LabData }) {
     const lastDay = today < exp.wrapUp ? today : exp.wrapUp;
     const started = today >= exp.start;
     const from = addDays(exp.start, -1);
+    const nowIso = new Date(nowMs).toISOString();
     const make = (p: Omit<Participant, 'now' | 'series'>): Participant => ({
       ...p,
       now: standing(exp.capital, p.fills, market, lastDay),
@@ -101,15 +114,24 @@ function LabView({ data }: { data: LabData }) {
     });
     const people = exp.agents.map((a, i) => {
       const file = data.agents[i]!;
+      const special = specialtyOf(exp, a.id);
+      let ref: Participant['ref'];
+      if (special) {
+        const fills = settleOrders(benchmarkOrders(exp, { [special]: 1 }), [], market, exp.capital, nowIso);
+        const st = standing(exp.capital, fills, market, lastDay);
+        ref = { name: `只買 ${assetName(special)}、${exp.benchmark.name}`, returnPct: st.returnPct, value: st.value };
+      }
       return make({
         id: a.id,
         name: a.name,
         intro: a.intro,
-        tint: AGENT_TINTS[i % AGENT_TINTS.length]!,
+        slot: i,
         bench: false,
+        scope: special ? `只買 ${assetName(special)}` : agentAssets(exp, a.id).length === exp.assets.length ? '三檔都可以' : agentAssets(exp, a.id).map(assetName).join('、'),
         orders: file.orders,
         fills: file.fills,
         journal: [...file.journal].sort((x, y) => (x.day < y.day ? 1 : -1)),
+        ref,
       });
     });
     const benchOrders = benchmarkOrders(exp);
@@ -117,10 +139,11 @@ function LabView({ data }: { data: LabData }) {
       id: 'bench',
       name: exp.benchmark.name,
       intro: exp.benchmark.intro,
-      tint: 'muted',
+      slot: -1,
       bench: true,
+      scope: (exp.benchmark.tranches ?? 1) > 1 ? `三檔平均、分 ${exp.benchmark.tranches} 次買進` : '三檔平均買進',
       orders: benchOrders,
-      fills: settleOrders(benchOrders, [], market, exp.capital, new Date(nowMs).toISOString()),
+      fills: settleOrders(benchOrders, [], market, exp.capital, nowIso),
       journal: [],
     });
     return { today, market, people, bench };
@@ -132,11 +155,7 @@ function LabView({ data }: { data: LabData }) {
   return (
     <div className="space-y-4">
       <StatusLine exp={exp} today={view.today} />
-      <div className="grid gap-3 sm:grid-cols-3">
-        {[...view.people, view.bench].map((p) => (
-          <ScoreCard key={p.id} p={p} capital={exp.capital} nowMs={nowMs} />
-        ))}
-      </div>
+      <Ranking people={[...view.people, view.bench]} capital={exp.capital} nowMs={nowMs} />
       <Card>
         <H2 sub="每天用收盤價和匯率估算一次（含現金）。比特幣週末也會動，所以週末也有點。">總資產的變化</H2>
         {anyFill ? (
@@ -190,52 +209,71 @@ function StatusLine({ exp, today }: { exp: LabExperiment; today: string }) {
         <b className="text-fg">第 {dayNumber(exp, today)} 天</b>／共 {total} 天（{md(exp.start)}～{md(exp.end)}）・{when}，下單後隔天成交
       </>
     );
-  else if (phase === 'wrapup') text = <>今天是結算日：不再下單，兩位寫下最後的心得。</>;
+  else if (phase === 'wrapup') text = <>今天是結算日：不再下單，大家寫下最後的心得。</>;
   else text = <>實驗已經結束（{md(exp.start)}～{md(exp.end)}），下面是最後的成績。</>;
   return <p className="rounded-lg bg-surface-2 px-3 py-2 text-sm text-muted">{text}</p>;
 }
 
-function ScoreCard({ p, capital, nowMs }: { p: Participant; capital: number; nowMs: number }) {
-  const ret = p.now.returnPct;
-  const cashPct = p.now.value > 0 ? p.now.cash / p.now.value : 1;
-  // 對照組的單是「第一天」才下，開始前不算
-  const pending = pendingOrders(p.orders, p.fills).filter((o) => Date.parse(o.placedAt) <= nowMs).length;
+function Ranking({ people, capital, nowMs }: { people: Participant[]; capital: number; nowMs: number }) {
+  const colorOf = useColors();
+  // 依報酬率排名；一樣時照原本的順序（開始前大家都是 0%）
+  const sorted = people.map((p, i) => ({ p, i })).sort((a, b) => b.p.now.returnPct - a.p.now.returnPct || a.i - b.i);
   return (
-    <Card className={p.bench ? 'border-dashed' : ''}>
-      <div className="flex items-center gap-2 text-sm">
-        <span className={`inline-block h-2.5 w-2.5 rounded-full ${DOT[p.tint]}`} />
-        <span className="font-semibold text-fg">{p.name}</span>
-        {p.bench && <span className="rounded-full bg-surface-2 px-2 py-0.5 text-xs text-muted">對照</span>}
-      </div>
-      <div className="mt-2 text-2xl font-bold tabular text-fg">{twd(p.now.value)}</div>
-      <div className={`text-sm tabular ${signClass(ret)}`}>
-        {fmtPct(ret)}
-        <span className="ml-1 text-muted">（{twdSigned(p.now.value - capital)}）</span>
-      </div>
-      <div className="mt-2 text-xs text-muted">
-        現金 {fmtPct(cashPct, 0, false)}・成交 {p.now.state.trades} 筆{pending > 0 ? `・待成交 ${pending} 筆` : ''}
-      </div>
-      <p className="mt-2 text-xs leading-relaxed text-muted">{p.intro}</p>
+    <Card>
+      <H2 sub="依報酬率排序，用最新的收盤價估算（含現金）。">成績</H2>
+      <ol className="divide-y divide-line">
+        {sorted.map(({ p }, rank) => {
+          const ret = p.now.returnPct;
+          const cashPct = p.now.value > 0 ? p.now.cash / p.now.value : 1;
+          // 對照組的單是照時間表才下，還沒到的不算「待成交」
+          const pending = pendingOrders(p.orders, p.fills).filter((o) => Date.parse(o.placedAt) <= nowMs).length;
+          return (
+            <li key={p.id} className="flex items-center gap-3 py-2.5">
+              <span className="w-4 shrink-0 text-center text-sm tabular text-muted">{rank + 1}</span>
+              <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: colorOf(p) }} aria-hidden="true" />
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-x-2 text-sm">
+                  <span className="font-medium text-fg">{p.name}</span>
+                  <span className={`rounded-full px-2 py-0.5 text-xs ${p.bench ? 'border border-dashed border-line text-muted' : 'bg-surface-2 text-muted'}`}>
+                    {p.bench ? '對照' : p.scope}
+                  </span>
+                </div>
+                <div className="mt-0.5 text-xs leading-relaxed text-muted">
+                  {p.bench ? p.scope : `現金 ${fmtPct(cashPct, 0, false)}・成交 ${p.now.state.trades} 筆`}
+                  {pending > 0 ? `・待成交 ${pending} 筆` : ''}
+                  {p.ref ? `・同一檔分批買 ${fmtPct(p.ref.returnPct)}` : ''}
+                </div>
+              </div>
+              <div className="shrink-0 text-right tabular">
+                <div className="text-sm font-semibold text-fg">{twd(p.now.value)}</div>
+                <div className={`text-xs ${signClass(ret)}`}>
+                  {fmtPct(ret)}
+                  <span className="hidden text-muted sm:inline">（{twdSigned(p.now.value - capital)}）</span>
+                </div>
+              </div>
+            </li>
+          );
+        })}
+      </ol>
     </Card>
   );
 }
 
 function ValueChart({ people }: { people: Participant[] }) {
-  const theme = useResolvedTheme();
-  const colorMode = useSettings((s) => s.colorMode);
-  const t = getChartTheme(theme, colorMode);
-  const { accent, hot, textMuted } = t;
+  const colorOf = useColors();
+  const colors = people.map(colorOf).join('|');
   const lines = useMemo<LineSpec[]>(() => {
-    const color: Record<Tint, string> = { accent, hot, muted: textMuted };
-    return people.map((p) => ({
+    const list = colors.split('|');
+    return people.map((p, i) => ({
       key: p.id,
       label: p.name,
-      color: color[p.tint],
+      color: list[i]!,
       width: p.bench ? 1 : 2,
       dashed: p.bench,
+      showLastValue: false,
       points: p.series.map((x) => ({ time: x.time, value: Math.round(x.value) })),
     }));
-  }, [people, accent, hot, textMuted]);
+  }, [people, colors]);
   return (
     <>
       <LineChart lines={lines} height={240} format={twdWan} />
@@ -263,11 +301,26 @@ function AgentDetail({ p, exp }: { p: Participant; exp: LabExperiment }) {
   const pending = pendingOrders(p.orders, p.fills);
   const learned = p.journal.flatMap((j) => j.learned.map((x) => ({ day: j.day, text: x })));
   const confused = p.journal.flatMap((j) => j.confused.map((x) => ({ day: j.day, text: x })));
+  const colorOf = useColors();
   return (
     <div className="space-y-4">
       <Card>
-        <H2 sub="用最新的收盤價估算；損益已經扣掉買進的手續費。">{p.name} 現在的資產</H2>
+        <div className="mb-3 flex items-start gap-2">
+          <span className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: colorOf(p) }} aria-hidden="true" />
+          <div className="min-w-0">
+            <h3 className="text-base font-semibold text-fg">
+              {p.name} 現在的資產<span className="ml-2 text-xs font-normal text-muted">{p.scope}</span>
+            </h3>
+            <p className="mt-0.5 text-xs leading-relaxed text-muted">{p.intro}用最新的收盤價估算；損益已經扣掉買進的手續費。</p>
+          </div>
+        </div>
         <Holdings p={p} />
+        {p.ref && (
+          <p className="mt-3 rounded-lg bg-surface-2 px-3 py-2 text-xs leading-relaxed text-muted">
+            對照：同樣 100 萬{p.ref.name}，現在是 <span className="text-fg tabular">{twd(p.ref.value)}</span>（
+            <span className={signClass(p.ref.returnPct)}>{fmtPct(p.ref.returnPct)}</span>）。比一比認真操作有沒有比較好。
+          </p>
+        )}
         {pending.length > 0 && (
           <div className="mt-4">
             <h3 className="mb-1 text-sm font-medium text-fg">還沒成交的單</h3>
@@ -491,7 +544,7 @@ function Feedback({ people }: { people: Participant[] }) {
     .flatMap((p) => p.journal.flatMap((j) => j.confused.map((text) => ({ day: j.day, text, who: p.name }))))
     .sort((a, b) => (a.day < b.day ? 1 : -1));
   return (
-    <Fold title={`兩位都看不懂的地方（${items.length} 項）`} sub="新手實際用網站時卡住的地方，可以拿來改進說明。">
+    <Fold title={`大家看不懂的地方（${items.length} 項）`} sub="新手實際用網站時卡住的地方。網站有錯會當天修正、說明不夠會當天補上。">
       <DayList items={items} empty="還沒有。" showWho />
     </Fold>
   );
@@ -499,11 +552,16 @@ function Feedback({ people }: { people: Participant[] }) {
 
 function Rules({ exp }: { exp: LabExperiment }) {
   const assets = exp.assets.map((id) => getAsset(id)).filter((a): a is AssetConfig => a !== undefined);
+  const specialists = exp.agents.filter((a) => specialtyOf(exp, a.id));
+  const generalists = exp.agents.filter((a) => !specialtyOf(exp, a.id));
   return (
-    <Fold title="實驗規則" sub="兩位的條件完全一樣，也看不到對方的紀錄。">
+    <Fold title="實驗規則" sub="大家的條件一樣，互相看不到對方的紀錄。">
       <ul className="list-disc space-y-1.5 pl-5 text-sm leading-relaxed text-fg">
         <li>
-          每位有虛擬的 {twd(exp.capital)}，可以買賣 {assets.map((a) => a.shortName).join('、')}，也可以放著現金。不能借錢、不能放空。
+          每位都有虛擬的 {twd(exp.capital)}，也可以放著現金；不能借錢、不能放空。
+          {generalists.length > 0 && `${generalists.map((a) => a.name).join('、')} 可以買賣 ${assets.map((a) => a.shortName).join('、')}；`}
+          {specialists.length > 0 &&
+            `${specialists.map((a) => `${a.name}只能買賣 ${assetName(specialtyOf(exp, a.id)!)}`).join('、')}。`}
         </li>
         <li>
           期間 {shortDay(exp.start)}～{shortDay(exp.end)}，每天（含週末，比特幣週末也會動）台灣時間{runTimeText(exp.runTime)} 左右操作一次，{shortDay(exp.wrapUp)} 結算。
@@ -520,8 +578,9 @@ function Rules({ exp }: { exp: LabExperiment }) {
         </li>
         <li>總資產用每天的收盤價估算。成交價和金額由程式依照行情資料計算，參加者不能自己填。</li>
         <li>
-          對照的「{exp.benchmark.name}」：{exp.benchmark.intro}
+          對照的「{exp.benchmark.name}」：{exp.benchmark.intro}專攻一檔的參加者另外和「同樣 100 萬只買那一檔、用一樣的方式分批買進」比較。
         </li>
+        <li>每天看完大家的心得，網站有錯就當天修正、說明不夠就當天補上，隔天大家用新的說明學習。</li>
       </ul>
     </Fold>
   );

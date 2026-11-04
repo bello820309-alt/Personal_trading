@@ -11,6 +11,8 @@ export interface LabAgent {
   name: string;
   /** 一句話介紹 */
   intro: string;
+  /** 只能買賣這些標的（專攻某一檔的參加者）；沒寫 = 實驗的所有標的 */
+  assets?: string[];
 }
 
 export interface LabExperiment {
@@ -29,8 +31,16 @@ export interface LabExperiment {
   /** 可以買賣的標的 */
   assets: string[];
   agents: LabAgent[];
-  /** 對照用：第一天照比例買進、之後都不動 */
-  benchmark: { name: string; intro: string; weights: Record<string, number> };
+  /** 對照用：照比例分批買進、之後都不動 */
+  benchmark: {
+    name: string;
+    intro: string;
+    weights: Record<string, number>;
+    /** 分幾次買進（預設 1 = 第一天一次買完） */
+    tranches?: number;
+    /** 每隔幾天買一次（預設 7 = 每週） */
+    everyDays?: number;
+  };
 }
 
 export type OrderSide = 'buy' | 'sell';

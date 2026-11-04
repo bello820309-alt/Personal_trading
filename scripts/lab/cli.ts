@@ -11,6 +11,7 @@
  * 給主持人用：
  *   settle                                  依最新資料算出成交結果（每天讓參加者操作前執行）
  *   check                                   檢查檔案、列出大家的成績和今天的進度
+ *   today                                   今天每位的心得重點（整理回報、檢查網站用）
  *
  * 測試用的環境變數：LAB_DIR（實驗資料夾，預設 public/lab）、LAB_NOW（假裝現在的時間，ISO 格式）
  */
@@ -22,6 +23,7 @@ import type { FxDataFile } from '../../src/data/fx.ts';
 import { completedLength, parseAssetFile } from '../../src/data/parse.ts';
 import type { AssetDataFile, Candle } from '../../src/data/types.ts';
 import {
+  agentAssets,
   availableCash,
   benchmarkOrders,
   dayNumber,
@@ -32,6 +34,7 @@ import {
   pendingOrders,
   phaseOf,
   settleOrders,
+  specialtyOf,
   standing,
   type LabMarket,
   type Standing,
@@ -147,9 +150,9 @@ function describeFill(f: LabFill): string {
     : `${head}  賣出 ${name} ${units(f.asset, f.units!)} @ ${price(f.asset, f.price!)}${fx}，拿回 ${twd(f.cash!)}（${costs}）`;
 }
 
-function quoteLines(market: LabMarket): string[] {
+function quoteLines(market: LabMarket, assets: string[] = exp.assets): string[] {
   const lines: string[] = [];
-  for (const id of exp.assets) {
+  for (const id of assets) {
     const c = market.candles[id];
     const a = getAsset(id);
     if (!c?.length || !a) continue;
@@ -160,7 +163,8 @@ function quoteLines(market: LabMarket): string[] {
     );
   }
   const fx = market.fx;
-  if (fx?.t.length) lines.push(`  匯率  1 美元 = ${fx.c[fx.c.length - 1]} 新台幣（${slash(fx.t[fx.t.length - 1]!)}）`);
+  const usd = assets.some((id) => getAsset(id)?.currency === 'USD');
+  if (usd && fx?.t.length) lines.push(`  匯率  1 美元 = ${fx.c[fx.c.length - 1]} 新台幣（${slash(fx.t[fx.t.length - 1]!)}）`);
   return lines;
 }
 
@@ -198,7 +202,14 @@ function cmdMe(): void {
   const out: string[] = [];
   out.push(`=== ${agent.name}：${phaseNote()}（今天 ${slash(today)}，台灣時間 ${local.hm}）===`);
   out.push(`實驗期間 ${slash(exp.start)} ～ ${slash(exp.end)}，${slash(exp.wrapUp)} 結算；本金 ${twd(exp.capital)}`);
-  out.push('', '【今天的價格】（最後一根已收盤的日 K）', ...quoteLines(market));
+  const mine = agentAssets(exp, id);
+  const special = specialtyOf(exp, id);
+  out.push(
+    special
+      ? `你專攻 ${getAsset(special)?.shortName ?? special}：只能買賣這一檔，學習時也專心研究它。`
+      : `你可以買賣：${mine.map((x) => getAsset(x)?.shortName ?? x).join('、')}（也可以放著現金）。`,
+  );
+  out.push('', '【今天的價格】（最後一根已收盤的日 K）', ...quoteLines(market, mine));
   out.push('', '【你現在的資產】（用最新收盤價估算）', ...standingLines(s));
   out.push(`可以拿來下買單的現金：${twd(availableCash(exp.capital, file.orders, file.fills))}（已經扣掉還沒成交的買單）`);
   out.push('', '【還沒成交的單】');
@@ -245,16 +256,20 @@ function newOrder(file: LabAgentFile, partial: Omit<LabOrder, 'id' | 'placedAt' 
   console.log(`  會用「${FILL_RULE[getAsset(o.asset)!.market]}」成交，明天再用 me 看成交結果。`);
 }
 
-function assetArg(): string {
+function assetArg(agentId: string): string {
   const asset = need('asset').toUpperCase();
-  if (!exp.assets.includes(asset)) fail(`不能買賣 ${asset}（可以用：${exp.assets.join('、')}）`);
+  const allowed = agentAssets(exp, agentId);
+  if (!allowed.includes(asset)) {
+    const special = specialtyOf(exp, agentId);
+    fail(special ? `你專攻 ${special}，只能買賣 ${special}` : `不能買賣 ${asset}（可以用：${allowed.join('、')}）`);
+  }
   return asset;
 }
 
 function cmdBuy(): void {
   requireTrading();
   const file = loadAgent(need('agent'));
-  const asset = assetArg();
+  const asset = assetArg(file.id);
   const amount = Math.round(Number(need('amount').replaceAll(',', '')));
   if (!Number.isFinite(amount) || amount < MIN_BUY) fail(`買進金額至少 ${twd(MIN_BUY)}`);
   const cash = availableCash(exp.capital, file.orders, file.fills);
@@ -265,7 +280,7 @@ function cmdBuy(): void {
 function cmdSell(): void {
   requireTrading();
   const file = loadAgent(need('agent'));
-  const asset = assetArg();
+  const asset = assetArg(file.id);
   const p = Number(need('pct').replace('%', ''));
   if (!Number.isFinite(p) || p <= 0 || p > 100) fail('--pct 要是 1～100 之間的數字（賣掉持有的百分之幾）');
   const market = loadMarket();
@@ -363,8 +378,14 @@ function cmdCheck(): void {
     const pending = pendingOrders(file.orders, file.fills);
     const todayOrders = file.orders.filter((o) => o.day === today);
     const wrote = file.journal.some((j) => j.day === today);
+    const special = specialtyOf(exp, agent.id);
+    let ref = '';
+    if (special) {
+      const refFills = settleOrders(benchmarkOrders(exp, { [special]: 1 }), [], market, exp.capital, nowIso);
+      ref = refFills.length ? `（同一檔分批買進不動：${pct(standing(exp.capital, refFills, market, today).returnPct)}）` : '';
+    }
     out.push(
-      `  ${agent.name}：${twd(s.value)}（${pct(s.returnPct)}），現金 ${twd(s.cash)}，成交 ${s.state.trades} 筆，還沒成交 ${pending.length} 筆；` +
+      `  ${agent.name}：${twd(s.value)}（${pct(s.returnPct)}）${ref}，現金 ${twd(s.cash)}，成交 ${s.state.trades} 筆，還沒成交 ${pending.length} 筆；` +
         `今天下單 ${todayOrders.length} 筆，今天的心得${wrote ? '已寫' : '還沒寫'}`,
     );
     // 檔案檢查
@@ -372,7 +393,7 @@ function cmdCheck(): void {
     for (const o of file.orders) {
       if (ids.has(o.id)) problems.push(`${agent.name} 有重複的單號 ${o.id}`);
       ids.add(o.id);
-      if (!exp.assets.includes(o.asset)) problems.push(`${agent.name} 的 ${o.id} 標的不對：${o.asset}`);
+      if (!agentAssets(exp, agent.id).includes(o.asset)) problems.push(`${agent.name} 的 ${o.id} 標的不對：${o.asset}`);
     }
     for (const f of file.fills) if (!ids.has(f.orderId)) problems.push(`${agent.name} 的成交紀錄找不到對應的單：${f.orderId}`);
     if (new Set(file.fills.map((f) => f.orderId)).size !== file.fills.length) problems.push(`${agent.name} 有重複的成交紀錄`);
@@ -395,6 +416,21 @@ function cmdCheck(): void {
   if (problems.length) process.exitCode = 1;
 }
 
+function cmdToday(): void {
+  const out: string[] = [`=== ${slash(today)}（${phaseNote()}）每位的心得重點 ===`];
+  for (const agent of exp.agents) {
+    const file = loadAgent(agent.id);
+    const j = file.journal.find((x) => x.day === today);
+    out.push('', `【${agent.name}】${j ? j.summary : '（今天還沒寫心得）'}`);
+    if (!j) continue;
+    out.push(`  決定：${j.decision}`);
+    for (const o of file.orders.filter((x) => x.day === today)) out.push(`  下單：${describeOrder(o)}${o.cancelledAt ? '（已取消）' : ''}`);
+    if (j.confused.length) out.push('  看不懂：', ...j.confused.map((x) => `    - ${x}`));
+    if (j.pages.length) out.push(`  看了：${j.pages.join('、')}`);
+  }
+  console.log(out.join('\n'));
+}
+
 const COMMANDS: Record<string, () => void> = {
   me: cmdMe,
   quote: cmdQuote,
@@ -404,6 +440,7 @@ const COMMANDS: Record<string, () => void> = {
   journal: cmdJournal,
   settle: cmdSettle,
   check: cmdCheck,
+  today: cmdToday,
 };
 
 const run = command ? COMMANDS[command] : undefined;

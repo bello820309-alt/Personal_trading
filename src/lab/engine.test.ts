@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Candle } from '../data/types';
 import {
+  agentAssets,
   availableCash,
   benchmarkOrders,
   dayNumber,
@@ -10,6 +11,7 @@ import {
   pendingOrders,
   phaseOf,
   settleOrders,
+  specialtyOf,
   standing,
   stateFrom,
   type LabMarket,
@@ -263,5 +265,53 @@ describe('marketAt：只用當下已經知道的資料', () => {
     const m = marketAt(market, Date.parse('2026-12-01T00:00:00Z'));
     expect(m.candles['0050']).toBe(market.candles['0050']);
     expect(m.fx).toBe(market.fx);
+  });
+});
+
+describe('分批買進的對照組、專攻一檔的參加者', () => {
+  const exp: LabExperiment = {
+    schemaVersion: 1,
+    title: '測試',
+    capital: 1_000_000,
+    start: '2026-11-04',
+    end: '2026-12-03',
+    wrapUp: '2026-12-04',
+    runTime: '15:43',
+    assets: ['0050', 'VOO', 'BTC'],
+    agents: [
+      { id: 'a', name: '新手 A', intro: '' },
+      { id: 'c', name: '0050 專攻', intro: '', assets: ['0050'] },
+    ],
+    benchmark: { name: '買了不動', intro: '分 4 週買進', weights: { '0050': 1 / 3, VOO: 1 / 3, BTC: 1 / 3 }, tranches: 4, everyDays: 7 },
+  };
+
+  it('分 4 週、每週一次，每次買本金的 1/4（三檔各 1/3）', () => {
+    const orders = benchmarkOrders(exp);
+    expect(orders).toHaveLength(12);
+    expect([...new Set(orders.map((o) => o.day))]).toEqual(['2026-11-04', '2026-11-11', '2026-11-18', '2026-11-25']);
+    expect(orders.filter((o) => o.day === '2026-11-11').map((o) => [o.asset, o.amount, o.placedAt])).toEqual([
+      ['0050', 83333, '2026-11-11T07:43:00.000Z'],
+      ['VOO', 83333, '2026-11-11T07:43:00.000Z'],
+      ['BTC', 83333, '2026-11-11T07:43:00.000Z'],
+    ]);
+    expect(new Set(orders.map((o) => o.id)).size).toBe(12);
+  });
+
+  it('只買一檔的對照：每週 25 萬', () => {
+    const orders = benchmarkOrders(exp, { '0050': 1 });
+    expect(orders.map((o) => o.amount)).toEqual([250000, 250000, 250000, 250000]);
+    expect(orders.every((o) => o.asset === '0050')).toBe(true);
+  });
+
+  it('沒有設定分批時，第一天一次買完', () => {
+    const once = { ...exp, benchmark: { ...exp.benchmark, tranches: undefined } };
+    expect(benchmarkOrders(once).map((o) => o.amount)).toEqual([333333, 333333, 333333]);
+  });
+
+  it('參加者可以買賣的標的', () => {
+    expect(agentAssets(exp, 'a')).toEqual(['0050', 'VOO', 'BTC']);
+    expect(agentAssets(exp, 'c')).toEqual(['0050']);
+    expect(specialtyOf(exp, 'a')).toBeNull();
+    expect(specialtyOf(exp, 'c')).toBe('0050');
   });
 });
