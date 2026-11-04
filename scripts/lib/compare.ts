@@ -30,3 +30,35 @@ export function sameMarketData(prev: AssetDataFile, next: AssetDataFile): boolea
     JSON.stringify(prev.events) === JSON.stringify(next.events)
   );
 }
+
+/** 最近幾根 K 棒的範圍：Yahoo 偶爾會暫時少掉最近的某一天，在這個範圍內的就從上一版補回來 */
+export const RESTORE_LOOKBACK = 10;
+
+/**
+ * Yahoo 偶爾會暫時少掉最近已經收盤的某一天（例如 2026/11/4 凌晨抓 0050 時少了 11/3），
+ * 直接覆蓋會把已經存好的資料刪掉。上一版最近幾根裡，這次沒有出現的日子，用上一版的數字補回來。
+ */
+export function restoreLostBars(prev: AssetDataFile | null, next: AssetDataFile): { file: AssetDataFile; restored: string[] } {
+  if (!prev || prev.bars.t.length === 0 || next.bars.t.length === 0) return { file: next, restored: [] };
+  const have = new Set(next.bars.t);
+  const firstNew = next.bars.t[0]!;
+  const p = prev.bars;
+  const start = Math.max(0, p.t.length - RESTORE_LOOKBACK);
+  const lost: number[] = [];
+  for (let j = start; j < p.t.length; j++) if (!have.has(p.t[j]!) && p.t[j]! >= firstNew) lost.push(j);
+  if (lost.length === 0) return { file: next, restored: [] };
+  const n = next.bars;
+  const rows = n.t.map((t, i) => ({ t, o: n.o[i]!, h: n.h[i]!, l: n.l[i]!, c: n.c[i]!, v: n.v[i]!, ac: n.ac[i]! }));
+  for (const j of lost) rows.push({ t: p.t[j]!, o: p.o[j]!, h: p.h[j]!, l: p.l[j]!, c: p.c[j]!, v: p.v[j]!, ac: p.ac[j]! });
+  rows.sort((a, b) => (a.t < b.t ? -1 : a.t > b.t ? 1 : 0));
+  const bars = {
+    t: rows.map((r) => r.t),
+    o: rows.map((r) => r.o),
+    h: rows.map((r) => r.h),
+    l: rows.map((r) => r.l),
+    c: rows.map((r) => r.c),
+    v: rows.map((r) => r.v),
+    ac: rows.map((r) => r.ac),
+  };
+  return { file: { ...next, bars }, restored: lost.map((j) => p.t[j]!) };
+}

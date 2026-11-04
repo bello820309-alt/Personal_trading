@@ -12,8 +12,8 @@ import { fileURLToPath } from 'node:url';
 import { ASSETS } from '../src/config/assets.ts';
 import type { AssetDataFile, DataManifest, ManifestEntry } from '../src/data/types.ts';
 import type { FxDataFile } from '../src/data/fx.ts';
-import { sameMarketData } from './lib/compare.ts';
-import { FX_ID, FX_SYMBOL, normalizeFx, sameFx, stringifyFx, validateFx } from './lib/fx.ts';
+import { restoreLostBars, sameMarketData } from './lib/compare.ts';
+import { FX_ID, FX_SYMBOL, normalizeFx, restoreLostFx, sameFx, stringifyFx, validateFx } from './lib/fx.ts';
 import { fetchYahooChart } from './lib/yahoo.ts';
 import { normalizeYahooChart, stringifyAssetFile } from './lib/normalize.ts';
 import { validateAssetFile } from './lib/validate.ts';
@@ -42,7 +42,11 @@ async function main(): Promise<void> {
     console.log(`▶ ${asset.id}（${asset.symbol}）`);
     try {
       const json = await fetchYahooChart(asset.symbol, { log: console.log });
-      const { file, warnings, currency } = normalizeYahooChart(json, asset, now);
+      const normalized = normalizeYahooChart(json, asset, now);
+      const { warnings, currency } = normalized;
+      // Yahoo 暫時少掉最近已收盤的日子時，用上一版補回來（不要把存好的資料刪掉）
+      const { file, restored } = restoreLostBars(prev, normalized.file);
+      if (restored.length) warnings.push(`Yahoo 這次少了 ${restored.join('、')} 的 K 棒，保留上一版的資料`);
       const report = validateAssetFile(file, asset, prev, now, currency);
       for (const w of [...warnings, ...report.warnings]) console.log(`  ⚠ ${w}`);
       if (report.errors.length) throw new Error(`資料驗證失敗：${report.errors.join('；')}`);
@@ -119,7 +123,10 @@ async function updateFx(now: Date): Promise<void> {
   console.log(`▶ 匯率 ${FX_ID}（${FX_SYMBOL}）`);
   try {
     const json = await fetchYahooChart(FX_SYMBOL, { log: console.log });
-    const { file, warnings, currency } = normalizeFx(json, now);
+    const normalized = normalizeFx(json, now);
+    const { warnings, currency } = normalized;
+    const { file, restored } = restoreLostFx(prev, normalized.file);
+    if (restored.length) warnings.push(`Yahoo 這次少了 ${restored.join('、')} 的匯率，保留上一版的資料`);
     for (const w of warnings) console.log(`  ⚠ ${w}`);
     const errors = validateFx(file, prev, currency);
     if (errors.length) throw new Error(`匯率驗證失敗：${errors.join('；')}`);

@@ -128,3 +128,16 @@ export function stringifyFx(file: FxDataFile): string {
   const metaLines = Object.entries(meta).map(([k, v]) => `  ${JSON.stringify(k)}: ${JSON.stringify(v)}`);
   return `{\n${metaLines.join(',\n')},\n  "t": ${JSON.stringify(t)},\n  "c": ${JSON.stringify(c)}\n}\n`;
 }
+
+/** 和行情一樣：上一版最近 10 天裡、這次沒有出現的日子，用上一版補回來 */
+export function restoreLostFx(prev: FxDataFile | null, next: FxDataFile): { file: FxDataFile; restored: string[] } {
+  if (!prev || prev.t.length === 0 || next.t.length === 0) return { file: next, restored: [] };
+  const have = new Set(next.t);
+  const firstNew = next.t[0]!;
+  const lost: number[] = [];
+  for (let j = Math.max(0, prev.t.length - 10); j < prev.t.length; j++) if (!have.has(prev.t[j]!) && prev.t[j]! >= firstNew) lost.push(j);
+  if (lost.length === 0) return { file: next, restored: [] };
+  const rows = next.t.map((t, i) => [t, next.c[i]!] as const).concat(lost.map((j) => [prev.t[j]!, prev.c[j]!] as const));
+  rows.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
+  return { file: { ...next, t: rows.map((r) => r[0]), c: rows.map((r) => r[1]) }, restored: lost.map((j) => prev.t[j]!) };
+}
