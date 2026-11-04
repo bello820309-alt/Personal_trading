@@ -91,7 +91,7 @@ export const macdIndicator: IndicatorDef<MacdParams> = {
     return {
       tone,
       headline: `DIF ${fmtNum(dif)}／MACD ${fmtNum(sig)}`,
-      detail: `${text}柱狀體（OSC）目前為${o1 >= 0 ? '正值' : '負值'}${growth}。`,
+      detail: `${text}柱狀體（OSC）目前為${o1 >= 0 ? '正值' : '負值'}${growth}。（DIF 是短期和長期均線的差距，訊號線是 DIF 的平均，柱狀體是兩者相減；0 軸代表短期和長期均線一樣高。）`,
     };
   },
   strategy: {

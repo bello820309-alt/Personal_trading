@@ -64,7 +64,7 @@ export function checkPoints(r: CheckResult): CheckPoint[] {
  * 「所以這些數字要怎麼用？」：依照回頭檢驗的結果，告訴新手哪個數字比較值得參考。
  * 第一句講「上漲的比例」和中位數，第二句講「八成的情況落在」這個範圍。
  */
-export function usageTips(r: CheckResult): string[] {
+export function usageTips(r: CheckResult, tail?: { p10: number; min: number; span: string } | null): string[] {
   const [dir, band] = checkPoints(r);
   const first =
     dir!.tone === 'good'
@@ -75,7 +75,8 @@ export function usageTips(r: CheckResult): string[] {
       ? '比較有用的是「八成的情況落在」這個範圍：它大致抓得到之後可能漲跌多少，可以先想想「如果跌到範圍的下緣，我受得了嗎？」，再決定要投入多少。'
       : band!.tone === 'meh'
         ? '「八成的情況落在」這個範圍偏寬，實際上通常不會那麼極端，可以當成保守的估計，用來想想最壞的情況。'
-        : '要注意實際的漲跌常常超出「八成的情況落在」這個範圍，想最壞的情況時，要預留比範圍更大的空間。';
+        : '要注意實際的漲跌常常超出「八成的情況落在」這個範圍，想最壞的情況時，要預留比範圍更大的空間。' +
+          (tail ? `可以參考：過去 5 年，任何一天之後 ${tail.span}，最差的一成是 ${fmtPct(tail.p10)} 以下，最差的一次是 ${fmtPct(tail.min)}。` : '');
   return [first, second];
 }
 
@@ -101,4 +102,23 @@ export function summarizeCheck(r: CheckResult): string[] {
     out.push(`實際結果落在「八成範圍」裡的比例是 ${fmtPct(r.coverage, 0, false)}，接近理想的 80%：「可能的範圍」比「會漲還是會跌」更值得參考。`);
   }
   return out;
+}
+
+/**
+ * 過去 years 年裡，任何一天之後 bars 根 K 棒的漲跌：最差的一成（第 10 百分位數）和最差的一次。
+ * 給「範圍估得太窄」時，新手想最壞情況用的參考。樣本不夠時回傳 null。
+ */
+export function historyTail(closes: number[], times: string[], bars: number, years = 5): { p10: number; min: number } | null {
+  const n = closes.length;
+  if (n === 0) return null;
+  const last = times[n - 1]!;
+  const start = `${Number(last.slice(0, 4)) - years}${last.slice(4)}`;
+  const rets: number[] = [];
+  for (let i = 0; i + bars < n; i++) {
+    if (times[i]! < start) continue;
+    rets.push(closes[i + bars]! / closes[i]! - 1);
+  }
+  if (rets.length < 50) return null;
+  rets.sort((a, b) => a - b);
+  return { p10: rets[Math.floor(rets.length * 0.1)]!, min: rets[0]! };
 }

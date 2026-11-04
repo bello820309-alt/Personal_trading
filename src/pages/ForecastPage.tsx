@@ -6,7 +6,7 @@ import { PriceChart, type ChartIndicator } from '../components/chart/PriceChart'
 import { Card, Fold, Notice, PageTitle, Segmented, Spinner } from '../components/ui';
 import { DEFAULT_ASSET_ID, getAsset, type AssetConfig } from '../config/assets';
 import { FEATURES, analogForecast, horizonsFor, walkForwardCheck, type CheckResult, type Forecast, type HorizonKey } from '../forecast/analog';
-import { checkPoints, describeNow, summarizeCheck, usageTips, type CheckTone } from '../forecast/summary';
+import { checkPoints, describeNow, historyTail, summarizeCheck, usageTips, type CheckTone } from '../forecast/summary';
 import { fmtDate, fmtNum, fmtPct, fmtPrice, signClass } from '../data/format';
 import { useAsset } from '../data/load';
 import { completedLength } from '../data/parse';
@@ -142,6 +142,11 @@ function ForecastView({
   const horizons = horizonsFor(asset);
   const hz = horizons.find((h) => h.key === hKey)!;
   const cone = useMemo(() => (forecast ? [coneIndicator(forecast, candles, hz.bars)] : []), [forecast, candles, hz.bars]);
+  // 過去 5 年最差的一成（範圍估得太窄時，給新手想最壞情況用）
+  const tail = useMemo(() => {
+    const t = historyTail(candles.map((c) => c.close), candles.map((c) => c.time), hz.bars);
+    return t ? { ...t, span: hz.label.replace(/後$/, '') } : null;
+  }, [candles, hz.bars, hz.label]);
 
   if (!forecast) return <Notice tone="warn">資料不夠長（至少要一年多的日 K），還沒辦法預測。</Notice>;
   const stats = forecast.horizons.find((x) => x.horizon.key === hKey)!.stats;
@@ -151,6 +156,7 @@ function ForecastView({
   const span = hz.label.replace(/後$/, '');
   const hc = check?.find((r) => r.horizon.key === hKey) ?? null;
   const ups = Math.round(stats.up * stats.n);
+  const dirWeak = hc !== null && checkPoints(hc)[0]!.tone !== 'good';
 
   return (
     <div className="space-y-4">
@@ -170,7 +176,15 @@ function ForecastView({
           {hz.label}（{fmtDate(targetDate)} 左右）
         </H2>
         <div className="grid gap-2 sm:grid-cols-3">
-          <Stat label="上漲的比例" value={fmtPct(stats.up, 0, false)} note={`${stats.n} 個相似的日子裡，有 ${ups} 個上漲`} />
+          <Stat
+            label="上漲的比例"
+            value={fmtPct(stats.up, 0, false)}
+            note={
+              dirWeak && hc
+                ? `${stats.n} 個相似的日子裡有 ${ups} 個上漲。這不是「會漲的機率」：過去用它猜漲跌只猜對 ${fmtPct(hc.hit, 0, false)}，一直猜漲也有 ${fmtPct(hc.alwaysUp, 0, false)}，看看就好`
+                : `${stats.n} 個相似的日子裡，有 ${ups} 個上漲`
+            }
+          />
           <Stat
             label="中位數"
             value={fmtPct(stats.median)}
@@ -203,7 +217,7 @@ function ForecastView({
           {hc && (
             <div className="mt-2 border-t border-line pt-2 text-sm leading-relaxed">
               <span className="font-medium text-fg">所以怎麼用？</span>
-              <span className="text-muted">{usageTips(hc).join('')}</span>
+              <span className="text-muted">{usageTips(hc, tail).join('')}</span>
             </div>
           )}
         </div>
@@ -252,6 +266,7 @@ function ForecastView({
           </table>
         </div>
         <p className="mt-2 text-xs leading-relaxed text-muted">
+          {asset.market !== 'crypto' && '這裡的數字用還原權息的價格計算（把配息加回去，漲跌才完整），總覽和圖表預設不還原，所以 RSI、和均線的距離會有一點點不同。'}
           這裡的 RSI 固定用 14 天（國際常用的設定），每個標的都一樣，才能互相比較。
           {asset.market === 'tw' ? '總覽和圖表上 0050 用台股常用的 RSI(6)，天數不同，數字也會不同：天數越短，數字跳得越大。' : ''}
         </p>

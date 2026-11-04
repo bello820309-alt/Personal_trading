@@ -48,12 +48,22 @@ export const fearGreedIndicator: IndicatorDef<FearGreedParams> = {
       return {
         tone: 'cold',
         headline: `恐懼貪婪指數 ${v}：極度恐懼`,
-        detail: '市場一片恐慌。不少中長期的低點出現在這種時候，但恐慌也可能持續好幾週，價格可能繼續跌。',
+        detail: '市場一片恐慌。不少中長期的低點出現在這種時候，但恐慌也可能持續好幾週，價格可能繼續跌。（標籤是在描述大家的情緒，不是買賣建議。）',
       };
     }
-    if (x < 45) return { tone: 'bearish', headline: `恐懼貪婪指數 ${v}：恐懼`, detail: '市場氣氛偏悲觀，大家比較小心。' };
+    if (x < 45)
+      return {
+        tone: 'bearish',
+        headline: `恐懼貪婪指數 ${v}：恐懼`,
+        detail: '市場氣氛偏悲觀，大家比較小心。「偏空」是在描述大家的情緒，不是叫你先不要買：反向操作的人反而會在大家恐懼時慢慢分批買。',
+      };
     if (x <= 55) return { tone: 'neutral', headline: `恐懼貪婪指數 ${v}：中性`, detail: '市場情緒不算樂觀也不算悲觀。' };
-    if (x <= p.sellAbove) return { tone: 'bullish', headline: `恐懼貪婪指數 ${v}：貪婪`, detail: '市場氣氛偏樂觀，追價的人變多。' };
+    if (x <= p.sellAbove)
+      return {
+        tone: 'bullish',
+        headline: `恐懼貪婪指數 ${v}：貪婪`,
+        detail: '市場氣氛偏樂觀，追價的人變多。「偏多」是在描述大家的情緒，不是叫你追買：反向操作的人反而會在大家貪婪時比較小心。',
+      };
     return {
       tone: 'hot',
       headline: `恐懼貪婪指數 ${v}：極度貪婪`,

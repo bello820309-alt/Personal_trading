@@ -105,7 +105,7 @@ function RankItem({
           </div>
           <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted tabular">
             <span>
-              {row.trades} 筆（賺 {row.wins}、賠 {row.trades - row.wins}）
+              {row.trades} 筆（賺 {row.wins}、賠 {row.trades - row.wins}）{row.holding ? '＋1 筆還沒賣出' : ''}
             </span>
             <span>
               總報酬 <span className={signClass(row.totalReturn)}>{fmtPct(row.totalReturn)}</span>
@@ -114,7 +114,7 @@ function RankItem({
               超額報酬 <span className={signClass(excess(row, hold))}>{fmtPct(excess(row, hold))}</span>
             </span>
             <span>最大回撤 −{fmtNum(row.maxDrawdown * 100, 1)}%</span>
-            {row.holding && <span className="text-hot">期末仍持有</span>}
+            {row.holding && <span className="text-hot">期末仍持有：交易筆數只算已經賣出的，總報酬有算進這筆還沒賣的</span>}
           </div>
         </div>
       </div>

@@ -199,6 +199,7 @@ function IndicatorLegend({
       ) : (
         <span className="shrink-0 font-semibold text-fg">{ci.title}</span>
       )}
+      {lines.some((l) => l.unit === 'volume') && <span className="shrink-0 text-muted">（單位：{asset.volume.unit}）</span>}
       {lines.length === 0 && (ci.result.priceLevels?.length ?? 0) > 0 && <span className="text-muted">（圖上的點狀橫線）</span>}
       {lines.length > 0 && lines.every((l) => (l.shift ?? 0) > 0 && lineValueAt(l, index) === null) ? (
         <span className="text-muted">（把十字線移到右邊的未來日期，就會顯示數值）</span>

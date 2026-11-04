@@ -153,6 +153,10 @@ export function dcaNotes(dyn: DcaResult, plan: DcaPlan, asset: AssetConfig): str
     out.push(
       `這段期間有 ${fmtPct(topCount / dyn.periods, 0, false)} 的時候價格都在「${zoneText(top, plan, asset)}」這一階，價格階梯幾乎沒有發揮作用：可以換一段期間，或把階梯調整到這段期間的價格附近。`,
     );
+  } else if (dyn.periods >= 4 && topCount / dyn.periods >= 0.6) {
+    out.push(
+      `這段期間有 ${fmtPct(topCount / dyn.periods, 0, false)} 的時候價格都在「${zoneText(top, plan, asset)}」這一階，結果主要是這一階的買法造成的。階梯是用現在的價格設的，等於事先知道之後的價格範圍，上面的報酬要打折看。`,
+    );
   }
   if (plan.rules.some((r) => r.action.kind === 'sell' && isAbove(plan, r)) && dyn.sells === 0) {
     out.push('這段期間價格沒有漲到賣出的價位，所以沒有賣出。');

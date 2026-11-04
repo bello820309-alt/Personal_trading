@@ -1,3 +1,4 @@
+import type { Candle } from '../../data/types';
 import { daysBetween, fmtDate, fmtPct } from '../../data/format';
 import { closes, crossOver, crossUnder, ema, scanSignals, sma } from '../math/core';
 import { getLine, type IndicatorDef } from '../types';
@@ -6,6 +7,22 @@ export type MaCrossParams = { fast: number; slow: number; maType: string };
 
 function label(p: MaCrossParams, which: 'fast' | 'slow'): string {
   return `${p.maType === 'ema' ? 'EMA' : 'MA'}${Math.floor(p[which])}`;
+}
+
+/** K 棒是不是每天都有（比特幣週末也交易）：用來把「幾天」換算成「幾個月」 */
+function tradesDaily(candles: Candle[]): boolean {
+  return candles.slice(-10).some((c) => {
+    const w = new Date(`${c.time}T00:00:00Z`).getUTCDay();
+    return w === 0 || w === 6;
+  });
+}
+
+/** 50 天 → 約 2.5 個月（股票一個月約 21 個交易日，比特幣 30 天） */
+export function spanText(days: number, daily: boolean): string {
+  const months = days / (daily ? 30 : 21);
+  if (months < 0.75) return `約 ${Math.max(1, Math.round(days / (daily ? 7 : 5)))} 週`;
+  const r = Math.round(months * 2) / 2;
+  return `約 ${r % 1 === 0 ? r.toFixed(0) : r.toFixed(1)} 個月`;
 }
 
 export const maCrossIndicator: IndicatorDef<MaCrossParams> = {
@@ -76,14 +93,27 @@ export const maCrossIndicator: IndicatorDef<MaCrossParams> = {
       }
     }
     const bull = f > s;
-    let detail = `兩條均線相差 ${fmtPct(f / s - 1)}。`;
+    const close = candles[n - 1]!.close;
+    const gap = f / s - 1;
+    const daily = tradesDaily(candles);
+    let detail = `${label(p, 'fast')} 是最近 ${p.fast} 天的平均（${spanText(p.fast, daily)}），${label(p, 'slow')} 是最近 ${p.slow} 天（${spanText(p.slow, daily)}）。兩條均線相差 ${fmtPct(gap)}。`;
     if (lastIdx >= 0) {
       const kind = crossOver(fast, slow, lastIdx) ? '黃金交叉' : '死亡交叉';
       const date = candles[lastIdx]!.time;
       detail = `最近一次是 ${fmtDate(date)} 的${kind}（約 ${daysBetween(date, candles[n - 1]!.time)} 天前）。` + detail;
     }
+    // 兩條線的上下關係還沒變，但價格已經跑到另一邊：狀態不明確，提醒可能快要交叉
+    let tone: 'bullish' | 'bearish' | 'neutral' = bull ? 'bullish' : 'bearish';
+    const near = Math.abs(gap) < 0.03;
+    if (bull && close < f && close < s) {
+      tone = 'neutral';
+      detail += ` 但收盤價已經跌到兩條均線下面${near ? '，兩條線也越來越近：如果繼續跌，可能快要出現死亡交叉' : '：短期走弱，要留意'}。`;
+    } else if (!bull && close > f && close > s) {
+      tone = 'neutral';
+      detail += ` 但收盤價已經站上兩條均線${near ? '，兩條線也越來越近：如果繼續漲，可能快要出現黃金交叉' : '：短期轉強，要留意'}。`;
+    }
     return {
-      tone: bull ? 'bullish' : 'bearish',
+      tone,
       headline: `${label(p, 'fast')} 在 ${label(p, 'slow')} 之${bull ? '上' : '下'}`,
       detail,
     };

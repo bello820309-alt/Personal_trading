@@ -3,7 +3,7 @@ import { AssetTabs } from '../components/AssetTabs';
 import { DataTimeNote } from '../components/DataTimeNote';
 import { LineChart, type LineSpec } from '../components/chart/LineChart';
 import { Sparkline } from '../components/Sparkline';
-import { Card, Notice, PageTitle, Segmented, SectionTitle, Spinner, ToneBadge } from '../components/ui';
+import { Card, Fold, Notice, PageTitle, Segmented, SectionTitle, Spinner, ToneBadge } from '../components/ui';
 import { ASSETS, DEFAULT_ASSET_ID, getAsset, MARKET_LABELS, type AssetConfig } from '../config/assets';
 import { equityMetrics, periodsPerYear, type EquityMetrics } from '../backtest/metrics';
 import { fmtDate, fmtDateTime, fmtMoney, fmtNum, fmtPct, fmtPrice, signClass } from '../data/format';
@@ -57,6 +57,11 @@ export function Dashboard() {
         </SectionTitle>
         <div className="mb-4">
           <AssetTabs value={stateAsset.id} onChange={setStateAssetId} />
+        </div>
+        <div className="mb-4">
+          <Fold title="這些標籤怎麼看？意見不一致時先看哪一個？" sub="偏多、偏空、過熱、過冷是什麼意思，以及各市場為什麼用不同的天數。">
+            <StateGuide />
+          </Fold>
         </div>
         {st?.status === 'ready' ? (
           <IndicatorStates asset={stateAsset} series={st.data} />
@@ -112,7 +117,8 @@ function AssetCard({ asset, state }: { asset: AssetConfig; state: LoadState<Asse
       </div>
       {yearChg !== null && (
         <div className="text-xs text-muted">
-          近一年 <span className={signClass(yearChg)}>{fmtPct(yearChg, 1)}</span>
+          近一年股價 <span className={signClass(yearChg)}>{fmtPct(yearChg, 1)}</span>
+          {asset.market !== 'crypto' && '（不含配息）'}
         </div>
       )}
       <p className="mt-2 flex-1 text-xs leading-relaxed text-muted">{asset.intro}</p>
@@ -295,9 +301,36 @@ function Comparison({ states }: { states: Record<string, LoadState<AssetSeries>>
         </table>
       </div>
       <p className="mt-2 text-xs leading-relaxed text-muted">
-        各自以原本的貨幣計算（0050 是台幣，VOO 和比特幣是美元），沒有換算匯率。報酬已含配息再投入。最大回撤是期間內從高點最多跌掉多少，年化波動越大代表過程越顛簸。
+        各自以原本的貨幣計算（0050 是台幣，VOO 和比特幣是美元），沒有換算匯率。換成台幣時還要加上匯率的變化：同一段期間美元對台幣升值 3%，台幣算的報酬就大約多 3%；美元貶值就少 3%。報酬已含配息再投入。最大回撤是期間內從高點最多跌掉多少，年化波動越大代表過程越顛簸。
         {period === 'ALL' && ' 「共同期間」使用對數刻度，方便比較漲幅差很多的標的。'}
       </p>
     </div>
+  );
+}
+
+/** 「各指標目前怎麼說」的標籤說明：新手最常問的是過冷是好是壞、意見不一致時該信哪個 */
+function StateGuide() {
+  return (
+    <ul className="list-disc space-y-2 pl-5 text-sm leading-relaxed text-fg">
+      <li>
+        <strong className="font-semibold">偏多、偏空</strong>：這個指標看到「漲的力量」或「跌的力量」比較強。這是在描述現在的狀態，不是買賣建議。
+      </li>
+      <li>
+        <strong className="font-semibold">過熱、過冷</strong>：短期漲（跌）得太多、太快。過冷不代表馬上會漲：跌勢裡可能一直過冷，越跌越冷；過熱也不代表馬上會跌。
+      </li>
+      <li>
+        <strong className="font-semibold">意見不一致時</strong>：先看「趨向指標（DMI／ADX）」判斷現在是趨勢還是盤整。ADX 25 以上代表趨勢明確，這時以均線、MACD、DMI
+        這類趨勢指標為主，RSI、KD 的過冷、過熱比較容易失準；ADX 20 以下代表盤整，RSI、KD、布林通道比較有用。詳細的說明在
+        <Link to="/basics/trend" className="text-accent">
+          「趨勢、盤整與支撐壓力」
+        </Link>
+        。
+      </li>
+      <li>
+        <strong className="font-semibold">為什麼每個市場的天數不一樣</strong>：照各市場的看盤習慣。均線：0050 用 5、20、60、120、240 日（大約一週、一個月、一季、半年、一年），VOO
+        用 20、50、200 日，比特幣用 7、25、99 日（加密貨幣交易所常見的預設）；黃金交叉 0050 看 20 和 60 日，VOO、比特幣看 50 和 200 日。最長的那條代表長期趨勢。RSI：0050 用 6
+        天，VOO、比特幣用 14 天。
+      </li>
+    </ul>
   );
 }

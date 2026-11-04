@@ -13,7 +13,7 @@ import { useAsset, useAssets, useExtra } from '../data/load';
 import type { AssetSeries } from '../data/types';
 import { barsForRange } from '../data/useSeries';
 import { INDICATORS, computeIndicator, describeOf, getIndicator, hasRequiredData, signalsOf, supportsAsset } from '../indicators/registry';
-import { CATEGORY_LABELS, type IndicatorDef } from '../indicators/types';
+import { CATEGORY_LABELS, resolveParams, type IndicatorDef } from '../indicators/types';
 import { Link, navigate, useLocation, withQuery } from '../router';
 import { useSettings } from '../store/settings';
 import { NotFound } from './NotFound';
@@ -266,6 +266,31 @@ function LiveChart({ def, asset, series }: { def: IndicatorDef; asset: AssetConf
 }
 
 /** 三個標的「近 10 年」的回測摘要（預設參數、預設成本） */
+/** 這個指標在某個市場用的參數，例如「天數 6，超買門檻 80，超賣門檻 20」（0 代表不使用，略過） */
+export function paramText(def: IndicatorDef, asset: AssetConfig): string {
+  const p = resolveParams(def, asset.market);
+  return def.params
+    .map((spec) => {
+      const v = p[spec.key];
+      if (v === undefined || v === 0) return null;
+      if (spec.type === 'select') return `${spec.label}：${spec.options.find((o) => o.value === v)?.label ?? String(v)}`;
+      if (Array.isArray(v)) return `${spec.label} ${v.join('、')}`;
+      return `${spec.label} ${v}`;
+    })
+    .filter((x): x is string => x !== null)
+    .join('，');
+}
+
+/** 參數一樣的標的合併在一起：「0050：天數 6…；VOO、BTC：天數 14…」 */
+function paramsByAsset(def: IndicatorDef, assets: AssetConfig[]): string {
+  const groups = new Map<string, string[]>();
+  for (const a of assets) {
+    const t = paramText(def, a);
+    groups.set(t, [...(groups.get(t) ?? []), a.shortName]);
+  }
+  return [...groups.entries()].map(([t, names]) => `${names.join('、')}：${t}`).join('；');
+}
+
 function BacktestSummary({ def }: { def: IndicatorDef }) {
   // 比特幣專屬的指標只回測比特幣，而且要等額外資料載入
   const assets = ASSETS.filter((a) => supportsAsset(def, a.id));
@@ -325,6 +350,7 @@ function BacktestSummary({ def }: { def: IndicatorDef }) {
           </tbody>
         </table>
       </div>
+      {def.params.length > 0 && <p className="mt-2 text-xs leading-relaxed text-muted">使用的參數：{paramsByAsset(def, rows.map((r) => r.asset))}。</p>}
       <p className="mt-2 text-xs text-muted">年化報酬比買進持有低很常見，但有些策略能明顯降低最大回撤；要看你比較在意哪一個。</p>
     </div>
   );

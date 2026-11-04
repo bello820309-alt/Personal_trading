@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { CheckResult, HorizonKey } from './analog';
-import { checkPoints, summarizeCheck, usageTips } from './summary';
+import { checkPoints, historyTail, summarizeCheck, usageTips } from './summary';
 
 const mk = (key: HorizonKey, label: string, hit: number, alwaysUp: number, coverage: number): CheckResult => ({
   horizon: { key, label, bars: 21 },
@@ -54,5 +54,27 @@ describe('usageTips：這些數字要怎麼用', () => {
     expect(usageTips(mk('1m', '1 個月後', 0.5, 0.5, 0.8))[1]).toContain('我受得了嗎');
     expect(usageTips(mk('1m', '1 個月後', 0.5, 0.5, 0.95))[1]).toContain('保守的估計');
     expect(usageTips(mk('1m', '1 個月後', 0.5, 0.5, 0.6))[1]).toContain('預留比範圍更大的空間');
+  });
+});
+
+describe('historyTail：過去 5 年最差的一成', () => {
+  it('算出任何一天之後 N 根的漲跌，取最差的一成和最差的一次', () => {
+    const times: string[] = [];
+    const closes: number[] = [];
+    for (let i = 0; i < 400; i++) {
+      times.push(new Date(Date.UTC(2022, 0, 1) + i * 86400000).toISOString().slice(0, 10));
+      closes.push(100 + (i % 10)); // 0→9 循環
+    }
+    const t = historyTail(closes, times, 5, 5)!;
+    // 每 10 天一個循環（100→109 再回到 100）：之後 5 天最差的是從 105 跌回 100
+    expect(t.min).toBeCloseTo(100 / 105 - 1, 6);
+    expect(t.p10).toBeLessThan(0);
+    expect(historyTail(closes.slice(0, 20), times.slice(0, 20), 5)).toBeNull();
+  });
+
+  it('範圍估得太窄時，把最差的一成寫進「所以怎麼用」', () => {
+    const tip = usageTips(mk('1m', '1 個月後', 0.5, 0.5, 0.6), { p10: -0.12, min: -0.35, span: '1 個月' })[1]!;
+    expect(tip).toContain('最差的一成是 -12.00% 以下');
+    expect(tip).toContain('最差的一次是 -35.00%');
   });
 });

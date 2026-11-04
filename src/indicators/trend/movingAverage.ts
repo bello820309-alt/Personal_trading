@@ -63,7 +63,11 @@ function describeMa(prefix: string, candles: Candle[], r: IndicatorResult): Stat
     detail = `收盤價${parts.join('，')}。${tone === 'neutral' ? phaseText(close, vals) : ''}`;
   }
   const longest = vals[vals.length - 1]!;
-  detail += ` 距離 ${longest.label}（${fmtNum(longest.v)}）${fmtPct(close / longest.v - 1)}。`;
+  const dist = close / longest.v - 1;
+  detail += ` 距離 ${longest.label}（${fmtNum(longest.v)}）${fmtPct(dist)}。`;
+  if (Math.abs(dist) < 0.01) {
+    detail += `價格就貼在 ${longest.label} 附近：站得住常被當成支撐，跌破則是轉弱的訊號。常見的做法是等收盤連續 2～3 天都在線的同一邊，再確認方向。`;
+  }
   return {
     tone,
     headline: `收盤價站上 ${above.length}／${vals.length} 條${prefix === 'EMA' ? ' EMA' : '均線'}`,

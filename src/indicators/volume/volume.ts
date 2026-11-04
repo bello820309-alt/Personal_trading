@@ -53,7 +53,7 @@ export const volumeIndicator: IndicatorDef<VolumeParams> = {
       comment = '上漲時成交量放大，代表買盤積極，上漲比較有說服力。';
     } else if (ratio >= 1.3 && down) {
       tone = 'bearish';
-      comment = '下跌時成交量放大，代表賣壓沉重。';
+      comment = '下跌時成交量放大，代表賣壓沉重。也有另一種可能：大家恐慌性地賣，賣完反而接近短期低點。要再看幾天：如果之後量縮、價格止跌，比較像賣壓出清；如果繼續放量下跌，就是賣壓還沒結束。';
     } else if (ratio <= 0.6) {
       comment = up ? '上漲但量縮，追價意願不強。' : down ? '下跌但量縮，賣壓可能正在減輕。' : '交易清淡，市場在觀望。';
     }
