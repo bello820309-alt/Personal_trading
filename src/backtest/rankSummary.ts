@@ -63,11 +63,14 @@ export function summarizeRanking(result: RankResult, candles: Candle[], asset: A
   }
 
   const all = result.rows;
-  const beat = all.filter((r) => r.totalReturn > hold).length;
+  const beaters = all.filter((r) => r.totalReturn > hold).sort((a, b) => b.totalReturn - a.totalReturn);
+  const beat = beaters.length;
+  // 贏的不多時直接說是哪幾個，新手才知道要去看哪一個
+  const names = beat > 0 && beat <= 3 ? `：${beaters.map((r) => `${strategyName(r)}（${fmtPct(r.totalReturn)}）`).join('、')}` : '';
   out.push(
     beat === 0
       ? `${all.length} 個策略裡，沒有任何一個的總報酬贏過「買了一直抱著」。`
-      : `${all.length} 個策略裡，有 ${beat} 個的總報酬贏過「買了一直抱著」。`,
+      : `${all.length} 個策略裡，有 ${beat} 個的總報酬贏過「買了一直抱著」${names}。`,
   );
 
   const trend = all.filter((r) => r.def.category === 'trend').map((r) => r.totalReturn);

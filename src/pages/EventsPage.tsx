@@ -111,7 +111,7 @@ function EventsView({ asset, series, group, onGroup }: { asset: AssetConfig; ser
       <Card>
         <h2 className="text-base font-semibold text-fg">事件前後的表現</h2>
         <p className="mt-0.5 mb-3 text-xs leading-relaxed text-muted">
-          都從「事件前一天的收盤價」算起；「事件後 1 天」包含事件當天的反應。最右邊兩欄是對照組：把每一天都當成事件日，看平常的日子會怎麼走。
+          都從「事件前一天的收盤價」算起；「事件後 1 天」算到事件隔天（日曆天）的收盤，包含事件當天的反應。日期用各市場自己的日期：例如聯準會在美國下午公布（台灣時間隔天凌晨），0050 的反應會出現在台灣隔天的收盤裡，也算在「事件後 1 天」之內。最右邊兩欄是對照組：把每一天都當成事件日，看平常的日子會怎麼走。
         </p>
         <div className="mb-3 flex flex-wrap gap-1.5">
           {groups.map((g) => {

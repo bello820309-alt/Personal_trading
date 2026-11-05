@@ -266,9 +266,13 @@ function ForecastView({
           </table>
         </div>
         <p className="mt-2 text-xs leading-relaxed text-muted">
-          {asset.market !== 'crypto' && '這裡的數字用還原權息的價格計算（把配息加回去，漲跌才完整），總覽和圖表預設不還原，所以 RSI、和均線的距離會有一點點不同。'}
-          這裡的 RSI 固定用 14 天（國際常用的設定），每個標的都一樣，才能互相比較。
-          {asset.market === 'tw' ? '總覽和圖表上 0050 用台股常用的 RSI(6)，天數不同，數字也會不同：天數越短，數字跳得越大。' : ''}
+          這頁的特徵每個標的都用一樣的設定，才能互相比較：RSI 固定 14 天、均線固定 200 日。總覽和圖表用的是各市場常用的設定
+          {asset.market === 'tw'
+            ? '（0050 的 RSI 用 6 天、最長的均線是 MA240），所以數字不一樣：例如「和 200 日均線的距離」和總覽的「距離 MA240」是在比不同的均線。'
+            : asset.market === 'crypto'
+              ? '（比特幣最長的均線是 MA99），所以「和 200 日均線的距離」和總覽的「距離 MA99」是在比不同的均線。'
+              : '（VOO 也是 RSI 14 天、MA200），所以只會差一點點。'}
+          {asset.market !== 'crypto' && '另外這頁用還原權息的價格計算（把配息加回去，漲跌才完整），總覽和圖表預設不還原，也會讓數字有一點點不同。'}
         </p>
         <h3 className="mt-4 mb-2 text-sm font-semibold text-fg">最像現在的 10 個日子</h3>
         <div className="table-scroll">

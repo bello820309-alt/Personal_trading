@@ -31,6 +31,8 @@ export interface DcaPlan {
   cadence: Cadence;
   sellMode: SellMode;
   rules: LadderRule[];
+  /** 基準價格是哪一天設定的（YYYY-MM-DD）；預設的階梯用那天的收盤價當基準 */
+  setOn?: string;
 }
 
 export interface DcaCosts {
@@ -374,5 +376,6 @@ export function sanitizePlan(raw: unknown): DcaPlan | null {
     }
     if (rules.length >= MAX_RULES) break;
   }
-  return { basePrice: p.basePrice, baseAmount: p.baseAmount, cadence, sellMode, rules };
+  const setOn = typeof p.setOn === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(p.setOn) ? p.setOn : undefined;
+  return { basePrice: p.basePrice, baseAmount: p.baseAmount, cadence, sellMode, rules, ...(setOn ? { setOn } : {}) };
 }

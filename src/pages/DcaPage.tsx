@@ -126,9 +126,15 @@ function DcaView({
   const plan = useMemo(() => stored ?? defaultPlan(asset.id, lastClose), [stored, asset.id, lastClose]);
   // 第一次打開時就把預設的階梯存起來：股票的預設以當時的價格為基準，存起來之後才不會每天跟著價格移動
   useEffect(() => {
-    if (!stored && lastClose > 0) setDcaPlan(asset.id, defaultPlan(asset.id, lastClose));
-  }, [stored, asset.id, lastClose, setDcaPlan]);
-  const save = (p: DcaPlan) => setDcaPlan(asset.id, { ...p, rules: [...p.rules].sort((a, b) => b.price - a.price) });
+    if (!stored && lastClose > 0) setDcaPlan(asset.id, { ...defaultPlan(asset.id, lastClose), setOn: lastTime });
+  }, [stored, asset.id, lastClose, lastTime, setDcaPlan]);
+  // 自己改了基準價格，就記下改的日期
+  const save = (p: DcaPlan) =>
+    setDcaPlan(asset.id, {
+      ...p,
+      rules: [...p.rules].sort((a, b) => b.price - a.price),
+      ...(p.basePrice !== plan.basePrice ? { setOn: lastTime } : {}),
+    });
   const costs = useMemo(() => ({ feeRate: asset.costs.feeRate * asset.costs.feeDiscount, sellTaxRate: asset.costs.sellTaxRate }), [asset]);
 
   const presets = useMemo(() => buildPresets(candles, asset.id), [candles, asset.id]);
@@ -181,6 +187,12 @@ function DcaView({
         <H2 sub="價格落在哪一階，這一期就照那一階做；碰到門檻就算（例如剛好 70,000 就買 120）。改完數字按 Enter 或點別的地方就會儲存，只存在這台裝置。">
           你的價格階梯
         </H2>
+        {plan.setOn && (
+          <p className="mb-3 text-xs leading-relaxed text-muted">
+            基準價格 {fmtPrice(plan.basePrice, asset)} 是 {fmtDate(plan.setOn)} 設定的
+            {asset.id === 'BTC' ? '' : '（預設用那天的收盤價）'}，之後不會自動改。換一台裝置、清除瀏覽資料或按「還原成預設」，會用當天的價格重新設定。
+          </p>
+        )}
         <LadderEditor plan={plan} asset={asset} nowPrice={nowPrice} onChange={save} onReset={() => setDcaPlan(asset.id, null)} />
       </Card>
 
@@ -280,7 +292,7 @@ function DefaultsHelp({ asset }: { asset: AssetConfig }) {
         </li>
       ) : (
         <li>
-          基準價格是你<strong className="font-semibold">第一次打開這頁時的價格</strong>（取前 3 位數字），之後就存起來，不會每天跟著價格變。往上、往下每 5%
+          基準價格是你<strong className="font-semibold">第一次打開這頁時的價格</strong>，取 3 位有效數字（例如 97.15 → 97.2、77,345 → 77,300），之後就存起來，不會每天跟著價格變。往上、往下每 5%
           一階：跌 5%、10% 每期買基準金額的 1.2 倍、1.5 倍；漲 5%、10% 只買 0.5 倍、0.3 倍；漲 15% 以上每期賣出持有的 10%，漲 20% 以上賣 20%。
         </li>
       )}
@@ -297,9 +309,10 @@ function DefaultsHelp({ asset }: { asset: AssetConfig }) {
       </li>
       <li>決定好之後，把基準金額改成這個數字，其他每一階也照同樣的倍數放大：例如原本是基準 1.5 倍的那一階，就改成新金額的 1.5 倍。</li>
       <li>
-        基準價格怎麼選？常見的做法有三種：用現在的價格；用最近幾個月的平均價（例如 60 日均線）；或用最近一年最高價和最低價的中間。選得太高，價格會一直落在「多買」的那幾階；選得太低，會一直「少買」。回測之後看「每一階出現幾次」，確認不會老是停在同一階。
+        基準價格怎麼選？常見的做法有三種：用現在的價格；用最近幾個月的平均價（例如 60 日均線）；或用最近一年最高價和最低價的中間。選得太高，價格會一直落在「多買」的那幾階；選得太低，會一直「少買」。沒有標準答案：用現在的價格最中性，一開始買基本金額；用均線的話，價格在均線下面時一開始就會多買。選定之後就照著做，不要每天換基準。回測之後看「每一階出現幾次」，確認不會老是停在同一階。
       </li>
       <li>跌得越深，每期買得越多，要預留比較多的現金。下面回測的「價格與每次買賣」圖，下方的柱子就是每一期買了多少。</li>
+      <li>反過來，價格一直漲、每期只買一部分的話，最後會剩下現金。事先決定怎麼處理，例如最後一期把剩下的錢買完，或留著等下次回檔，寫進自己的規則裡。</li>
       <li>階梯的價位也可以照自己的想法改，例如用過去一年的高低點或整數關卡；改完會重新回測。</li>
     </ul>
   );
@@ -317,7 +330,10 @@ function TrendVsDca() {
       </li>
       <li>兩種沒有誰對誰錯。重要的是先想清楚一筆錢要用哪一種方法、打算放多久，判斷時用同一套規則，不要用定投的理由買、卻用短線的理由賣。</li>
       <li>
-        定投也要事先想好什麼時候停下來重新檢查，例如：總虧損超過自己能承受的程度、這筆錢快要用到了、或標的本身出了問題（買個股比買大盤 ETF 更要注意這點）。先寫下來，不要邊跌邊改規則。
+        選了定投，還要看 ADX、MACD 這些趨勢指標嗎？定投的重點是不猜時機、照規則買，所以不用因為趨勢指標偏空就延後或停止；趨勢指標比較適合拿來了解現在的行情，或用在另外一筆想抓買賣時機的錢。如果真的想參考，請在開始前就寫進規則（例如「ADX 25 以上的下跌趨勢中，跌越多買越多的倍數不要超過 1.5 倍」），不要臨時改。
+      </li>
+      <li>
+        定投也要事先想好什麼時候停下來重新檢查，例如：總虧損超過自己能承受的程度、這筆錢快要用到了、或標的本身出了問題（買個股比買大盤 ETF 更要注意這點；對比特幣來說，像是比特幣網路本身出現嚴重的技術問題，或主要國家的法規大幅改變。交易所倒閉是交易所的風險，不是比特幣本身的問題，但會影響放在那裡的錢）。先寫下來，不要邊跌邊改規則。
       </li>
     </ul>
   );

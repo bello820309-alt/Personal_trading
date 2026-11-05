@@ -86,8 +86,9 @@ export const macdIndicator: IndicatorDef<MacdParams> = {
       tone = 'bearish';
       text = 'DIF 在訊號線之下、也在 0 軸之下：空方動能占優勢。';
     }
+    const side = o1 >= 0 ? '漲' : '跌';
     const growth =
-      o0 == null ? '' : Math.abs(o1) > Math.abs(o0) ? '，而且正在放大（動能增強中）' : '，而且正在縮小（動能減弱中）';
+      o0 == null ? '' : Math.abs(o1) > Math.abs(o0) ? `，而且正在放大（${side}的力道在增強）` : `，而且正在縮小（${side}的力道在減弱）`;
     return {
       tone,
       headline: `DIF ${fmtNum(dif)}／MACD ${fmtNum(sig)}`,

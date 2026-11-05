@@ -105,7 +105,9 @@ function RankItem({
           </div>
           <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted tabular">
             <span>
-              {row.trades} 筆（賺 {row.wins}、賠 {row.trades - row.wins}）{row.holding ? '＋1 筆還沒賣出' : ''}
+              {row.trades === 0 && !row.holding
+                ? '0 筆（這段期間沒有出現買進訊號，一直拿著現金）'
+                : `${row.trades} 筆（賺 ${row.wins}、賠 ${row.trades - row.wins}）${row.holding ? '＋1 筆還沒賣出' : ''}`}
             </span>
             <span>
               總報酬 <span className={signClass(row.totalReturn)}>{fmtPct(row.totalReturn)}</span>

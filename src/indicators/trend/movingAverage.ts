@@ -25,13 +25,39 @@ export function phaseText(close: number, vals: { label: string; v: number }[]): 
   const flags = vals.map((x) => close > x.v);
   const firstAbove = flags.indexOf(true);
   const firstBelow = flags.indexOf(false);
+  // 只差不到 1%：只是稍微跌破（站上），說法不要比實際嚴重
+  const slight = (xs: { v: number }[]) => xs.every((x) => Math.abs(close / x.v - 1) < 0.01);
   if (firstAbove > 0 && flags.slice(firstAbove).every(Boolean)) {
+    if (slight(vals.slice(0, firstAbove))) {
+      return `價格只比短天期均線低一點點（不到 1%），還在長天期均線之上：短期稍微轉弱，還不算明顯在跌，長期仍向上。`;
+    }
     return `短天期均線都在價格上面、長天期在下面：短期在跌，長期仍向上，屬於長期上升趨勢裡的回檔。如果再跌破 ${vals[firstAbove]!.label}，長期趨勢也可能轉弱。`;
   }
   if (firstBelow > 0 && flags.slice(firstBelow).every((f) => !f)) {
+    if (slight(vals.slice(0, firstBelow))) {
+      return `價格只比短天期均線高一點點（不到 1%），還在長天期均線之下：短期稍微轉強，還不算明顯在漲，長期仍向下。`;
+    }
     return `價格站上短天期均線、但還在長天期均線下面：短期在漲，長期仍向下，屬於長期下跌趨勢裡的反彈。要能再站上 ${vals[firstBelow]!.label}，長期趨勢才可能轉強。`;
   }
   return '長短期方向不一致，屬於整理或轉折階段。';
+}
+
+/** 台股習慣的均線稱呼 */
+const MA_NICKNAMES: Record<number, string> = { 5: '週線', 20: '月線', 60: '季線', 120: '半年線', 240: '年線' };
+
+/** 每條均線現在是往上、往下還是走平（和 5 根 K 棒前比，變動不到 0.2% 算走平） */
+export function maDirections(r: IndicatorResult, n: number): string {
+  const parts: string[] = [];
+  for (const l of r.lines) {
+    const now = l.values[n - 1];
+    const past = l.values[n - 6];
+    if (l.hidden || now == null || past == null || past <= 0) continue;
+    const ch = now / past - 1;
+    const word = Math.abs(ch) < 0.002 ? '走平' : ch > 0 ? '往上' : '往下';
+    const nick = MA_NICKNAMES[Number(l.label.replace(/\D/g, ''))];
+    parts.push(`${l.label}${nick && l.label.startsWith('MA') ? `（${nick}）` : ''}${word}`);
+  }
+  return parts.join('、');
 }
 
 function describeMa(prefix: string, candles: Candle[], r: IndicatorResult): StateSummary | null {
@@ -68,6 +94,8 @@ function describeMa(prefix: string, candles: Candle[], r: IndicatorResult): Stat
   if (Math.abs(dist) < 0.01) {
     detail += `價格就貼在 ${longest.label} 附近：站得住常被當成支撐，跌破則是轉弱的訊號。常見的做法是等收盤連續 2～3 天都在線的同一邊，再確認方向。`;
   }
+  const dirs = maDirections(r, n);
+  if (dirs) detail += ` 均線往哪邊彎（和 5 天前比）：${dirs}。`;
   return {
     tone,
     headline: `收盤價站上 ${above.length}／${vals.length} 條${prefix === 'EMA' ? ' EMA' : '均線'}`,
