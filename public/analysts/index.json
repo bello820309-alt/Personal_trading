@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "analysts": [
+    {
+      "id": "benjamin-cowen",
+      "name": "Benjamin Cowen",
+      "channelId": "UCRvqjQPSeaWn-uEx-w0XOIg",
+      "channelUrl": "https://www.youtube.com/@benjaminjcowen",
+      "intro": "YouTube 頻道「Benjamin Cowen」的主持人（他的網站叫 Into The Cryptoverse），幾乎每天都有新影片，主要講比特幣、美股和總體經濟。他習慣拿過去幾次循環同一個時間點的走勢（例如 2014、2018、2022 這幾個美國期中選舉年）來推論現在，也很看重利率、失業率這些經濟數據。",
+      "since": "2026-11-06"
+    }
+  ]
+}

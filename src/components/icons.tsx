@@ -77,6 +77,15 @@ export const LabIcon = (p: IconProps) => (
   </svg>
 );
 
+/** 分析師追蹤：一個人加上對話框 */
+export const AnalystIcon = (p: IconProps) => (
+  <svg {...base(p)}>
+    <circle cx="9" cy="8.5" r="3.2" />
+    <path d="M3.5 20c.6-3.4 2.8-5.4 5.5-5.4s4.9 2 5.5 5.4" />
+    <path d="M14.5 3.5h6v4.5h-3.2L15.2 10V8h-.7z" />
+  </svg>
+);
+
 export const ForecastIcon = (p: IconProps) => (
   <svg {...base(p)}>
     <path d="M3 17l4-5 3 2 4-6" />

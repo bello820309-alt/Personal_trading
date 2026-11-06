@@ -36,7 +36,7 @@ export default defineConfig({
       workbox: {
         // 行情資料不放進預先快取，改用「網路優先、離線時用快取」。
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
-        globIgnores: ['**/data/**', '**/lab/**'],
+        globIgnores: ['**/data/**', '**/lab/**', '**/analysts/**'],
         navigateFallback: 'index.html',
         runtimeCaching: [
           {
@@ -47,6 +47,16 @@ export default defineConfig({
               cacheName: 'lab-data',
               networkTimeoutSeconds: 8,
               expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 60 },
+            },
+          },
+          {
+            // 分析師追蹤：影片重點和影片清單
+            urlPattern: /\/analysts\/[^/]+\.json$/,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'analyst-data',
+              networkTimeoutSeconds: 8,
+              expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 * 60 },
             },
           },
           {

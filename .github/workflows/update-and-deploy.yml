@@ -58,12 +58,16 @@ jobs:
       - name: 抓取比特幣額外資料（情緒、合約、鏈上）
         continue-on-error: true
         run: npm run fetch-extra
+      # 「分析師追蹤」頁：追蹤的分析師最近的 YouTube 影片清單（頻道的 RSS）；失敗時保留上一版
+      - name: 抓取分析師的新影片
+        continue-on-error: true
+        run: npm run fetch-analysts
       - name: Commit 資料
         id: commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add public/data
+          git add public/data public/analysts
           if git diff --cached --quiet; then
             echo "資料沒有變化，不需要 commit，也不需要重新部署。"
             echo "changed=false" >> "$GITHUB_OUTPUT"

@@ -14,7 +14,7 @@
  *                     會先找按鈕、分頁、選項（例如標的切換的「比特幣」），找不到才點一般文字
  *   --help            顯示這份說明
  *
- * 「AI 實驗」頁（/lab）有參加者的紀錄，實驗期間不能用這個工具打開。
+ * 「AI 實驗」頁（/lab）有參加者的紀錄、「分析師追蹤」頁（/analysts）是分析師個人的看法，實驗期間不能用這個工具打開。
  *
  * 需要先在本機啟動網站：npm run build && npx vite preview --port 4173 --strictPort
  * 網址可以用環境變數 LAB_SITE 改（預設 http://localhost:4173/Personal_trading/）
@@ -54,8 +54,17 @@ if (args.includes('--help') || args.includes('-h')) {
   process.exit(0);
 }
 
-/** 「AI 實驗」頁有參加者的紀錄，參加者不能看（避免看到另一位的資料） */
-const BLOCKED = /^\/lab(\/|\?|$)/;
+/**
+ * 參加者不能看的頁：
+ * - 「AI 實驗」頁有參加者的紀錄（避免看到另一位的資料）
+ * - 「分析師追蹤」頁是分析師個人的看法和預測，不是這個實驗要學的技術分析（避免照著分析師的說法下單）
+ */
+const BLOCKED = /^\/(lab|analysts)(\/|\?|$)/;
+function blockedMessage(path) {
+  return path.startsWith('/lab')
+    ? '✗ 「AI 實驗」頁有參加者的紀錄，實驗期間參加者不能打開。'
+    : '✗ 「分析師追蹤」頁是分析師個人的看法，不是這個實驗要學的內容，實驗期間參加者不能打開。';
+}
 const site = (process.env.LAB_SITE || 'http://localhost:4173/Personal_trading/').replace(/\/?$/, '/');
 const max = Number(opt('max') || 8000);
 const from = Number(opt('from') || 0);
@@ -64,7 +73,7 @@ const shot = opt('shot');
 async function main() {
   const path = route.startsWith('/') ? route : `/${route}`;
   if (BLOCKED.test(path)) {
-    console.error('✗ 「AI 實驗」頁有參加者的紀錄，實驗期間參加者不能打開。');
+    console.error(blockedMessage(path));
     process.exitCode = 1;
     return;
   }
@@ -106,6 +115,13 @@ async function main() {
       } catch {
         console.log(`（找不到可以點的「${text}」）`);
       }
+      // 點了之後跑到不能看的頁（例如選單上的連結）：不印內容
+      const now = await page.evaluate(() => window.location.hash.slice(1) || '/');
+      if (BLOCKED.test(now)) {
+        console.error(blockedMessage(now));
+        process.exitCode = 1;
+        return;
+      }
     }
     if (!flag('no-expand')) {
       for (let round = 0; round < 2; round++) {
@@ -121,7 +137,7 @@ async function main() {
       for (const a of document.querySelectorAll('a[href^="#/"]')) {
         const href = a.getAttribute('href').slice(1);
         const label = (a.innerText || a.getAttribute('aria-label') || '').replace(/\s+/g, ' ').trim();
-        if (!label || seen.has(href) || /^\/lab(\/|\?|$)/.test(href)) continue;
+        if (!label || seen.has(href) || /^\/(lab|analysts)(\/|\?|$)/.test(href)) continue;
         seen.add(href);
         links.push(`${label.slice(0, 40)} → ${href}`);
       }

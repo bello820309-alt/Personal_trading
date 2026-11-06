@@ -3,8 +3,8 @@ import { TONE_LABELS, type Tone } from '../indicators/types';
 import { ChevronRightIcon, CloseIcon } from './icons';
 
 /** 收合的區塊：點標題才展開，展開時才畫裡面的內容（圖表、長表格不會拖慢頁面） */
-export function Fold({ title, sub, children }: { title: string; sub?: string; children: ReactNode }) {
-  const [open, setOpen] = useState(false);
+export function Fold({ title, sub, children, defaultOpen = false }: { title: string; sub?: string; children: ReactNode; defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen);
   return (
     <details className="rounded-xl border border-line bg-surface" open={open} onToggle={(e) => setOpen(e.currentTarget.open)}>
       <summary className="flex cursor-pointer list-none items-start gap-2 px-4 py-3 [&::-webkit-details-marker]:hidden">
