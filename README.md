@@ -113,6 +113,7 @@ npm run fetch-data     # 抓最新行情到 public/data/（需要能連到 Yahoo
 npm run validate-data  # 檢查 public/data/ 的資料是否合理
 npm run lab -- check   # AI 模擬交易：檢查紀錄、列出成績（其他指令見 scripts/lab/cli.ts）
 npm run fetch-analysts # 分析師追蹤：抓追蹤的分析師最近的 YouTube 影片清單（RSS）
+npm run analysts       # 分析師追蹤：每個預測的狀態、最近的新影片
 ```
 
 ## 專案結構

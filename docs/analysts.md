@@ -41,6 +41,10 @@ YouTube 會擋雲端主機（Claude 的環境和 GitHub Actions 都是）：影�
 - 有 `trigger` 的：先碰到條件價位才開始等目標（同一天都碰到也算）；到期都沒碰到條件價位，就是「條件沒發生」（不算對也不算錯）。
 - 事件預測照人工標記；過了期限還沒標記，頁面會顯示「等主持人確認」。
 
+## 每天的回報
+
+主持人每天回報 AI 實驗時，最後加一段：`npm run -s analysts -- --since <昨天回報的時間>` 會列出每個預測的狀態和這段時間的新影片（判斷方式和網頁一樣）。
+
 ## 新增分析師
 
 使用者給頻道網址（例如 `https://www.youtube.com/@benjaminjcowen`）。頻道頁的 HTML 裡有 `"channelId":"UC…"`（或 `<link rel="canonical" href=".../channel/UC...">`），用 `curl` 讀得到。在 `index.json` 加一筆，新增 `{代號}.json`（`notes` 先放空陣列），再跑 `NODE_USE_ENV_PROXY=1 npm run fetch-analysts` 產生影片清單（在 Claude 的雲端環境要加這個變數，Node 內建的 fetch 才會走代理）。
