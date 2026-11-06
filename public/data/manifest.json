@@ -1,20 +1,20 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-11-05T21:48:37.870Z",
+  "generatedAt": "2026-11-06T06:48:55.045Z",
   "assets": [
     {
       "id": "0050",
       "symbol": "0050.TW",
       "status": "ok",
-      "updatedAt": "2026-11-05T12:20:01.365Z",
-      "lastDate": "2026-11-05",
-      "bars": 3115
+      "updatedAt": "2026-11-06T06:48:55.045Z",
+      "lastDate": "2026-11-06",
+      "bars": 3116
     },
     {
       "id": "VOO",
       "symbol": "VOO",
       "status": "ok",
-      "updatedAt": "2026-11-05T21:48:37.870Z",
+      "updatedAt": "2026-11-06T06:48:55.045Z",
       "lastDate": "2026-11-05",
       "bars": 4065
     },
