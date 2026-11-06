@@ -320,7 +320,7 @@ function StateGuide() {
       </li>
       <li>
         <strong className="font-semibold">意見不一致時</strong>：先看「趨向指標（DMI／ADX）」判斷現在是趨勢還是盤整。ADX 25 以上代表趨勢明確，這時以均線、MACD、DMI
-        這類趨勢指標為主，RSI、KD 的過冷、過熱比較容易失準；ADX 20 以下代表盤整，RSI、KD、布林通道比較有用；20～25 之間是趨勢正在形成或正在變弱，兩類指標都要打折看。詳細的說明在
+        這類趨勢指標為主，RSI、KD 的過冷、過熱比較容易失準；ADX 20 以下代表盤整，RSI、KD、布林通道比較有用；20～25 之間是趨勢正在形成或正在變弱，兩類指標都要打折看，可以只採用兩類意見一致的訊號，不一致就先觀望。詳細的說明在
         <Link to="/basics/trend" className="text-accent">
           「趨勢、盤整與支撐壓力」
         </Link>

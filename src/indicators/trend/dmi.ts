@@ -87,6 +87,10 @@ export const dmiIndicator: IndicatorDef<DmiParams> = {
       headline: `ADX ${fmtNum(adx, 1)}：${strength}`,
       detail: `+DI ${fmtNum(pdi, 1)}、−DI ${fmtNum(mdi, 1)}：${up ? '上漲力道大於下跌力道' : '下跌力道大於上漲力道'}。${
         adx < 20 ? 'ADX 偏低時，DI 交叉訊號比較容易失準。' : ''
+      }${
+        adx < 25
+          ? 'ADX 是把最近 14 天平滑後算的，反應比較慢：單日的大漲大跌不會馬上讓它升高，要看之後幾天 ADX 有沒有往上走過 20～25，才知道新的趨勢有沒有成形。'
+          : ''
       }`,
     };
   },

@@ -10,6 +10,7 @@ import { getContent } from '../content';
 import { lastDate } from '../data/extra';
 import { fmtDate, fmtNum, fmtPct } from '../data/format';
 import { useAsset, useAssets, useExtra } from '../data/load';
+import { completedLength } from '../data/parse';
 import type { AssetSeries } from '../data/types';
 import { barsForRange } from '../data/useSeries';
 import { INDICATORS, computeIndicator, describeOf, getIndicator, hasRequiredData, signalsOf, supportsAsset } from '../indicators/registry';
@@ -351,6 +352,19 @@ function BacktestSummary({ def }: { def: IndicatorDef }) {
         </table>
       </div>
       {def.params.length > 0 && <p className="mt-2 text-xs leading-relaxed text-muted">使用的參數：{paramsByAsset(def, rows.map((r) => r.asset))}。</p>}
+      <p className="mt-1 text-xs text-muted">
+        算到各標的最新的收盤：
+        {rows
+          .map(({ asset }) => {
+            const st = states[asset.id];
+            if (st?.status !== 'ready') return null;
+            const last = st.data.candles[completedLength(st.data) - 1];
+            return last ? `${asset.shortName} ${fmtDate(last.time)}` : null;
+          })
+          .filter(Boolean)
+          .join('、')}
+        。
+      </p>
       <p className="mt-2 text-xs text-muted">年化報酬比買進持有低很常見，但有些策略能明顯降低最大回撤；要看你比較在意哪一個。</p>
     </div>
   );

@@ -87,8 +87,23 @@ export const macdIndicator: IndicatorDef<MacdParams> = {
       text = 'DIF 在訊號線之下、也在 0 軸之下：空方動能占優勢。';
     }
     const side = o1 >= 0 ? '漲' : '跌';
+    // 連續幾天往同一個方向變化（同一邊、越來越長或越來越短）
+    const growing = o0 != null && Math.abs(o1) > Math.abs(o0);
+    let streak = 0;
+    for (let i = n - 1; i >= 1; i--) {
+      const a = osc[i];
+      const b = osc[i - 1];
+      if (a == null || b == null || a >= 0 !== o1 >= 0 || b >= 0 !== o1 >= 0) break;
+      if (growing ? Math.abs(a) > Math.abs(b) : Math.abs(a) < Math.abs(b)) streak++;
+      else break;
+    }
+    const days = streak >= 2 ? `已經連續 ${streak} 天` : '今天剛開始';
     const growth =
-      o0 == null ? '' : Math.abs(o1) > Math.abs(o0) ? `，而且正在放大（${side}的力道在增強）` : `，而且正在縮小（${side}的力道在減弱）`;
+      o0 == null
+        ? ''
+        : growing
+          ? `，而且${days}放大（${side}的力道在增強${streak >= 2 ? '' : '，只變一天可能是雜訊'}）`
+          : `，而且${days}縮小（${side}的力道在減弱${streak >= 2 ? '' : '，只變一天可能是雜訊'}）`;
     return {
       tone,
       headline: `DIF ${fmtNum(dif)}／MACD ${fmtNum(sig)}`,

@@ -1,6 +1,7 @@
 import { fmtNum } from '../../data/format';
 import { crossOver, crossUnder, scanSignals } from '../math/core';
 import { getLine, type IndicatorDef } from '../types';
+import { lastValid } from '../math/core';
 import { extraSeries, freshLast } from './common';
 
 export type FearGreedParams = { buyBelow: number; sellAbove: number };
@@ -44,30 +45,35 @@ export const fearGreedIndicator: IndicatorDef<FearGreedParams> = {
     const x = freshLast(getLine(r, 'fng'), candles.length);
     if (x === null) return null;
     const v = fmtNum(x, 0);
+    const at = lastValid(getLine(r, 'fng'));
+    const when = at ? candles[at.index]?.time : undefined;
+    const note = when
+      ? `（這是 ${Number(when.slice(5, 7))}/${Number(when.slice(8, 10))} 台灣時間早上 8 點公布的數字，反映前一天 24 小時的情緒；當天的大漲大跌，要到隔天公布的數字才會反映。）`
+      : '';
     if (x < p.buyBelow) {
       return {
         tone: 'cold',
         headline: `恐懼貪婪指數 ${v}：極度恐懼`,
-        detail: '市場一片恐慌。不少中長期的低點出現在這種時候，但恐慌也可能持續好幾週，價格可能繼續跌。（標籤是在描述大家的情緒，不是買賣建議。）',
+        detail: `市場一片恐慌。不少中長期的低點出現在這種時候，但恐慌也可能持續好幾週，價格可能繼續跌。（標籤是在描述大家的情緒，不是買賣建議。）${note}`,
       };
     }
     if (x < 45)
       return {
         tone: 'bearish',
         headline: `恐懼貪婪指數 ${v}：恐懼`,
-        detail: '市場氣氛偏悲觀，大家比較小心。「偏空」是在描述大家的情緒，不是叫你先不要買：反向操作的人反而會在大家恐懼時慢慢分批買。',
+        detail: `市場氣氛偏悲觀，大家比較小心。「偏空」是在描述大家的情緒，不是叫你先不要買：反向操作的人反而會在大家恐懼時慢慢分批買。${note}`,
       };
-    if (x <= 55) return { tone: 'neutral', headline: `恐懼貪婪指數 ${v}：中性`, detail: '市場情緒不算樂觀也不算悲觀。' };
+    if (x <= 55) return { tone: 'neutral', headline: `恐懼貪婪指數 ${v}：中性`, detail: `市場情緒不算樂觀也不算悲觀。${note}` };
     if (x <= p.sellAbove)
       return {
         tone: 'bullish',
         headline: `恐懼貪婪指數 ${v}：貪婪`,
-        detail: '市場氣氛偏樂觀，追價的人變多。「偏多」是在描述大家的情緒，不是叫你追買：反向操作的人反而會在大家貪婪時比較小心。',
+        detail: `市場氣氛偏樂觀，追價的人變多。「偏多」是在描述大家的情緒，不是叫你追買：反向操作的人反而會在大家貪婪時比較小心。${note}`,
       };
     return {
       tone: 'hot',
       headline: `恐懼貪婪指數 ${v}：極度貪婪`,
-      detail: '市場很狂熱。短期過熱的風險變高，但多頭行情裡也可能維持貪婪很久。',
+      detail: `市場很狂熱。短期過熱的風險變高，但多頭行情裡也可能維持貪婪很久。${note}`,
     };
   },
   strategy: {
