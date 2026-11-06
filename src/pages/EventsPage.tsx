@@ -20,7 +20,7 @@ import {
 } from '../backtest/eventStudy';
 import { MIN_TRADES, prepareStrategies } from '../backtest/rank';
 import { defaultCosts } from '../backtest/strategies';
-import { EVENT_GROUP_LABELS, REGIME_LABELS, REGIME_RULE, UPCOMING_FOMC, eventsFor, fedUpperAt, type EventGroup } from '../data/events';
+import { EVENT_GROUP_LABELS, REGIME_LABELS, REGIME_RULE, UPCOMING_FOMC, eventsFor, fedUpperAt, regimeAt, type EventGroup } from '../data/events';
 import { fmtDate, fmtPct, signClass } from '../data/format';
 import { useAsset, useExtra } from '../data/load';
 import { completedLength } from '../data/parse';
@@ -210,6 +210,9 @@ function EventsView({ asset, series, group, onGroup }: { asset: AssetConfig; ser
         <h2 className="text-base font-semibold text-fg">不同的利率環境下，哪個策略勝率最高？</h2>
         <p className="mt-0.5 mb-3 text-xs leading-relaxed text-muted">
           {REGIME_RULE}用全部資料回測每個策略，每筆交易依「買進那天」屬於哪一種環境歸類；完成 {MIN_TRADES} 筆以上交易的策略才排名。
+        </p>
+        <p className="mb-3 rounded-lg bg-surface-2 px-3 py-2 text-sm text-fg">
+          照這個規則，現在（{fmtDate(new Date().toISOString().slice(0, 10))}）屬於「{REGIME_LABELS[regimeAt(new Date().toISOString().slice(0, 10))]}」。
         </p>
         <ul className="mb-4 space-y-1.5 text-sm leading-relaxed text-fg">
           {summarizeRegimes(regimes).map((l) => (

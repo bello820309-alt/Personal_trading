@@ -223,6 +223,8 @@ function cmdMe(): void {
   out.push('', '【你之前寫的心得】（最近 5 天）');
   if (journal.length === 0) out.push('  （還沒有，今天是第一次）');
   for (const j of journal.slice(-5)) out.push(`  ${shortDay(j.day)} ${j.summary}`, `      打算：${j.plan}`);
+  const lastJ = journal[journal.length - 1];
+  if (lastJ) out.push('', `【上一次（${shortDay(lastJ.day)}）的決定】`, `  ${lastJ.decision}`);
   const learned = journal.flatMap((j) => j.learned.map((x) => `${shortDay(j.day)} ${x}`));
   out.push('', '【你到目前學到的東西】');
   if (learned.length === 0) out.push('  （還沒有）');

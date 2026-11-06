@@ -44,6 +44,22 @@ export function BasicsPage({ id }: { id: string }) {
           </Link>
         )}
       </div>
+      <nav aria-label="全部的基礎觀念" className="rounded-lg border border-line px-3 py-2.5 text-sm">
+        <div className="mb-1 text-xs text-muted">全部的基礎觀念</div>
+        <ul className="space-y-1">
+          {BASICS.map((b) => (
+            <li key={b.id}>
+              {b.id === a.id ? (
+                <span className="font-medium text-fg">{b.title}（這一篇）</span>
+              ) : (
+                <Link to={`/basics/${b.id}`} className="text-accent">
+                  {b.title}
+                </Link>
+              )}
+            </li>
+          ))}
+        </ul>
+      </nav>
     </article>
   );
 }
