@@ -1,0 +1,47 @@
+name: 測試：抓 YouTube 字幕
+
+# 暫時的測試：確認 GitHub 的機器能不能讀到 YouTube 影片的字幕（雲端環境會被 YouTube 擋）。測試完會刪掉。
+on:
+  workflow_dispatch:
+    inputs:
+      video:
+        description: 'YouTube 影片 ID'
+        default: 'szWg0zCAbF0'
+
+permissions:
+  contents: read
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      VIDEO: ${{ inputs.video }}
+    steps:
+      - run: pip install -q youtube-transcript-api yt-dlp
+      - name: youtube-transcript-api
+        continue-on-error: true
+        run: |
+          python - <<'PY'
+          import os
+          from youtube_transcript_api import YouTubeTranscriptApi
+          t = YouTubeTranscriptApi().fetch(os.environ["VIDEO"], languages=["en", "zh-TW", "zh-Hant", "zh"])
+          lines = [s.text for s in t]
+          print(len(lines), "segments")
+          print("\n".join(lines[:25]))
+          open("transcript.txt", "w").write("\n".join(lines))
+          PY
+      - name: yt-dlp
+        continue-on-error: true
+        run: |
+          yt-dlp --skip-download --write-auto-subs --write-subs --sub-langs "en.*,zh.*" --sub-format vtt -o "%(id)s" "https://www.youtube.com/watch?v=${VIDEO}"
+          ls -la
+          head -40 ./*.vtt || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: transcript
+          path: |
+            *.txt
+            *.vtt
+          if-no-files-found: ignore
