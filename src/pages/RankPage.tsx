@@ -13,6 +13,7 @@ import {
   runRanking,
   sortRows,
   splitBySample,
+  winRateChampion,
   yearlyChampions,
   type RankResult,
   type RankRow,
@@ -143,6 +144,81 @@ function H2({ children, sub }: { children: ReactNode; sub?: ReactNode }) {
   );
 }
 
+interface LongTermCheck {
+  long: RankResult;
+  rows: { row: RankRow; long: RankRow; why: string }[];
+}
+
+/**
+ * 短期間的冠軍（勝率第一、或贏過一直抱著的），放到近 10 年看成績。
+ * 選的期間本來就差不多 10 年時不用再算。
+ */
+function longTermCheck(prep: Parameters<typeof runRanking>[0], cfg: Parameters<typeof runRanking>[3], result: RankResult): LongTermCheck | null {
+  const last = prep.candles[prep.candles.length - 1]?.time;
+  if (!last) return null;
+  const range = indexRange(prep.candles, `${Number(last.slice(0, 4)) - 10}${last.slice(4)}`, last);
+  if (!range || result.end - result.start + 1 >= (range.end - range.start + 1) * 0.8) return null;
+  const picks: { row: RankRow; why: string }[] = [];
+  const champ = winRateChampion(result.rows);
+  if (champ) picks.push({ row: champ, why: '勝率第一' });
+  const beat = result.rows
+    .filter((x) => x.totalReturn > result.benchmark.totalReturn && x.def.id !== champ?.def.id)
+    .sort((a, b) => b.totalReturn - a.totalReturn)
+    .slice(0, 3);
+  for (const row of beat) picks.push({ row, why: '贏過一直抱著' });
+  if (!picks.length) return null;
+  const long = runRanking(prep, range.start, range.end, cfg);
+  const rows = picks.flatMap((p) => {
+    const l = long.rows.find((x) => x.def.id === p.row.def.id);
+    return l ? [{ ...p, long: l }] : [];
+  });
+  return rows.length ? { long, rows } : null;
+}
+
+function LongTermCard({ check, candles }: { check: LongTermCheck; candles: Candle[] }) {
+  const { long } = check;
+  const years = long.benchmark.years;
+  const cagr = (total: number) => (years > 0 ? (1 + total) ** (1 / years) - 1 : null);
+  return (
+    <Card>
+      <H2 sub={`短期間的冠軍，常常只是剛好遇到適合它的行情。這裡把這段期間勝率第一、和贏過一直抱著的規則，放到近 10 年（${fmtDate(candles[long.start]!.time)}～${fmtDate(candles[long.end]!.time)}）再算一次。`}>
+        放到近 10 年，還贏嗎？
+      </H2>
+      <div className="table-scroll">
+        <table className="w-full min-w-[480px] text-sm tabular">
+          <thead>
+            <tr className="text-left text-xs text-muted">
+              <th className="py-1 pr-2 font-normal">規則</th>
+              <th className="py-1 pr-2 text-right font-normal">這段期間</th>
+              <th className="py-1 pr-2 text-right font-normal">近 10 年總報酬</th>
+              <th className="py-1 text-right font-normal">近 10 年年化</th>
+            </tr>
+          </thead>
+          <tbody>
+            {check.rows.map(({ row, long: l, why }) => (
+              <tr key={row.def.id} className="border-t border-line">
+                <td className="py-1.5 pr-2 text-fg">
+                  {row.def.name}
+                  <span className="ml-1 text-xs text-muted">（{why}）</span>
+                </td>
+                <td className={`py-1.5 pr-2 text-right ${signClass(row.totalReturn)}`}>{fmtPct(row.totalReturn)}</td>
+                <td className={`py-1.5 pr-2 text-right ${signClass(l.totalReturn)}`}>{fmtPct(l.totalReturn)}</td>
+                <td className="py-1.5 text-right text-fg">{fmtPct(cagr(l.totalReturn))}</td>
+              </tr>
+            ))}
+            <tr className="border-t border-line text-muted">
+              <td className="py-1.5 pr-2">一直抱著</td>
+              <td className="py-1.5 pr-2 text-right" />
+              <td className="py-1.5 pr-2 text-right">{fmtPct(long.benchmark.totalReturn)}</td>
+              <td className="py-1.5 text-right">{fmtPct(long.benchmark.cagr)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </Card>
+  );
+}
+
 function RankView({
   asset,
   series,
@@ -182,6 +258,7 @@ function RankView({
   const result = useMemo(() => (rs >= 0 ? runRanking(prep, rs, re, cfg) : null), [prep, cfg, rs, re]);
   const adjacent = useMemo(() => (result ? adjacentCheck(prep, rs, re, cfg, result) : null), [prep, cfg, result, rs, re]);
   const yearly = useMemo(() => yearlyChampions(prep, cfg), [prep, cfg]);
+  const longCheck = useMemo(() => (result ? longTermCheck(prep, cfg, result) : null), [prep, cfg, result]);
 
   const pick = (p: PeriodPreset) => go({ p: p.key, from: null, to: null });
   const setCustom = (f: string, t: string) => {
@@ -215,6 +292,8 @@ function RankView({
       </Card>
 
       {result && <RankResults asset={asset} candles={prep.candles} result={result} sort={sort} go={go} />}
+
+      {longCheck && <LongTermCard check={longCheck} candles={prep.candles} />}
 
       {result && <PeriodNews asset={asset} candles={prep.candles} start={rs} end={re} />}
 

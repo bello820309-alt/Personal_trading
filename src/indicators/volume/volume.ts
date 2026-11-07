@@ -4,6 +4,33 @@ import { getLine, type IndicatorDef, type Series } from '../types';
 
 export type VolumeParams = { ma1: number; ma2: number };
 
+const md = (time: string) => `${Number(time.slice(5, 7))}/${Number(time.slice(8, 10))}`;
+
+/**
+ * 最近一次爆量（成交量 ≥ 均量 2 倍）：放量是從哪一根開始的，以及放量之前的均量。
+ * 爆量那幾天會把最近的均量拉高，所以「量有沒有縮回來」要和放量之前的均量比。
+ * lookback：只看最近幾根（太久以前的爆量就不提了）。
+ */
+export function recentSpike(volumes: readonly number[], avg: Series, n: number, lookback = 10): { start: number; base: number } | null {
+  const big = (i: number, k: number) => {
+    const a = avg[i];
+    return a != null && a > 0 && volumes[i]! >= k * a;
+  };
+  let last = -1;
+  for (let i = n - 1; i >= Math.max(1, n - lookback); i--) {
+    if (big(i, 2)) {
+      last = i;
+      break;
+    }
+  }
+  if (last < 0) return null;
+  // 往前找這一波放量（≥ 1.3 倍）是從哪一天開始的
+  let start = last;
+  while (start - 1 >= 1 && big(start - 1, 1.3)) start--;
+  const base = avg[start - 1];
+  return base != null && base > 0 ? { start, base } : null;
+}
+
 export const volumeIndicator: IndicatorDef<VolumeParams> = {
   id: 'volume',
   shortName: '成交量',
@@ -57,10 +84,18 @@ export const volumeIndicator: IndicatorDef<VolumeParams> = {
     } else if (ratio <= 0.6) {
       comment = up ? '上漲但量縮，追價意願不強。' : down ? '下跌但量縮，賣壓可能正在減輕。' : '交易清淡，市場在觀望。';
     }
+    const spike = recentSpike(
+      candles.map((c) => c.volume),
+      avg === undefined ? [] : getLine(r, 'ma2'),
+      n,
+    );
+    const spikeText = spike
+      ? ` 這一波放量從 ${md(candles[spike.start]!.time)} 開始；今天的量是放量之前（${md(candles[spike.start - 1]!.time)} 為止）${p.ma2} 日均量的 ${fmtNum(v / spike.base, 1)} 倍。${p.ma2} 日均量已經把爆量那幾天算進去、被拉高了，所以量有沒有縮回來，要和放量之前的均量比：降到 1 倍左右，才算回到爆量之前的水準。`
+      : '';
     return {
       tone,
       headline: `${priceWord}${level}（${fmtNum(ratio, 1)} 倍均量）`,
-      detail: `今天的成交量是 ${p.ma2} 日均量的 ${fmtNum(ratio, 2)} 倍。${comment}`,
+      detail: `今天的成交量是 ${p.ma2} 日均量的 ${fmtNum(ratio, 2)} 倍。${comment}${spikeText}`,
     };
   },
   noSignalReason:

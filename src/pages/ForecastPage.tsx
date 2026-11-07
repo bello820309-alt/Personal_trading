@@ -6,7 +6,7 @@ import { PriceChart, type ChartIndicator } from '../components/chart/PriceChart'
 import { Card, Fold, Notice, PageTitle, Segmented, Spinner } from '../components/ui';
 import { DEFAULT_ASSET_ID, getAsset, type AssetConfig } from '../config/assets';
 import { FEATURES, analogForecast, horizonsFor, walkForwardCheck, type CheckResult, type Forecast, type HorizonKey } from '../forecast/analog';
-import { checkPoints, describeNow, historyTail, summarizeCheck, usageTips, type CheckTone } from '../forecast/summary';
+import { checkPoints, describeNow, historyTail, similarityNote, summarizeCheck, usageTips, type CheckTone } from '../forecast/summary';
 import { fmtDate, fmtNum, fmtPct, fmtPrice, signClass } from '../data/format';
 import { useAsset } from '../data/load';
 import { completedLength } from '../data/parse';
@@ -175,6 +175,11 @@ function ForecastView({
         <H2 sub={`從過去的資料裡找出 ${stats.n} 個和現在最像的日子，看它們 ${hz.label}怎麼走。`}>
           {hz.label}（{fmtDate(targetDate)} 左右）
         </H2>
+        {similarityNote(forecast, FEATURES) && (
+          <div className="mb-3">
+            <Notice tone="warn">{similarityNote(forecast, FEATURES)}</Notice>
+          </div>
+        )}
         <div className="grid gap-2 sm:grid-cols-3">
           <Stat
             label="上漲的比例"

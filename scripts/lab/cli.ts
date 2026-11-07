@@ -335,7 +335,8 @@ function cmdJournal(): void {
     decision: str(raw.decision, 'decision（今天的決定和理由）', 1000),
     learned: list(raw.learned, 'learned（學到的）'),
     confused: list(raw.confused, 'confused（看不懂的地方）'),
-    plan: str(raw.plan, 'plan（接下來的打算）', 600),
+    // 參加者被要求把自己的規則完整寫在 plan 裡（隔天的 me 會顯示），所以給多一點空間
+    plan: str(raw.plan, 'plan（接下來的打算）', 1200),
     pages: list(raw.pages, 'pages（看了哪些頁面）'),
     ...(confidence !== undefined ? { confidence: confidence as number } : {}),
     snapshot: { value: Math.round(s.value), cash: Math.round(s.cash), returnPct: Math.round(s.returnPct * 1e6) / 1e6 },

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { CheckResult, HorizonKey } from './analog';
-import { checkPoints, historyTail, summarizeCheck, usageTips } from './summary';
+import { FEATURES, type CheckResult, type Forecast, type HorizonKey } from './analog';
+import { checkPoints, describeNow, historyTail, similarityNote, summarizeCheck, usageTips } from './summary';
 
 const mk = (key: HorizonKey, label: string, hit: number, alwaysUp: number, coverage: number): CheckResult => ({
   horizon: { key, label, bars: 21 },
@@ -76,5 +76,46 @@ describe('historyTail：過去 5 年最差的一成', () => {
     const tip = usageTips(mk('1m', '1 個月後', 0.5, 0.5, 0.6), { p10: -0.12, min: -0.35, span: '1 個月' })[1]!;
     expect(tip).toContain('最差的一成是 -12.00% 以下');
     expect(tip).toContain('最差的一次是 -35.00%');
+  });
+});
+
+/** 只填說明會用到的欄位 */
+function fakeForecast(features: number[], analogFeatures: number[][], featureSd: number[]): Forecast {
+  return { target: 0, analogs: [], paths: [], horizons: [], cone: [], features, analogFeatures, featureSd };
+}
+
+describe('「現在的狀態」的波動說明', () => {
+  const asset = { name: '元大台灣50' } as Parameters<typeof describeNow>[2];
+  const candles = [{ time: '2026-11-06', open: 1, high: 1, low: 1, close: 1, volume: 1 }];
+
+  it('一個月跌了兩成、波動卻和過去一年差不多：說明波動是每天漲跌的幅度', () => {
+    // 2026/11/06 的 0050：近 1 個月 -20.22%，波動是過去一年的 0.86 倍
+    const f = fakeForecast([-0.1186, -0.15, -0.2022, -0.1, -0.081, -0.02, 18.6, 0.86, -0.206], [], []);
+    const t = describeNow(f, candles, asset);
+    expect(t).toContain('0.86 倍（和過去一年差不多）');
+    expect(t).toContain('「波動」是每天漲跌幅度的大小');
+    expect(t).toContain('近 1 個月雖然跌了 20.2%');
+  });
+
+  it('漲跌不大時不多說', () => {
+    const f = fakeForecast([0.01, 0.01, 0.02, 0.03, 0.04, 0.05, 55, 1.0, -0.02], [], []);
+    expect(describeNow(f, candles, asset)).not.toContain('「波動」是每天');
+  });
+});
+
+describe('相似的日子到底像不像', () => {
+  const sd = [0.03, 0.04, 0.059, 0.08, 0.1, 0.1, 10, 0.3, 0.07];
+
+  it('現在和相似日子平均差超過 1 個標準差：提醒參考價值比較低', () => {
+    const now = [-0.12, -0.15, -0.2022, -0.1, -0.08, -0.02, 18.6, 0.86, -0.206];
+    const analogs = [[-0.06, -0.08, -0.0737, -0.09, -0.07, -0.02, 28, 0.6, -0.14]];
+    const t = similarityNote(fakeForecast(now, analogs, sd), FEATURES);
+    expect(t).toContain('「近 1 個月漲跌」現在是 -20.22%，相似日子的平均是 -7.37%');
+  });
+
+  it('差不多的時候不提醒', () => {
+    const now = [-0.02, -0.03, -0.05, -0.04, -0.05, 0.01, 35, 1.4, -0.06];
+    const analogs = [[-0.02, -0.03, -0.03, -0.04, -0.01, 0.01, 37, 1.1, -0.06]];
+    expect(similarityNote(fakeForecast(now, analogs, sd), FEATURES)).toBeNull();
   });
 });

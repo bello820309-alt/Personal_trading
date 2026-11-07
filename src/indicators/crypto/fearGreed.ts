@@ -2,6 +2,7 @@ import { fmtNum } from '../../data/format';
 import { crossOver, crossUnder, scanSignals } from '../math/core';
 import { getLine, type IndicatorDef } from '../types';
 import { lastValid } from '../math/core';
+import { lastDate, valueOn } from '../../data/extra';
 import { extraSeries, freshLast } from './common';
 
 export type FearGreedParams = { buyBelow: number; sellAbove: number };
@@ -21,7 +22,15 @@ export const fearGreedIndicator: IndicatorDef<FearGreedParams> = {
   ],
   defaults: { buyBelow: 25, sellAbove: 75 },
   compute(candles, p, ctx) {
+    // 每天早上 8 點公布的數字對應「當天」那根日 K；那根還沒收盤時圖上畫不出來，先記下來給說明用
+    const raw = ctx?.extra?.series.fng;
+    const lastBar = candles[candles.length - 1];
+    const newestDay = raw ? lastDate(raw) : null;
+    const newestValue = raw && newestDay ? valueOn(raw, newestDay) : null;
+    const newer =
+      lastBar && newestDay && newestValue !== null && newestDay > (lastBar.endTime ?? lastBar.time) ? { date: newestDay, value: newestValue } : undefined;
     return {
+      ...(newer ? { newer } : {}),
       lines: [{ key: 'fng', label: '恐懼貪婪指數', values: extraSeries(ctx, 'fng', candles), kind: 'line', color: 's4', width: 2 }],
       levels: [
         { value: p.sellAbove, label: `極度貪婪 ${p.sellAbove}`, color: 'hot' },
@@ -47,8 +56,13 @@ export const fearGreedIndicator: IndicatorDef<FearGreedParams> = {
     const v = fmtNum(x, 0);
     const at = lastValid(getLine(r, 'fng'));
     const when = at ? candles[at.index]?.time : undefined;
+    const md = (d: string) => `${Number(d.slice(5, 7))}/${Number(d.slice(8, 10))}`;
+    const label = (y: number) => (y < p.buyBelow ? '極度恐懼' : y < 45 ? '恐懼' : y <= 55 ? '中性' : y <= p.sellAbove ? '貪婪' : '極度貪婪');
+    const newer = r.newer
+      ? `更新的數字已經公布了：${md(r.newer.date)} 早上 8 點是 ${fmtNum(r.newer.value, 0)}（${label(r.newer.value)}）。它對應 ${md(r.newer.date)} 那根日 K，那根要到隔天早上 8 點才收盤，所以圖上和上面的數字還是前一根的；收盤之後就會換成新的。`
+      : '';
     const note = when
-      ? `（這是 ${Number(when.slice(5, 7))}/${Number(when.slice(8, 10))} 台灣時間早上 8 點公布的數字，反映前一天 24 小時的情緒；當天的大漲大跌，要到隔天公布的數字才會反映。）`
+      ? `（這是 ${md(when)} 台灣時間早上 8 點公布的數字，反映前一天 24 小時的情緒；當天的大漲大跌，要到隔天公布的數字才會反映。${newer}）`
       : '';
     if (x < p.buyBelow) {
       return {

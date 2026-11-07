@@ -116,6 +116,8 @@ export interface IndicatorResult {
   scale?: { min: number; max: number };
   /** 圖例與說明裡線的顯示順序（線的 key）；沒有指定就照 lines 的順序 */
   legendOrder?: string[];
+  /** 比最後一根 K 棒還新、已經公布的資料（例如當天早上公布的恐懼貪婪指數），給白話說明用 */
+  newer?: { date: string; value: number };
 }
 
 export type Tone = 'bullish' | 'bearish' | 'hot' | 'cold' | 'neutral';

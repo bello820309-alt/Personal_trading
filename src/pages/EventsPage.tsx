@@ -81,6 +81,8 @@ function EventsView({ asset, series, group, onGroup }: { asset: AssetConfig; ser
   const recent = [...activeRows].reverse();
   const shown = showAll ? recent : recent.slice(0, 12);
   const upcoming = UPCOMING_FOMC.filter((d) => d > lastTime);
+  // 人工整理的大事清單：寫出收錄到哪一天，讓人知道這不是即時新聞
+  const manualLatest = active === 'crypto' || active === 'macro' ? activeRows[activeRows.length - 1]?.event.date : undefined;
 
   return (
     <div className="space-y-4">
@@ -137,6 +139,11 @@ function EventsView({ asset, series, group, onGroup }: { asset: AssetConfig; ser
             <li key={l}>{l}</li>
           ))}
         </ul>
+        {manualLatest && (
+          <p className="mb-3 text-xs leading-relaxed text-muted">
+            「{EVENT_GROUP_LABELS[active]}」是人工整理的清單，只收對整個市場影響很大的事件（例如大型交易所倒閉、ETF 通過），可能比新聞慢，不是即時更新；目前最新一筆是 {fmtDate(manualLatest)}。想知道最近有沒有大事，還是要看新聞。
+          </p>
+        )}
         <div className="table-scroll">
           <table className="w-full min-w-[520px] text-sm tabular">
             <thead>
@@ -210,6 +217,10 @@ function EventsView({ asset, series, group, onGroup }: { asset: AssetConfig; ser
         <h2 className="text-base font-semibold text-fg">不同的利率環境下，哪個策略勝率最高？</h2>
         <p className="mt-0.5 mb-3 text-xs leading-relaxed text-muted">
           {REGIME_RULE}用全部資料回測每個策略，每筆交易依「買進那天」屬於哪一種環境歸類；完成 {MIN_TRADES} 筆以上交易的策略才排名。
+          這裡只比勝率，勝率高不代表賺得多（見基礎觀念「回測是什麼？」）；交易只有 5～10 筆時，多輸一次勝率就差很多。
+        </p>
+        <p className="mb-3 text-xs leading-relaxed text-muted">
+          「一直抱著的年化報酬」是把整段升息期（或降息期）加起來算的長期報酬，和上面「升息後 30 天」只看每次升息之後短短 30 天的反應不一樣。例如 2017 年聯準會一路升息，股市和比特幣那一年卻都大漲。所以「升息後 30 天的平均」和「升息期一直抱著的報酬」就算看起來方向相反，也可以同時成立，並不矛盾。
         </p>
         <p className="mb-3 rounded-lg bg-surface-2 px-3 py-2 text-sm text-fg">
           照這個規則，現在（{fmtDate(new Date().toISOString().slice(0, 10))}）屬於「{REGIME_LABELS[regimeAt(new Date().toISOString().slice(0, 10))]}」。

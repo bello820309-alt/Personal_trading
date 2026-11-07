@@ -138,7 +138,7 @@ export const REGIME_LABELS: Record<Regime, string> = {
   steady: '利率不變期',
 };
 
-export const REGIME_RULE = '升息期＝距離上一次升息不到一年；降息期＝距離上一次降息不到一年；利率不變期＝已經超過一年沒有調整利率。';
+export const REGIME_RULE = '升息期＝最近一次調整利率是升息，而且還不到一年；降息期＝最近一次是降息、還不到一年；利率不變期＝已經超過一年沒有調整利率。一年內又升又降時，看最近的那一次。';
 
 const DAY = 86400000;
 

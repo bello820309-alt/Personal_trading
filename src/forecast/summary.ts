@@ -15,9 +15,9 @@ function rsiWord(r: number): string {
 }
 
 function volWord(v: number): string {
-  if (v >= 1.3) return '比平常激烈';
-  if (v <= 0.8) return '比平常平靜';
-  return '和平常差不多';
+  if (v >= 1.3) return '比過去一年激烈';
+  if (v <= 0.8) return '比過去一年平靜';
+  return '和過去一年差不多';
 }
 
 /** 「現在」的狀態：最近的漲跌、趨勢位置、RSI、波動、離高點多遠 */
@@ -26,8 +26,30 @@ export function describeNow(f: Forecast, candles: Candle[], asset: AssetConfig):
   return (
     `${asset.name}（以 ${fmtDate(candles[f.target]!.time)} 收盤為準）：近 1 週 ${fmtPct(r1w)}、近 1 個月 ${fmtPct(r1m)}、近 3 個月 ${fmtPct(r3m)}；` +
     `在 200 日均線${ma >= 0 ? '上方' : '下方'} ${pp(ma)}%；RSI ${fmtNum(rsi, 1)}（${rsiWord(rsi)}）；` +
-    `最近 1 個月的波動是過去一年的 ${fmtNum(vol, 2)} 倍（${volWord(vol)}）；離一年內最高點 ${fmtPct(dd)}。`
+    `最近 1 個月的波動是過去一年的 ${fmtNum(vol, 2)} 倍（${volWord(vol)}）；離一年內最高點 ${fmtPct(dd)}。` +
+    (Math.abs(r1m) >= 0.08 && vol < 1.3
+      ? `這裡的「波動」是每天漲跌幅度的大小，不是這段期間總共漲跌多少：近 1 個月雖然${r1m < 0 ? '跌' : '漲'}了 ${pp(r1m)}%，但大多是每天一點一點地${r1m < 0 ? '跌' : '漲'}，不是每天大起大落，所以波動不算特別大。`
+      : '')
   );
+}
+
+/**
+ * 最像的日子其實也不太像時（例如現在一個月跌了兩成，相似的日子平均只跌 7%），提醒參考價值比較低。
+ * 比較「漲跌、和均線的距離、離高點多遠」這幾個百分比的特徵：現在和相似日子平均的差距，
+ * 超過這個特徵在歷史上的 1 個標準差（比特幣本來就波動大，所以用各自的標準差來量）就提醒。
+ */
+export function similarityNote(f: Forecast, labels: readonly { label: string; kind: string }[], limit = 1): string | null {
+  let worst: { j: number; z: number; avg: number } | null = null;
+  f.features.forEach((now, j) => {
+    const sd = f.featureSd[j];
+    if (labels[j]?.kind !== 'pct' || !sd) return;
+    const avg = f.analogFeatures.reduce((a, row) => a + row[j]!, 0) / f.analogFeatures.length;
+    const z = Math.abs(now - avg) / sd;
+    if (!worst || z > worst.z) worst = { j, z, avg };
+  });
+  const w = worst as { j: number; z: number; avg: number } | null;
+  if (!w || w.z < limit) return null;
+  return `現在的狀況在過去很少見，最像的日子其實也沒有很像：例如「${labels[w.j]!.label}」現在是 ${fmtPct(f.features[w.j]!)}，相似日子的平均是 ${fmtPct(w.avg)}。相似的日子不夠像時，它們之後的走法參考價值比較低，實際的漲跌可能比預測範圍更極端。`;
 }
 
 export type CheckTone = 'good' | 'meh' | 'bad';

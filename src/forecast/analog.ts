@@ -196,6 +196,19 @@ export interface Forecast {
   features: number[];
   /** 每個相似日子的原始特徵（和現在比較用） */
   analogFeatures: number[][];
+  /** 每個特徵在全部歷史裡的標準差（判斷「相似的日子到底像不像」用） */
+  featureSd: number[];
+}
+
+/** 每個特徵在全部歷史裡的標準差 */
+function featureSds(rows: readonly (number[] | null)[]): number[] {
+  const valid = rows.filter((r): r is number[] => r !== null);
+  const f = valid[0]?.length ?? 0;
+  const mean = new Array(f).fill(0);
+  const sd = new Array(f).fill(0);
+  for (const r of valid) for (let j = 0; j < f; j++) mean[j] += r[j]! / valid.length;
+  for (const r of valid) for (let j = 0; j < f; j++) sd[j] += (r[j]! - mean[j]) ** 2 / valid.length;
+  return sd.map((x) => Math.sqrt(x));
 }
 
 export const DEFAULT_K = 30;
@@ -224,6 +237,7 @@ export function analogForecast(candles: readonly Candle[], asset: Pick<AssetConf
     cone,
     features: raw[target]!,
     analogFeatures: analogs.map((a) => raw[a.index]!),
+    featureSd: featureSds(raw),
   };
 }
 
