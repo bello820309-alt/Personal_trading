@@ -247,6 +247,11 @@ function ForecastView({
 
       <Fold title="現在的狀態，和最像現在的日子" sub="相似的日子是只用價格算出來的數字挑出來的，不包含消息面。">
         <p className="text-sm leading-relaxed text-fg">{describeNow(forecast, candles, asset)}</p>
+        <p className="mt-2 text-xs leading-relaxed text-muted">
+          {similarityNote(forecast, FEATURES)
+            ? '下表裡現在和相似日子差很多，所以結果上方有「最像的日子其實也沒有很像」的提醒。'
+            : '這次相似的日子和現在大致相像：下表每一項的差距，都在這個特徵歷史上的 1 個標準差以內（差太多時，結果上方會出現提醒）。'}
+        </p>
         <div className="table-scroll mt-3">
           <table className="w-full text-sm tabular">
             <thead>

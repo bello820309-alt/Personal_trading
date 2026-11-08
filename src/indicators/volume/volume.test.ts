@@ -40,4 +40,26 @@ describe('最近的爆量', () => {
     const r = volumeIndicator.compute(c, p);
     expect(volumeIndicator.describe!(c, r, p)!.detail).toContain('20 日均量的 1.1 倍');
   });
+
+  it('帶入單位時寫出實際的量（台股以張為單位），並說明兩個倍數差在哪裡', () => {
+    const vols = [...Array(25).fill(100_000), 150_000, 150_000, 600_000];
+    const c = candles(vols);
+    const p = { ma1: 5, ma2: 20 };
+    const r = volumeIndicator.compute(c, p, { volume: { divisor: 1000, unit: '張' } });
+    const d = volumeIndicator.describe!(c, r, p)!.detail;
+    expect(d).toContain('放量之前（10/25 為止）的 20 日均量是 100 張，今天 600 張，是它的 6.0 倍');
+    expect(d).toContain('兩個倍數差在比的對象');
+  });
+
+  it('漲跌不到 0.1% 算價平；比特幣週末的量提醒通常比較少', () => {
+    // 最後一根是 2026/11/07（週六），只比前一天多 0.01%
+    const vols = [...Array(30).fill(100), 40];
+    const closes = [...Array(30).fill(10000), 10001];
+    const c = candles(vols, closes).map((x, i) => ({ ...x, time: new Date(Date.UTC(2026, 9, 8) + i * 86400000).toISOString().slice(0, 10) }));
+    expect(c[c.length - 1]!.time).toBe('2026-11-07');
+    const p = { ma1: 5, ma2: 20 };
+    const d = volumeIndicator.describe!(c, volumeIndicator.compute(c, p), p)!;
+    expect(d.headline.startsWith('價平')).toBe(true);
+    expect(d.detail).toContain('今天是週末');
+  });
 });

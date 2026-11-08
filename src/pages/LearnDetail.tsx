@@ -208,7 +208,7 @@ function LiveChart({ def, asset, series }: { def: IndicatorDef; asset: AssetConf
   const update = useSettings((s) => s.update);
   const candles = series.candles;
   const extra = useExtra(asset.id);
-  const ci = useMemo(() => computeIndicator(def, candles, asset.market, null, { extra }), [def, candles, asset.market, extra]);
+  const ci = useMemo(() => computeIndicator(def, candles, asset.market, null, { extra, volume: asset.volume }), [def, candles, asset.market, asset.volume, extra]);
   const sources = (def.requires ?? []).flatMap((k) => {
     const s = extra?.series[k];
     return s ? [`${s.label}：${s.source}，資料到 ${fmtDate(lastDate(s))}`] : [];
@@ -339,6 +339,7 @@ function BacktestSummary({ def }: { def: IndicatorDef }) {
                     <td className="py-1.5 pr-2 text-right text-muted">−{fmtNum(res.benchmarkMetrics.maxDrawdown * 100, 1)}%</td>
                     <td className="py-1.5 text-right text-fg">
                       {res.stats.closedCount} 筆／{fmtPct(res.stats.winRate, 0, false)}
+                      {res.trades.some((t) => t.open) && <div className="text-xs text-muted">＋1 筆還沒賣出</div>}
                     </td>
                   </>
                 ) : (
@@ -351,7 +352,10 @@ function BacktestSummary({ def }: { def: IndicatorDef }) {
           </tbody>
         </table>
       </div>
-      {def.params.length > 0 && <p className="mt-2 text-xs leading-relaxed text-muted">使用的參數：{paramsByAsset(def, rows.map((r) => r.asset))}。</p>}
+      <p className="mt-2 text-xs leading-relaxed text-muted">
+        「交易」只算已經賣出的筆數，勝率也只看這些；還沒賣出的那一筆另外標出來，它的漲跌有算進策略的年化報酬裡。交易只有幾筆時，運氣成分很大（見基礎觀念「回測是什麼？」）。
+      </p>
+      {def.params.length > 0 && <p className="mt-1 text-xs leading-relaxed text-muted">使用的參數：{paramsByAsset(def, rows.map((r) => r.asset))}。</p>}
       <p className="mt-1 text-xs text-muted">
         算到各標的最新的收盤：
         {rows

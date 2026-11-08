@@ -85,21 +85,28 @@ function fakeForecast(features: number[], analogFeatures: number[][], featureSd:
 }
 
 describe('「現在的狀態」的波動說明', () => {
-  const asset = { name: '元大台灣50' } as Parameters<typeof describeNow>[2];
-  const candles = [{ time: '2026-11-06', open: 1, high: 1, low: 1, close: 1, volume: 1 }];
+  const asset = { name: '元大台灣50', tradesOnWeekends: false } as Parameters<typeof describeNow>[2];
+  // 一年多的資料：每天交替漲跌 2%（波動固定），最後一根是目標
+  const candles = Array.from({ length: 300 }, (_, i) => {
+    const close = 100 * (i % 2 === 0 ? 1 : 1.02);
+    return { time: `2026-01-${String((i % 28) + 1).padStart(2, '0')}`, open: close, high: close, low: close, close, volume: 1 };
+  });
+  const target = candles.length - 1;
+  const at = (features: number[]) => ({ ...fakeForecast(features, [], []), target });
 
-  it('一個月跌了兩成、波動卻和過去一年差不多：說明波動是每天漲跌的幅度', () => {
-    // 2026/11/06 的 0050：近 1 個月 -20.22%，波動是過去一年的 0.86 倍
-    const f = fakeForecast([-0.1186, -0.15, -0.2022, -0.1, -0.081, -0.02, 18.6, 0.86, -0.206], [], []);
-    const t = describeNow(f, candles, asset);
-    expect(t).toContain('0.86 倍（和過去一年差不多）');
-    expect(t).toContain('「波動」是每天漲跌幅度的大小');
-    expect(t).toContain('近 1 個月雖然跌了 20.2%');
+  it('一直寫出波動是怎麼算的，以及最近 1 個月、過去一年大約每天漲跌幾 %', () => {
+    const t = describeNow(at([0.01, 0.01, 0.02, 0.03, 0.04, 0.05, 55, 1.0, -0.02]), candles, asset);
+    expect(t).toContain('「波動」是每天漲跌幅的標準差');
+    expect(t).toContain('最近 1 個月約 ±1.98%，過去一年約 ±1.98%');
+    expect(t).not.toContain('方向一直');
   });
 
-  it('漲跌不大時不多說', () => {
-    const f = fakeForecast([0.01, 0.01, 0.02, 0.03, 0.04, 0.05, 55, 1.0, -0.02], [], []);
-    expect(describeNow(f, candles, asset)).not.toContain('「波動」是每天');
+  it('一個月跌了兩成、波動卻和過去一年差不多：說明是跌的日子多，不是每天漲跌特別大', () => {
+    // 2026/11/06 的 0050：近 1 個月 -20.22%，波動是過去一年的 0.86 倍
+    const t = describeNow(at([-0.1186, -0.15, -0.2022, -0.1, -0.081, -0.02, 18.6, 0.86, -0.206]), candles, asset);
+    expect(t).toContain('0.86 倍（和過去一年差不多）');
+    expect(t).toContain('近 1 個月雖然跌了 20.2%，主要是下跌的日子比較多');
+    expect(t).not.toContain('一點一點');
   });
 });
 

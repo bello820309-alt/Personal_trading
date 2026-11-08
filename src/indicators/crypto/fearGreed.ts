@@ -59,10 +59,10 @@ export const fearGreedIndicator: IndicatorDef<FearGreedParams> = {
     const md = (d: string) => `${Number(d.slice(5, 7))}/${Number(d.slice(8, 10))}`;
     const label = (y: number) => (y < p.buyBelow ? '極度恐懼' : y < 45 ? '恐懼' : y <= 55 ? '中性' : y <= p.sellAbove ? '貪婪' : '極度貪婪');
     const newer = r.newer
-      ? `更新的數字已經公布了：${md(r.newer.date)} 早上 8 點是 ${fmtNum(r.newer.value, 0)}（${label(r.newer.value)}）。它對應 ${md(r.newer.date)} 那根日 K，那根要到隔天早上 8 點才收盤，所以圖上和上面的數字還是前一根的；收盤之後就會換成新的。`
+      ? `更新的數字已經公布了：${md(r.newer.date)} 早上 8 點是 ${fmtNum(r.newer.value, 0)}（${label(r.newer.value)}）。它會畫在 ${md(r.newer.date)} 那根日 K 上，那根要到隔天早上 8 點才收盤，收盤之後圖上和上面的數字才會換成新的。`
       : '';
     const note = when
-      ? `（這是 ${md(when)} 台灣時間早上 8 點公布的數字，反映前一天 24 小時的情緒；當天的大漲大跌，要到隔天公布的數字才會反映。${newer}）`
+      ? `（這是 ${md(when)} 台灣時間早上 8 點公布的數字。它是用公布之前那一天的市場狀況算的，畫在 ${md(when)} 那根日 K 上（那根剛好從 ${md(when)} 早上 8 點開始），所以圖上每一天的數字，反映的都是「前一天」的情緒；當天的大漲大跌，要到隔天公布的數字才會反映。${newer}）`
       : '';
     if (x < p.buyBelow) {
       return {

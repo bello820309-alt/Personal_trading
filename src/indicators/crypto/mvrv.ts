@@ -1,6 +1,7 @@
 import { fmtNum } from '../../data/format';
 import { crossOver, crossUnder, scanSignals } from '../math/core';
 import { getLine, type IndicatorDef } from '../types';
+import { lastValid } from '../math/core';
 import { extraSeries, freshLast } from './common';
 
 export type MvrvParams = { low: number; high: number };
@@ -42,10 +43,14 @@ export const mvrvIndicator: IndicatorDef<MvrvParams> = {
     const x = freshLast(getLine(r, 'mvrv'), candles.length);
     if (x === null) return null;
     const v = fmtNum(x, 2);
-    if (x >= p.high) return { tone: 'hot', headline: `MVRV ${v}：高估區`, detail: '市值是所有人平均成本的好幾倍，帳上獲利很大，獲利了結的賣壓也大；過去的大頂部多出現在這裡。' };
-    if (x >= 2.4) return { tone: 'bullish', headline: `MVRV ${v}：偏高`, detail: '大多數人都有不錯的帳面獲利，行情偏熱，但還沒到過去的高估區。' };
-    if (x >= p.low) return { tone: 'neutral', headline: `MVRV ${v}：合理區間`, detail: '市值高於平均成本，但沒有特別貴。' };
-    return { tone: 'cold', headline: `MVRV ${v}：低估區`, detail: '市值低於所有人的平均成本，等於大家平均都在虧錢；過去的大底部多出現在這裡，但可能停留很久。' };
+    // 價格 ÷ MVRV ＝ 大家平均的買進成本（實現價格）
+    const at = lastValid(getLine(r, 'mvrv'));
+    const price = at ? candles[at.index]?.close : undefined;
+    const cost = price && x > 0 ? ` 換算成價格，所有人的平均成本（又叫「實現價格」，＝價格 ÷ MVRV）大約是每顆 ${fmtNum(price / x, 0)} 美元。` : '';
+    if (x >= p.high) return { tone: 'hot', headline: `MVRV ${v}：高估區`, detail: `市值是所有人平均成本的好幾倍，帳上獲利很大，獲利了結的賣壓也大；過去的大頂部多出現在這裡。${cost}` };
+    if (x >= 2.4) return { tone: 'bullish', headline: `MVRV ${v}：偏高`, detail: `大多數人都有不錯的帳面獲利，行情偏熱，但還沒到過去的高估區。${cost}` };
+    if (x >= p.low) return { tone: 'neutral', headline: `MVRV ${v}：合理區間`, detail: `市值高於平均成本，但沒有特別貴。${cost}` };
+    return { tone: 'cold', headline: `MVRV ${v}：低估區`, detail: `市值低於所有人的平均成本，等於大家平均都在虧錢；過去的大底部多出現在這裡，但可能停留很久。${cost}` };
   },
   strategy: {
     name: '跌破 1 買、超過 3.5 賣（估值）',

@@ -96,7 +96,7 @@ export const hashRibbonsIndicator = onchainTrend({
   defaults: { fast: 30, slow: 60 },
   buyLabel: '礦工投降結束',
   sellLabel: '礦工投降',
-  up: { headline: '算力帶：算力穩定成長', detail: '礦工持續加入、投入更多機器，網路很健康。' },
+  up: { headline: '算力帶：算力穩定成長', detail: '礦工持續加入、投入更多機器，網路很健康。「偏多」是指礦工沒有投降、沒有被迫賣幣的壓力，不是說價格會漲：價格下跌時算力還在成長也很常見。' },
   down: { headline: '算力帶：礦工投降中', detail: '算力下降，代表有礦工撐不下去關機了（例如幣價大跌、減半後收入減少）；歷史上常出現在階段性低點附近。' },
   strategy: {
     name: '算力短均線上穿長均線買、下穿賣',

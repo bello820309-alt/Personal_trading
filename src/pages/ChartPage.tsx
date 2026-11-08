@@ -52,7 +52,7 @@ function ChartView({ asset, series }: { asset: AssetConfig; series: AssetSeries 
 
   // 比特幣的額外資料（情緒、合約、鏈上）；比特幣專屬的指標換到股票時不顯示
   const extra = useExtra(asset.id);
-  const ctx = useMemo(() => ({ extra }), [extra]);
+  const ctx = useMemo(() => ({ extra, volume: asset.volume }), [extra, asset.volume]);
   const computed = useMemo<ComputedIndicator[]>(
     () =>
       s.chartIndicators.flatMap((ci) => {

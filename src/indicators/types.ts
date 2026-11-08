@@ -31,6 +31,8 @@ export const CATEGORY_ORDER: Category[] = ['trend', 'momentum', 'volatility', 'v
 /** 計算指標時可以用到的額外資料（目前只有比特幣的情緒、合約、鏈上資料） */
 export interface IndicatorContext {
   extra?: ExtraDataFile | null;
+  /** 成交量怎麼顯示（台股以「張」為單位要除以 1000），給成交量的白話說明用 */
+  volume?: { divisor: number; unit: string };
 }
 
 export type ParamValue = number | string | number[];
@@ -118,6 +120,8 @@ export interface IndicatorResult {
   legendOrder?: string[];
   /** 比最後一根 K 棒還新、已經公布的資料（例如當天早上公布的恐懼貪婪指數），給白話說明用 */
   newer?: { date: string; value: number };
+  /** 成交量的顯示單位（計算時有帶入才有） */
+  volumeUnit?: { divisor: number; unit: string };
 }
 
 export type Tone = 'bullish' | 'bearish' | 'hot' | 'cold' | 'neutral';

@@ -456,7 +456,12 @@ function RankResults({ asset, candles, result, sort, go }: { asset: AssetConfig;
   const from = candles[result.start]!.time;
   const to = candles[result.end]!.time;
   const href = (id: string) => withQuery('/backtest', { asset: asset.id, strategy: id, from, to });
-  const badges = (r: RankRow) => [...(r.def.id === topWin ? ['勝率最高'] : []), ...(r.def.id === topReturn ? ['總報酬最高'] : [])];
+  const badges = (r: RankRow) => [
+    ...(r.def.id === topWin ? ['勝率最高'] : []),
+    ...(r.def.id === topReturn ? ['總報酬最高'] : []),
+    // 交易只有 5～9 筆時，多輸或多贏一次勝率就差很多
+    ...(r.trades < 10 ? ['筆數少，要打折看'] : []),
+  ];
 
   return (
     <>

@@ -130,9 +130,10 @@ export const biasIndicator: IndicatorDef<BiasParams> = {
       rank,
       0,
     )} 百分位（0 = 最低、100 = 最高）。`;
-    if (rank >= 95) return { tone: 'hot', headline: `${head}，正乖離過大`, detail: `${detail}離均線很遠，容易回檔修正。` };
+    const trendNote = '不過在趨勢明顯的行情裡（例如 ADX 25 以上），乖離可能越拉越大；這個「容易」是指常見的情況，不保證，可以對照指標百科下面的回測成績。';
+    if (rank >= 95) return { tone: 'hot', headline: `${head}，正乖離過大`, detail: `${detail}離均線很遠，容易回檔修正。${trendNote}` };
     if (rank <= p.percentile) {
-      return { tone: 'cold', headline: `${head}，負乖離過大`, detail: `${detail}跌離均線很遠，容易出現反彈。` };
+      return { tone: 'cold', headline: `${head}，負乖離過大`, detail: `${detail}跌離均線很遠，容易出現反彈。${trendNote}` };
     }
     return { tone: 'neutral', headline: head, detail: `${detail}屬於正常範圍。` };
   },

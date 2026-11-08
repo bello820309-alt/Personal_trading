@@ -168,7 +168,7 @@ function IndicatorStates({ asset, series }: { asset: AssetConfig; series: AssetS
     () =>
       indicatorsByCategory(asset.id).map((g) => ({
         category: g.category,
-        items: g.items.map((def) => ({ def, d: describeOf(computeIndicator(def, candles, asset.market, null, { extra }), candles) })),
+        items: g.items.map((def) => ({ def, d: describeOf(computeIndicator(def, candles, asset.market, null, { extra, volume: asset.volume }), candles) })),
       })),
     [candles, asset.market, asset.id, extra],
   );

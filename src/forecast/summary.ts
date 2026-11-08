@@ -1,7 +1,7 @@
 import type { AssetConfig } from '../config/assets';
 import type { Candle } from '../data/types';
 import { fmtDate, fmtNum, fmtPct } from '../data/format';
-import type { CheckResult, Forecast } from './analog';
+import { calendarFor, type CheckResult, type Forecast } from './analog';
 
 /* 走勢預測的白話說明：全部依照計算出來的數字，用固定規則寫成句子 */
 
@@ -20,16 +20,41 @@ function volWord(v: number): string {
   return '和過去一年差不多';
 }
 
+/** 每天漲跌幅（對數報酬）的標準差：第 to 根往前 n 個報酬；資料不夠時是 null */
+function dailySd(candles: readonly Candle[], to: number, n: number): number | null {
+  if (to - n < 0) return null;
+  const r: number[] = [];
+  for (let i = to - n + 1; i <= to; i++) r.push(Math.log(candles[i]!.close / candles[i - 1]!.close));
+  const m = r.reduce((a, x) => a + x, 0) / r.length;
+  return Math.sqrt(r.reduce((a, x) => a + (x - m) ** 2, 0) / r.length);
+}
+
 /** 「現在」的狀態：最近的漲跌、趨勢位置、RSI、波動、離高點多遠 */
 export function describeNow(f: Forecast, candles: Candle[], asset: AssetConfig): string {
   const [r1w, , r1m, , r3m, ma, rsi, vol, dd] = f.features as [number, number, number, number, number, number, number, number, number];
+  const cal = calendarFor(asset);
+  const sdMonth = dailySd(candles, f.target, cal.month);
+  const sdYear = dailySd(candles, f.target, cal.year);
+  const volNote =
+    sdMonth !== null && sdYear !== null
+      ? `（這裡的「波動」是每天漲跌幅的標準差，大約是一天通常會漲跌幾 %：最近 1 個月約 ±${fmtNum(sdMonth * 100, 2)}%，過去一年約 ±${fmtNum(sdYear * 100, 2)}%。）`
+      : '（這裡的「波動」是每天漲跌幅的標準差，大約是一天通常會漲跌幾 %。）';
+  // 最近 1 週平均每天漲跌多少（看方向）
+  const weekAvg =
+    f.target - cal.week >= 0 ? (candles[f.target]!.close / candles[f.target - cal.week]!.close) ** (1 / cal.week) - 1 : null;
+  const bigMove =
+    Math.abs(r1m) >= 0.08 && vol < 1.3
+      ? `近 1 個月雖然${r1m < 0 ? '跌' : '漲'}了 ${pp(r1m)}%，主要是${r1m < 0 ? '下跌' : '上漲'}的日子比較多、方向一直${r1m < 0 ? '往下' : '往上'}。標準差看的是每天漲跌「忽大忽小、忽漲忽跌」的程度，不看方向${
+          weekAvg !== null && Math.abs(weekAvg) >= 0.005
+            ? `：像最近 1 週平均每天${weekAvg < 0 ? '跌' : '漲'} ${pp(weekAvg)}%，因為幾乎天天都${weekAvg < 0 ? '跌' : '漲'}、方向一致，算出來的波動反而不大`
+            : ''
+        }。所以看到「波動不算激烈」時，也要一起看漲跌幅。`
+      : '';
   return (
     `${asset.name}（以 ${fmtDate(candles[f.target]!.time)} 收盤為準）：近 1 週 ${fmtPct(r1w)}、近 1 個月 ${fmtPct(r1m)}、近 3 個月 ${fmtPct(r3m)}；` +
     `在 200 日均線${ma >= 0 ? '上方' : '下方'} ${pp(ma)}%；RSI ${fmtNum(rsi, 1)}（${rsiWord(rsi)}）；` +
-    `最近 1 個月的波動是過去一年的 ${fmtNum(vol, 2)} 倍（${volWord(vol)}）；離一年內最高點 ${fmtPct(dd)}。` +
-    (Math.abs(r1m) >= 0.08 && vol < 1.3
-      ? `這裡的「波動」是每天漲跌幅度的大小，不是這段期間總共漲跌多少：近 1 個月雖然${r1m < 0 ? '跌' : '漲'}了 ${pp(r1m)}%，但大多是每天一點一點地${r1m < 0 ? '跌' : '漲'}，不是每天大起大落，所以波動不算特別大。`
-      : '')
+    `最近 1 個月的波動是過去一年的 ${fmtNum(vol, 2)} 倍（${volWord(vol)}）${volNote}；離一年內最高點 ${fmtPct(dd)}。` +
+    bigMove
   );
 }
 
