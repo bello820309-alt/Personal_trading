@@ -39,16 +39,16 @@ export function describeNow(f: Forecast, candles: Candle[], asset: AssetConfig):
     sdMonth !== null && sdYear !== null
       ? `（這裡的「波動」是每天漲跌幅的標準差，大約是一天通常會漲跌幾 %：最近 1 個月約 ±${fmtNum(sdMonth * 100, 2)}%，過去一年約 ±${fmtNum(sdYear * 100, 2)}%。）`
       : '（這裡的「波動」是每天漲跌幅的標準差，大約是一天通常會漲跌幾 %。）';
-  // 最近 1 週平均每天漲跌多少（看方向）
-  const weekAvg =
-    f.target - cal.week >= 0 ? (candles[f.target]!.close / candles[f.target - cal.week]!.close) ** (1 / cal.week) - 1 : null;
+  // 最近 1 個月：幾天漲、幾天跌，以及最大的一天漲跌（全部照資料寫，不憑印象）
+  const moves: number[] = [];
+  for (let i = Math.max(1, f.target - cal.month + 1); i <= f.target; i++) moves.push(candles[i]!.close / candles[i - 1]!.close - 1);
+  const ups = moves.filter((x) => x > 0).length;
+  const downs = moves.filter((x) => x < 0).length;
+  const best = moves.length ? Math.max(...moves) : 0;
+  const worst = moves.length ? Math.min(...moves) : 0;
   const bigMove =
-    Math.abs(r1m) >= 0.08 && vol < 1.3
-      ? `近 1 個月雖然${r1m < 0 ? '跌' : '漲'}了 ${pp(r1m)}%，主要是${r1m < 0 ? '下跌' : '上漲'}的日子比較多、方向一直${r1m < 0 ? '往下' : '往上'}。標準差看的是每天漲跌「忽大忽小、忽漲忽跌」的程度，不看方向${
-          weekAvg !== null && Math.abs(weekAvg) >= 0.005
-            ? `：像最近 1 週平均每天${weekAvg < 0 ? '跌' : '漲'} ${pp(weekAvg)}%，因為幾乎天天都${weekAvg < 0 ? '跌' : '漲'}、方向一致，算出來的波動反而不大`
-            : ''
-        }。所以看到「波動不算激烈」時，也要一起看漲跌幅。`
+    Math.abs(r1m) >= 0.08 && vol < 1.3 && moves.length
+      ? `近 1 個月雖然${r1m < 0 ? '跌' : '漲'}了 ${pp(r1m)}%，${moves.length} 個交易日裡有 ${downs} 天下跌、${ups} 天上漲，主要是${r1m < 0 ? '下跌' : '上漲'}的日子比較多。標準差看的是每天漲跌幅度「忽大忽小」的程度，不看方向：這段期間最大的一天是 ${fmtPct(best)}、最慘的一天是 ${fmtPct(worst)}，但和過去一年比沒有特別大，所以波動顯示「${volWord(vol)}」。看到波動不算激烈時，也要一起看漲跌幅。`
       : '';
   return (
     `${asset.name}（以 ${fmtDate(candles[f.target]!.time)} 收盤為準）：近 1 週 ${fmtPct(r1w)}、近 1 個月 ${fmtPct(r1m)}、近 3 個月 ${fmtPct(r3m)}；` +

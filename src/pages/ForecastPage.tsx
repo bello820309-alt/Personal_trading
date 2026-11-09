@@ -251,6 +251,7 @@ function ForecastView({
           {similarityNote(forecast, FEATURES)
             ? '下表裡現在和相似日子差很多，所以結果上方有「最像的日子其實也沒有很像」的提醒。'
             : '這次相似的日子和現在大致相像：下表每一項的差距，都在這個特徵歷史上的 1 個標準差以內（差太多時，結果上方會出現提醒）。'}
+          最右邊一欄就是 1 個標準差：這個數字在過去通常會上下差多少，例如「近 1 個月漲跌」的標準差是 {fmtPct(forecast.featureSd[2]!, 1, false)}，代表平常一個月漲跌這麼多很常見。
         </p>
         <div className="table-scroll mt-3">
           <table className="w-full text-sm tabular">
@@ -258,7 +259,8 @@ function ForecastView({
               <tr className="text-left text-xs text-muted">
                 <th className="py-1 pr-2 font-normal">特徵</th>
                 <th className="py-1 pr-2 text-right font-normal">現在</th>
-                <th className="py-1 text-right font-normal">相似日子的平均</th>
+                <th className="py-1 pr-2 text-right font-normal">相似日子的平均</th>
+                <th className="py-1 text-right font-normal">差多少算多（1 個標準差）</th>
               </tr>
             </thead>
             <tbody>
@@ -268,7 +270,10 @@ function ForecastView({
                   <tr key={f.key} className="border-t border-line">
                     <td className="py-1.5 pr-2 text-fg">{f.label}</td>
                     <td className="py-1.5 pr-2 text-right text-fg">{fmtFeature(f.kind, forecast.features[j]!)}</td>
-                    <td className="py-1.5 text-right text-muted">{fmtFeature(f.kind, avg)}</td>
+                    <td className="py-1.5 pr-2 text-right text-muted">{fmtFeature(f.kind, avg)}</td>
+                    <td className="py-1.5 text-right text-muted">
+                      {f.kind === 'pct' ? fmtPct(forecast.featureSd[j]!, 1, false) : fmtNum(forecast.featureSd[j]!, f.kind === 'num' ? 1 : 2)}
+                    </td>
                   </tr>
                 );
               })}

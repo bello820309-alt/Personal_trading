@@ -105,8 +105,10 @@ describe('「現在的狀態」的波動說明', () => {
     // 2026/11/06 的 0050：近 1 個月 -20.22%，波動是過去一年的 0.86 倍
     const t = describeNow(at([-0.1186, -0.15, -0.2022, -0.1, -0.081, -0.02, 18.6, 0.86, -0.206]), candles, asset);
     expect(t).toContain('0.86 倍（和過去一年差不多）');
-    expect(t).toContain('近 1 個月雖然跌了 20.2%，主要是下跌的日子比較多');
+    expect(t).toContain('近 1 個月雖然跌了 20.2%，21 個交易日裡有 10 天下跌、11 天上漲');
+    expect(t).toContain('最大的一天是 +2.00%、最慘的一天是 -1.96%');
     expect(t).not.toContain('一點一點');
+    expect(t).not.toContain('天天都跌');
   });
 });
 

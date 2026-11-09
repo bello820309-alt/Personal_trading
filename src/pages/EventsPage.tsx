@@ -196,11 +196,25 @@ function EventsView({ asset, series, group, onGroup }: { asset: AssetConfig; ser
                     {r.event.title}
                     {r.event.detail && <div className="text-xs text-muted">{r.event.detail}</div>}
                   </td>
-                  {WINDOWS.map((w) => (
-                    <td key={w} className="py-1.5 pr-2 text-right last:pr-0">
-                      {pctCell(r.returns[w])}
-                    </td>
-                  ))}
+                  {WINDOWS.map((w) => {
+                    const v = r.returns[w];
+                    // 第一個還沒到的期間，順便寫出到目前為止的漲跌
+                    const firstPending = WINDOWS.find((x) => x !== 'before7' && r.returns[x] === null) === w;
+                    return (
+                      <td key={w} className="py-1.5 pr-2 text-right last:pr-0">
+                        {v === null && firstPending && r.sofar ? (
+                          <span className="text-muted">
+                            還沒到
+                            <span className="block text-xs">
+                              到 {fmtDate(r.sofar.date).slice(5)} 是 <span className={signClass(r.sofar.ret)}>{fmtPct(r.sofar.ret)}</span>
+                            </span>
+                          </span>
+                        ) : (
+                          pctCell(v)
+                        )}
+                      </td>
+                    );
+                  })}
                 </tr>
               ))}
             </tbody>

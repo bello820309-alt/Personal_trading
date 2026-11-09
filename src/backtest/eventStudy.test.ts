@@ -108,3 +108,22 @@ describe('利率環境', () => {
     expect(s.hiking).toBeGreaterThan(0.7); // 2022-03-16 之後都是升息期
   });
 });
+
+describe('還沒滿期間的事件：寫出到目前為止的漲跌', () => {
+  it('事件後 7 天還沒到時，記下從事件前一天收盤到最新收盤的漲跌', () => {
+    const bars: Candle[] = ['2026-11-02', '2026-11-03', '2026-11-04', '2026-11-05', '2026-11-06'].map((time, i) => ({
+      time,
+      open: 100,
+      high: 100,
+      low: 100,
+      close: [100, 100, 99, 98, 97.8][i]!,
+      volume: 1,
+    }));
+    const ev: MarketEvent = { date: '2026-11-03', group: 'election', title: '美國期中選舉（投票日）' };
+    const [row] = eventRows(bars, [ev]);
+    expect(row!.returns.after1).toBeCloseTo(-0.01, 10);
+    expect(row!.returns.after7).toBeNull();
+    expect(row!.sofar!.date).toBe('2026-11-06');
+    expect(row!.sofar!.ret).toBeCloseTo(-0.022, 10);
+  });
+});

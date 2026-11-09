@@ -64,6 +64,8 @@ export function windowReturns(candles: readonly Candle[], date: string): WindowR
 export interface EventRow {
   event: MarketEvent;
   returns: WindowReturns;
+  /** 還有期間沒到時：從事件前一天收盤到最新收盤，目前漲跌多少 */
+  sofar?: { ret: number; date: string };
 }
 
 /** 資料範圍內的事件，以及每個事件前後的漲跌 */
@@ -75,7 +77,14 @@ export function eventRows(candles: readonly Candle[], events: readonly MarketEve
   for (const event of events) {
     if (event.date <= first || event.date > last) continue;
     const returns = windowReturns(candles, event.date);
-    if (returns) out.push({ event, returns });
+    if (!returns) continue;
+    const row: EventRow = { event, returns };
+    if (returns.after1 === null || returns.after7 === null || returns.after30 === null) {
+      const base = barAtOrBefore(candles, addDays(event.date, -1));
+      const lastIdx = candles.length - 1;
+      if (base >= 0 && lastIdx > base) row.sofar = { ret: candles[lastIdx]!.close / candles[base]!.close - 1, date: candles[lastIdx]!.time };
+    }
+    out.push(row);
   }
   return out;
 }

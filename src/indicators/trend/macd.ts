@@ -102,8 +102,8 @@ export const macdIndicator: IndicatorDef<MacdParams> = {
       o0 == null
         ? ''
         : growing
-          ? `，而且${days}放大（${side}的力道在增強${streak >= 2 ? '' : '，只變一天可能是雜訊'}）`
-          : `，而且${days}縮小（${side}的力道在減弱${streak >= 2 ? '' : '，只變一天可能是雜訊'}）`;
+          ? `，而且${days}放大（${side}的力道在增強${streak >= 3 ? '' : streak === 2 ? '；常見的看法是連續 2～3 天以上才比較算數' : '，只變一天可能是雜訊，常見的看法是連續 2～3 天以上才比較算數'}）`
+          : `，而且${days}縮小（${side}的力道在減弱${streak >= 3 ? '' : streak === 2 ? '；常見的看法是連續 2～3 天以上才比較算數' : '，只變一天可能是雜訊，常見的看法是連續 2～3 天以上才比較算數'}）`;
     return {
       tone,
       headline: `DIF ${fmtNum(dif)}／MACD ${fmtNum(sig)}`,
