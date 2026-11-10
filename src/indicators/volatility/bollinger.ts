@@ -68,28 +68,30 @@ export const bollingerIndicator: IndicatorDef<BollingerParams> = {
     if (b == null || w == null) return null;
     const recent = validSlice(widthLine, n - 120, n);
     const squeeze = recent.length >= 60 && w <= Math.min(...recent) * 1.05;
-    const wide = recent.length >= 60 && w >= Math.max(...recent) * 0.8;
+    const maxW = recent.length >= 60 ? Math.max(...recent) : 0;
+    const wide = maxW > 0 && w >= maxW * 0.8;
     const sq = squeeze ? ' 通道寬度接近半年來最窄（「擠壓」），常常是大行情前的醞釀期。' : '';
+    const widthNote = maxW > 0 ? ` 現在通道的寬度是最近半年最寬時的 ${fmtNum((w / maxW) * 10, 1)} 成（8 成以上算很寬）。` : '';
     const head = `%B = ${fmtNum(b, 2)}`;
     if (b > 1)
       return {
         tone: 'hot',
         headline: `${head}，突破上軌`,
         detail: wide
-          ? '收盤價在上軌之上，而且通道接近半年來最寬：代表漲勢又急又大，常出現在趨勢行情裡，價格可能沿著上軌繼續走，不一定是「漲太多該回檔」。'
-          : `收盤價在上軌之上：走勢很強，但也偏離平均很多。不過在趨勢明顯的行情裡（例如 ADX 25 以上），價格可能沿著上軌一路走。${sq}`,
+          ? '收盤價在上軌之上，而且通道接近半年來最寬：代表漲勢又急又大，常出現在趨勢行情裡，價格可能沿著上軌繼續走，不一定是「漲太多該回檔」。' + widthNote
+          : `收盤價在上軌之上：走勢很強，但也偏離平均很多。不過在趨勢明顯的行情裡（例如 ADX 25 以上），價格可能沿著上軌一路走。${sq}${widthNote}`,
       };
     if (b < 0)
       return {
         tone: 'cold',
         headline: `${head}，跌破下軌`,
         detail: wide
-          ? '收盤價在下軌之下，而且通道接近半年來最寬：代表跌勢又急又大，常出現在趨勢行情裡，價格可能沿著下軌繼續走，不是「跌太多該反彈」的訊號。'
-          : `收盤價在下軌之下：跌勢很急，常被視為超跌。不過在趨勢明顯的行情裡（例如 ADX 25 以上），價格可能沿著下軌一路走。${sq}`,
+          ? '收盤價在下軌之下，而且通道接近半年來最寬：代表跌勢又急又大，常出現在趨勢行情裡，價格可能沿著下軌繼續走，不是「跌太多該反彈」的訊號。' + widthNote
+          : `收盤價在下軌之下：跌勢很急，常被視為超跌。不過在趨勢明顯的行情裡（例如 ADX 25 以上），價格可能沿著下軌一路走。${sq}${widthNote}`,
       };
     return b >= 0.5
-      ? { tone: 'bullish', headline: `${head}，在中軌之上`, detail: `收盤價在通道的上半部（1 = 上軌、0 = 下軌）。${sq}` }
-      : { tone: 'bearish', headline: `${head}，在中軌之下`, detail: `收盤價在通道的下半部（1 = 上軌、0 = 下軌）。${sq}` };
+      ? { tone: 'bullish', headline: `${head}，在中軌之上`, detail: `收盤價在通道的上半部（1 = 上軌、0 = 下軌）。${sq}${widthNote}` }
+      : { tone: 'bearish', headline: `${head}，在中軌之下`, detail: `收盤價在通道的下半部（1 = 上軌、0 = 下軌）。${sq}${widthNote}` };
   },
   strategy: {
     name: '跌破下軌買、回到中軌賣（逆勢）',

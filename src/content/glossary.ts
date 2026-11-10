@@ -19,7 +19,7 @@ export const GLOSSARY: GlossaryTerm[] = [
   { term: '死亡交叉', en: 'Death Cross', text: '快線由上往下穿過慢線，代表轉弱。', related: [{ type: 'indicator', id: 'ma-cross' }] },
   { term: '超買、超賣', en: 'Overbought / Oversold', text: '短期內漲得太多太急叫超買，跌得太多太急叫超賣。注意：超買不等於馬上會跌。', related: [{ type: 'indicator', id: 'rsi' }] },
   { term: '鈍化', text: '強勢行情中 KD、RSI 等指標長時間停留在高檔（或弱勢時停在低檔），這時超買超賣的訊號會失準。', related: [{ type: 'indicator', id: 'kd' }] },
-  { term: '背離', en: 'Divergence', text: '價格和指標走勢不一致，暗示原本的趨勢力道在減弱。分兩種：「頂背離」是價格創新高、指標（例如 RSI、MACD）卻沒有創新高，上漲的力道變弱；「底背離」是價格創新低、指標卻沒有創新低，例如價格跌到比上次更低，RSI 卻比上次的低點還高，代表下跌的力道變弱。背離只是提醒，常常要過一段時間才會轉向，也可能一直背離下去。' },
+  { term: '背離', en: 'Divergence', text: '價格和指標走勢不一致，暗示原本的趨勢力道在減弱。分兩種：「頂背離」是價格創新高、指標（例如 RSI、MACD）卻沒有創新高，上漲的力道變弱；「底背離」是價格創新低、指標卻沒有創新低，例如價格跌到比上次更低，RSI 卻比上次的低點還高，代表下跌的力道變弱。兩個高點（低點）通常隔幾天到幾週，太近的不算；價格用收盤價或最高（最低）價都有人用，重點是前後用同一種。背離只是提醒，常常要過一段時間才會轉向，也可能一直背離下去。' },
   { term: '乖離', text: '價格偏離均線的程度。', related: [{ type: 'indicator', id: 'bias' }] },
   { term: '量價關係', text: '價格和成交量的搭配，例如「價漲量增」代表上漲有資金支持。', related: [{ type: 'indicator', id: 'volume' }] },
   { term: '領先指標、落後指標', text: '領先指標反應快但雜訊多，落後指標穩定但慢半拍。', related: [{ type: 'basics', id: 'leading-lagging' }] },
