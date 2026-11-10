@@ -104,6 +104,11 @@ export const kdIndicator: IndicatorDef<KdParams> = {
       const zone = golden ? (b < p.oversold ? `，當時 D 值 ${fmtNum(b, 1)} 在 ${p.oversold} 以下，算「低檔黃金交叉」` : `，當時 D 值 ${fmtNum(b, 1)}，不在 ${p.oversold} 以下，不算低檔交叉`)
         : b > p.overbought ? `，當時 D 值 ${fmtNum(b, 1)} 在 ${p.overbought} 以上，算「高檔死亡交叉」` : `，當時 D 值 ${fmtNum(b, 1)}，不在 ${p.overbought} 以上，不算高檔交叉`;
       cross = ` 最近一次交叉是 ${day} 的${golden ? '黃金交叉（K 往上穿過 D）' : '死亡交叉（K 往下穿過 D）'}${zone}。`;
+      // 交叉那天價格反而是跌（漲）的：說明 KD 看的是收盤在最近 N 天高低範圍裡的位置
+      const chg = i >= 1 ? candles[i]!.close / candles[i - 1]!.close - 1 : 0;
+      if ((golden && chg < -0.005) || (dead && chg > 0.005)) {
+        cross += ` 那天價格其實${golden ? '跌' : '漲'}了 ${fmtNum(Math.abs(chg) * 100, 2)}%：KD 看的不是漲跌，而是收盤價在最近 ${p.period} 天最高、最低之間的位置。那天${golden ? '盤中低點拉得很低、收盤離低點有一段距離' : '盤中高點拉得很高、收盤離高點有一段距離'}，收盤在這個範圍裡反而變得比較${golden ? '高' : '低'}，所以出現交叉。這種交叉常常只是短線的${golden ? '反彈' : '回檔'}，不代表${golden ? '跌勢' : '漲勢'}結束。`;
+      }
       break;
     }
     // 月線（20 日）、季線（60 日）往哪邊彎：很多人只在它們往上時才做 KD 的買進訊號

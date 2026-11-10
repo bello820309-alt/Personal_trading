@@ -251,7 +251,7 @@ function ForecastView({
           {similarityNote(forecast, FEATURES)
             ? '下表裡現在和相似日子差很多，所以結果上方有「最像的日子其實也沒有很像」的提醒。'
             : '這次相似的日子和現在大致相像：下表每一項的差距，都在這個特徵歷史上的 1 個標準差以內（差太多時，結果上方會出現提醒）。'}
-          最右邊一欄就是 1 個標準差：這個數字在過去通常會上下差多少，例如「近 1 個月漲跌」的標準差是 {fmtPct(forecast.featureSd[2]!, 1, false)}，代表平常一個月漲跌這麼多很常見。
+          最右邊一欄就是 1 個標準差，可以當成「差多少算多」的尺：現在和相似日子的平均，差距比它小就算像，比它大就算差很多。例如「近 1 個月漲跌」這把尺是 {fmtPct(forecast.featureSd[2]!, 1, false)}。
         </p>
         <div className="table-scroll mt-3">
           <table className="w-full text-sm tabular">
