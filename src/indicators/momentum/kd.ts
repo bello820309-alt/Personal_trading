@@ -128,7 +128,9 @@ export const kdIndicator: IndicatorDef<KdParams> = {
     const m20 = dir(20);
     const m60 = dir(60);
     const maNote =
-      m20 && m60 ? ` 月線（20 日均線）${m20}、季線（60 日均線）${m60}彎${m20 === '往上' && m60 === '往上' ? '。' : '：如果你的規則是「月線、季線往上時才做 KD 的買進訊號」，現在還不符合。'}` : '';
+      m20 && m60
+        ? ` 20 日均線${m20}、60 日均線${m60}彎（台股習慣叫月線、季線；美股和比特幣的圖表預設沒有 60 日線，可以在圖表的均線設定自己加上）${m20 === '往上' && m60 === '往上' ? '。' : '：如果你的規則是「月線、季線往上時才做 KD 的買進訊號」，現在還不符合。'}`
+        : '';
     const extra = `${cross}${maNote}`;
     if (highRun >= 3) {
       return {
@@ -145,10 +147,12 @@ export const kdIndicator: IndicatorDef<KdParams> = {
       };
     }
     if (kv >= p.overbought) {
-      return { tone: 'hot', headline: `${head}，進入高檔`, detail: `K 值高於 ${p.overbought}，短線漲多、偏熱。${extra}` };
+      const dNote = dv <= p.overbought ? ` 注意：交叉算不算「高檔死亡交叉」看的是 D 值，現在 D 是 ${fmtNum(dv, 1)}，還不在 ${p.overbought} 以上，這時 K 往下穿過 D 也不算高檔交叉。` : '';
+      return { tone: 'hot', headline: `${head}，進入高檔`, detail: `K 值高於 ${p.overbought}，短線漲多、偏熱。${dNote}${extra}` };
     }
     if (kv <= p.oversold) {
-      return { tone: 'cold', headline: `${head}，進入低檔`, detail: `K 值低於 ${p.oversold}，短線跌深、偏冷。${extra}` };
+      const dNote = dv >= p.oversold ? ` 注意：交叉算不算「低檔黃金交叉」看的是 D 值，現在 D 是 ${fmtNum(dv, 1)}，還不在 ${p.oversold} 以下，這時 K 往上穿過 D 也不算低檔交叉。` : '';
+      return { tone: 'cold', headline: `${head}，進入低檔`, detail: `K 值低於 ${p.oversold}，短線跌深、偏冷。${dNote}${extra}` };
     }
     return kv > dv
       ? { tone: 'bullish', headline: `${head}，K 在 D 之上`, detail: `K 值在 D 值之上，短線動能偏多。${extra}` }

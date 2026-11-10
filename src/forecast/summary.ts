@@ -46,9 +46,26 @@ export function describeNow(f: Forecast, candles: Candle[], asset: AssetConfig):
   const downs = moves.filter((x) => x < 0).length;
   const best = moves.length ? Math.max(...moves) : 0;
   const worst = moves.length ? Math.min(...moves) : 0;
+  // 平均一天漲多少、跌多少
+  const avgOf = (xs: number[]) => (xs.length ? xs.reduce((a, x) => a + x, 0) / xs.length : 0);
+  const avgUp = avgOf(moves.filter((x) => x > 0));
+  const avgDown = Math.abs(avgOf(moves.filter((x) => x < 0)));
+  const falling = r1m < 0;
+  const sameDays = falling ? downs : ups;
+  const otherDays = falling ? ups : downs;
+  const sameAvg = falling ? avgDown : avgUp;
+  const otherAvg = falling ? avgUp : avgDown;
+  const verb = falling ? '跌' : '漲';
+  const otherVerb = falling ? '漲' : '跌';
+  const reasons: string[] = [];
+  if (sameDays >= otherDays * 1.5 && sameDays - otherDays >= 3) reasons.push(`${verb}的日子比較多`);
+  if (otherAvg > 0 && sameAvg >= otherAvg * 1.2) reasons.push(`${verb}的日子平均${verb}得比較多（平均${verb} ${pp(sameAvg)}%，${otherVerb}的日子平均只${otherVerb} ${pp(otherAvg)}%）`);
+  const why = reasons.length
+    ? `主要是${reasons.join('，而且')}`
+    : `${verb}的天數和平均幅度都沒有差很多（${verb}的日子平均${verb} ${pp(sameAvg)}%，${otherVerb}的日子平均${otherVerb} ${pp(otherAvg)}%），是幾天比較大的${verb}幅加起來造成的`;
   const bigMove =
     Math.abs(r1m) >= 0.08 && vol < 1.3 && moves.length
-      ? `近 1 個月雖然${r1m < 0 ? '跌' : '漲'}了 ${pp(r1m)}%，${moves.length} 個交易日裡有 ${downs} 天下跌、${ups} 天上漲，主要是${r1m < 0 ? '下跌' : '上漲'}的日子比較多。標準差看的是每天漲跌幅度「忽大忽小」的程度，不看方向：這段期間最大的一天是 ${fmtPct(best)}、最慘的一天是 ${fmtPct(worst)}，但和過去一年比沒有特別大，所以波動顯示「${volWord(vol)}」。看到波動不算激烈時，也要一起看漲跌幅。`
+      ? `近 1 個月雖然${verb}了 ${pp(r1m)}%，${moves.length} 個交易日裡有 ${downs} 天下跌、${ups} 天上漲，${why}。標準差看的是每天漲跌幅度「忽大忽小」的程度，不看方向：這段期間最大的一天是 ${fmtPct(best)}、最慘的一天是 ${fmtPct(worst)}，但和過去一年比沒有特別大，所以波動顯示「${volWord(vol)}」。看到波動不算激烈時，也要一起看漲跌幅。`
       : '';
   return (
     `${asset.name}（以 ${fmtDate(candles[f.target]!.time)} 收盤為準）：近 1 週 ${fmtPct(r1w)}、近 1 個月 ${fmtPct(r1m)}、近 3 個月 ${fmtPct(r3m)}；` +
