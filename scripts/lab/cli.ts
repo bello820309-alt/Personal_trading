@@ -309,10 +309,10 @@ const str = (v: unknown, name: string, max: number, required = true): string => 
   if (s.length > max) fail(`心得的「${name}」太長了（最多 ${max} 字，現在 ${s.length} 字）`);
   return s;
 };
-const list = (v: unknown, name: string): string[] => {
+const list = (v: unknown, name: string, max = 10): string[] => {
   if (v === undefined) return [];
   if (!Array.isArray(v)) fail(`心得的「${name}」要是文字的陣列，例如 ["…", "…"]`);
-  if (v.length > 10) fail(`心得的「${name}」最多 10 項`);
+  if (v.length > max) fail(`心得的「${name}」最多 ${max} 項`);
   return v.map((x, i) => str(x, `${name}第 ${i + 1} 項`, 200)).filter(Boolean);
 };
 
@@ -337,7 +337,8 @@ function cmdJournal(): void {
     confused: list(raw.confused, 'confused（看不懂的地方）'),
     // 參加者被要求把自己的規則完整寫在 plan 裡（隔天的 me 會顯示），所以給多一點空間
     plan: str(raw.plan, 'plan（接下來的打算）', 1200),
-    pages: list(raw.pages, 'pages（看了哪些頁面）'),
+    // 有時候會多看幾頁（例如先到列表找頁面），讓它們都記得下來
+    pages: list(raw.pages, 'pages（看了哪些頁面）', 15),
     ...(confidence !== undefined ? { confidence: confidence as number } : {}),
     snapshot: { value: Math.round(s.value), cash: Math.round(s.cash), returnPct: Math.round(s.returnPct * 1e6) / 1e6 },
   };
