@@ -112,6 +112,30 @@ describe('「現在的狀態」的波動說明', () => {
   });
 });
 
+describe('大跌的原因照資料寫：跌的天數多，還是跌的日子跌得深', () => {
+  const asset = { name: '比特幣', tradesOnWeekends: false } as Parameters<typeof describeNow>[2];
+  // 前 279 天持平，最後 21 天照指定的每日漲跌走
+  const series = (moves: number[]) => {
+    let p = 100;
+    const closes = [...Array(279).fill(100), ...moves.map((m) => (p *= 1 + m))];
+    return closes.map((close, i) => ({ time: `2026-01-${String((i % 28) + 1).padStart(2, '0')}`, open: close, high: close, low: close, close, volume: 1 }));
+  };
+  const features = [-0.05, -0.08, -0.12, -0.1, -0.1, -0.02, 30, 1.0, -0.15];
+
+  it('跌的天數明顯比較多：說「跌的日子比較多」', () => {
+    const c = series([...Array(16).fill(-0.01), ...Array(5).fill(0.01)]);
+    const t = describeNow({ ...fakeForecast(features, [], []), target: c.length - 1 }, c, asset);
+    expect(t).toContain('16 天下跌、5 天上漲，主要是跌的日子比較多');
+  });
+
+  it('天數差不多、但跌的日子跌得比較深：說平均幅度', () => {
+    const c = series([...Array(11).fill(-0.02), ...Array(10).fill(0.01)]);
+    const t = describeNow({ ...fakeForecast(features, [], []), target: c.length - 1 }, c, asset);
+    expect(t).toContain('11 天下跌、10 天上漲，主要是跌的日子平均跌得比較多（平均跌 2.0%，漲的日子平均只漲 1.0%）');
+    expect(t).not.toContain('跌的日子比較多，');
+  });
+});
+
 describe('相似的日子到底像不像', () => {
   const sd = [0.03, 0.04, 0.059, 0.08, 0.1, 0.1, 10, 0.3, 0.07];
 
