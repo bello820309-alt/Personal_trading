@@ -62,4 +62,17 @@ describe('最近的爆量', () => {
     expect(d.headline.startsWith('價平')).toBe(true);
     expect(d.detail).toContain('今天是週末');
   });
+
+  it('爆量之後量縮回平常：說明「量縮」是和被拉高的均量比，不說追價意願不強', () => {
+    // 平常 100，爆量 3 天 600，之後回到 105（和放量之前比約 1.05 倍，和最近 20 天比是量縮）
+    const vols = [...Array(25).fill(100), 600, 600, 600, 105];
+    const closes = [...Array(28).fill(100), 101];
+    const c = candles(vols, closes);
+    const p = { ma1: 5, ma2: 20 };
+    const d = volumeIndicator.describe!(c, volumeIndicator.compute(c, p), p)!;
+    expect(d.headline).toContain('量縮');
+    expect(d.detail).toContain('和放量之前比是 1.1 倍，算是回到平常的水準');
+    expect(d.detail).not.toContain('上漲但量縮，追價意願不強');
+    expect(d.detail).toContain('不一定是追價意願不強');
+  });
 });

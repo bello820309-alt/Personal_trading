@@ -90,12 +90,19 @@ export const supertrendIndicator: IndicatorDef<SuperTrendParams> = {
     const v = up ? getLine(r, 'up')[n - 1] : getLine(r, 'down')[n - 1];
     if (v == null) return null;
     const close = candles[n - 1]!.close;
+    // 從哪一天開始是這個方向
+    const tr = getLine(r, 'trend');
+    let from = n - 1;
+    while (from > 0 && tr[from - 1] === t) from--;
+    const days = n - from;
+    const md = `${Number(candles[from]!.time.slice(5, 7))}/${Number(candles[from]!.time.slice(8, 10))}`;
+    const since = from > 0 ? ` ${md} 翻${up ? '多' : '空'}，到今天是第 ${days} 根 K 棒${days <= 2 ? '，還沒經過 2～3 天的確認' : ''}。` : '';
     return {
       tone: up ? 'bullish' : 'bearish',
       headline: up ? 'SuperTrend 多方（線在價格下方）' : 'SuperTrend 空方（線在價格上方）',
       detail: `${up ? '支撐' : '壓力'}線在 ${fmtNum(v)}，距離收盤價 ${fmtPct(v / close - 1)}。${
         up ? '收盤跌破這條線才會翻空。' : '收盤漲過這條線才會翻多。'
-      }`,
+      }${since}`,
     };
   },
   strategy: {

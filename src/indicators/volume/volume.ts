@@ -84,6 +84,11 @@ export const volumeIndicator: IndicatorDef<VolumeParams> = {
     const weekend = weekday === 0 || weekday === 6 ? ' 今天是週末：比特幣週末的成交量通常比平日少三、四成，週末量縮不一定代表什麼。' : '';
     const level = ratio >= 2 ? '爆量' : ratio >= 1.3 ? '量增' : ratio <= 0.6 ? '量縮' : '量能持平';
     const priceWord = up ? '價漲' : down ? '價跌' : '價平';
+    const spike = recentSpike(
+      candles.map((c) => c.volume),
+      getLine(r, 'ma2'),
+      n,
+    );
     let tone: 'bullish' | 'bearish' | 'neutral' = 'neutral';
     let comment = '量能沒有特別放大，訊息有限。';
     if (ratio >= 1.3 && up) {
@@ -94,12 +99,11 @@ export const volumeIndicator: IndicatorDef<VolumeParams> = {
       comment = '下跌時成交量放大，代表賣壓沉重。也有另一種可能：大家恐慌性地賣，賣完反而接近短期低點。常見的看法是再觀察 3～5 個交易日：如果量縮回爆量之前的 20 日均量附近（爆量那幾天會把最近的均量拉高，所以要和爆量前比）、價格不再創新低，比較像賣壓出清；如果繼續放量下跌，就是賣壓還沒結束。這只是常見的經驗，不保證準。（0050、VOO 這類 ETF 有造市商，量的訊號只能參考。）';
     } else if (ratio <= 0.6) {
       comment = up ? '上漲但量縮，追價意願不強。' : down ? '下跌但量縮，賣壓可能正在減輕。' : '交易清淡，市場在觀望。';
+      // 爆量之後的「量縮」：只是和被拉高的均量比；和放量之前比已經回到平常，就不要說成追價意願不強
+      if (spike && v / spike.base >= 0.7) {
+        comment = `這裡的「量縮」是和最近 ${p.ma2} 天（包含爆量那幾天）的均量比；和放量之前比是 ${fmtNum(v / spike.base, 1)} 倍，算是回到平常的水準。爆量之後量縮回平常、價格又沒有再創新低，比較像賣壓出清${up ? '，所以這時的「上漲但量縮」不一定是追價意願不強' : ''}。`;
+      }
     }
-    const spike = recentSpike(
-      candles.map((c) => c.volume),
-      avg === undefined ? [] : getLine(r, 'ma2'),
-      n,
-    );
     const spikeText = spike
       ? ` 這一波放量從 ${md(candles[spike.start]!.time)} 開始。${
           unit

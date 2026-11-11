@@ -104,8 +104,8 @@ describe('「現在的狀態」的波動說明', () => {
   it('一個月跌了兩成、波動卻和過去一年差不多：說明是跌的日子多，不是每天漲跌特別大', () => {
     // 2026/11/06 的 0050：近 1 個月 -20.22%，波動是過去一年的 0.86 倍
     const t = describeNow(at([-0.1186, -0.15, -0.2022, -0.1, -0.081, -0.02, 18.6, 0.86, -0.206]), candles, asset);
-    expect(t).toContain('0.86 倍（和過去一年差不多）');
-    expect(t).toContain('近 1 個月雖然跌了 20.2%，21 個交易日裡有 10 天下跌、11 天上漲');
+    expect(t).toContain('0.86 倍（和過去一年差不多；1.3 倍以上算比較激烈、0.8 倍以下算比較平靜）');
+    expect(t).toContain('近 1 個月雖然跌了 20.2%：21 個交易日裡有 10 天下跌、11 天上漲');
     expect(t).toContain('最大的一天是 +2.00%、最慘的一天是 -1.96%');
     expect(t).not.toContain('一點一點');
     expect(t).not.toContain('天天都跌');
@@ -125,14 +125,13 @@ describe('大跌的原因照資料寫：跌的天數多，還是跌的日子跌�
   it('跌的天數明顯比較多：說「跌的日子比較多」', () => {
     const c = series([...Array(16).fill(-0.01), ...Array(5).fill(0.01)]);
     const t = describeNow({ ...fakeForecast(features, [], []), target: c.length - 1 }, c, asset);
-    expect(t).toContain('16 天下跌、5 天上漲，主要是跌的日子比較多');
+    expect(t).toContain('16 天下跌、5 天上漲；跌的日子平均跌 1.0%，漲的日子平均漲 1.0%，兩邊的平均幅度差不多，主要差在跌的天數比較多');
   });
 
   it('天數差不多、但跌的日子跌得比較深：說平均幅度', () => {
     const c = series([...Array(11).fill(-0.02), ...Array(10).fill(0.01)]);
     const t = describeNow({ ...fakeForecast(features, [], []), target: c.length - 1 }, c, asset);
-    expect(t).toContain('11 天下跌、10 天上漲，主要是跌的日子平均跌得比較多（平均跌 2.0%，漲的日子平均只漲 1.0%）');
-    expect(t).not.toContain('跌的日子比較多，');
+    expect(t).toContain('11 天下跌、10 天上漲；跌的日子平均跌 2.0%，漲的日子平均漲 1.0%，跌的天數只多一點，主要差在跌的日子跌得比較深');
   });
 });
 
@@ -144,6 +143,14 @@ describe('相似的日子到底像不像', () => {
     const analogs = [[-0.06, -0.08, -0.0737, -0.09, -0.07, -0.02, 28, 0.6, -0.14]];
     const t = similarityNote(fakeForecast(now, analogs, sd), FEATURES);
     expect(t).toContain('「近 1 個月漲跌」現在是 -20.22%，相似日子的平均是 -7.37%');
+  });
+
+  it('只有一項剛好超過 1 把尺一點點：不提醒', () => {
+    // 2026/11/11 的 0050：只有「近 1 個月漲跌」差 6.19%，尺是 5.9%
+    const now = [-0.02, -0.03, -0.0619, -0.04, -0.05, 0.01, 35, 1.2, -0.06];
+    const analogs = [[-0.02, -0.03, 0, -0.04, -0.05, 0.01, 37, 1.1, -0.06]];
+    const sd2 = [0.03, 0.04, 0.059, 0.08, 0.1, 0.1, 10, 0.3, 0.07];
+    expect(similarityNote(fakeForecast(now, analogs, sd2), FEATURES)).toBeNull();
   });
 
   it('差不多的時候不提醒', () => {

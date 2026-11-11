@@ -62,7 +62,7 @@ function onchainTrend(opts: {
         return {
           tone: 'neutral',
           headline: `${opts.shortName}：短期和長期差不多`,
-          detail: `${v}，差不到 1%，兩條線幾乎黏在一起，還不算明顯的變化；要等差距拉開，或真的交叉之後，才比較有意義。`,
+          detail: `${v}，差不到 1%，兩條線幾乎黏在一起，還不算明顯的變化。回測的規則是一交叉就買賣、不管差多少；這裡是提醒：差距這麼小時，常常剛交叉又交叉回去，訊號比較容易反覆。`,
         };
       }
       return diff >= 0

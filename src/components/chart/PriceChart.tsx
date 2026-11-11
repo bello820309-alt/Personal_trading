@@ -22,6 +22,7 @@ import {
 } from 'lightweight-charts';
 import type { AssetConfig } from '../../config/assets';
 import type { Candle } from '../../data/types';
+import { breakLineGaps } from './gaps';
 import { fmtBarDate, fmtCompact, fmtNum, fmtPct, fmtPrice, signClass } from '../../data/format';
 import { indexOfTime, rangeStats, type RangeStats } from '../../data/range';
 import { futureDates } from '../../data/resample';
@@ -361,6 +362,9 @@ function timeAt(j: number, candles: Candle[], future: string[]): string | undefi
   return j < candles.length ? candles[j]!.time : future[j - candles.length];
 }
 
+/**
+ * 線圖的資料。中間沒有數值的地方要斷開（見 gaps.ts）；只畫點的線（dots）不用，否則那一點會看不見。
+ */
 function buildLineData(
   values: Series,
   candles: Candle[],
@@ -368,6 +372,7 @@ function buildLineData(
   shift: number,
   colors: (ColorRole | null)[] | undefined,
   t: ChartTheme,
+  breakGaps = true,
 ): (LineData<Time> | WhitespaceData<Time>)[] {
   const out: (LineData<Time> | WhitespaceData<Time>)[] = [];
   for (let i = 0; i < values.length; i++) {
@@ -375,13 +380,16 @@ function buildLineData(
     if (!time) continue;
     const v = values[i];
     if (v === null || v === undefined) {
-      if (shift === 0) out.push({ time });
+      // 往未來移的線（shift > 0）沒有空白點，但斷開的判斷一樣要做，所以照樣記下來
+      out.push({ time });
       continue;
     }
     const c = colors?.[i];
     out.push(c ? { time, value: v, color: resolveColor(t, c) } : { time, value: v });
   }
-  return out;
+  const marked = breakGaps ? breakLineGaps(out as { time: Time; value?: number; color?: string }[]) : out;
+  // 往未來移的線不送空白點給圖表（未來的日期由 future 補上，空白點會打亂時間軸）
+  return shift === 0 ? (marked as (LineData<Time> | WhitespaceData<Time>)[]) : (marked.filter((p) => 'value' in p && p.value !== undefined) as LineData<Time>[]);
 }
 
 function buildHistogramData(
@@ -521,7 +529,7 @@ function PriceChartImpl({
             },
             pane,
           );
-          ls.setData(buildLineData(line.values, candles, future, line.shift ?? 0, line.colors, t));
+          ls.setData(buildLineData(line.values, candles, future, line.shift ?? 0, line.colors, t, line.kind !== 'dots'));
           s = ls;
         }
         seriesByKey.set(line.key, s);

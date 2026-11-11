@@ -57,41 +57,62 @@ export function describeNow(f: Forecast, candles: Candle[], asset: AssetConfig):
   const otherAvg = falling ? avgUp : avgDown;
   const verb = falling ? '跌' : '漲';
   const otherVerb = falling ? '漲' : '跌';
-  const reasons: string[] = [];
-  if (sameDays >= otherDays * 1.5 && sameDays - otherDays >= 3) reasons.push(`${verb}的日子比較多`);
-  if (otherAvg > 0 && sameAvg >= otherAvg * 1.2) reasons.push(`${verb}的日子平均${verb}得比較多（平均${verb} ${pp(sameAvg)}%，${otherVerb}的日子平均只${otherVerb} ${pp(otherAvg)}%）`);
-  const why = reasons.length
-    ? `主要是${reasons.join('，而且')}`
-    : `${verb}的天數和平均幅度都沒有差很多（${verb}的日子平均${verb} ${pp(sameAvg)}%，${otherVerb}的日子平均${otherVerb} ${pp(otherAvg)}%），是幾天比較大的${verb}幅加起來造成的`;
+  const daysReason = sameDays - otherDays >= 3 && sameDays >= otherDays * 1.3;
+  const sizeReason = otherAvg > 0 && sameAvg >= otherAvg * 1.2;
+  const why =
+    daysReason && sizeReason
+      ? `${verb}的天數比較多，${verb}的日子也${verb}得比較深，兩個加在一起`
+      : daysReason
+        ? `兩邊的平均幅度差不多，主要差在${verb}的天數比較多`
+        : sizeReason
+          ? `${verb}的天數只多一點，主要差在${verb}的日子${verb}得比較深`
+          : `天數和平均幅度都差不多，是幾天比較大的${verb}幅加起來造成的`;
   const bigMove =
     Math.abs(r1m) >= 0.08 && vol < 1.3 && moves.length
-      ? `近 1 個月雖然${verb}了 ${pp(r1m)}%，${moves.length} 個交易日裡有 ${downs} 天下跌、${ups} 天上漲，${why}。標準差看的是每天漲跌幅度「忽大忽小」的程度，不看方向：這段期間最大的一天是 ${fmtPct(best)}、最慘的一天是 ${fmtPct(worst)}，但和過去一年比沒有特別大，所以波動顯示「${volWord(vol)}」。看到波動不算激烈時，也要一起看漲跌幅。`
+      ? `近 1 個月雖然${verb}了 ${pp(r1m)}%：${moves.length} 個交易日裡有 ${downs} 天下跌、${ups} 天上漲；${verb}的日子平均${verb} ${pp(sameAvg)}%，${otherVerb}的日子平均${otherVerb} ${pp(otherAvg)}%，${why}。標準差看的是每天漲跌幅度「忽大忽小」的程度，不看方向：這段期間最大的一天是 ${fmtPct(best)}、最慘的一天是 ${fmtPct(worst)}，但和過去一年比沒有特別大，所以波動顯示「${volWord(vol)}」。看到波動不算激烈時，也要一起看漲跌幅。`
       : '';
   return (
     `${asset.name}（以 ${fmtDate(candles[f.target]!.time)} 收盤為準）：近 1 週 ${fmtPct(r1w)}、近 1 個月 ${fmtPct(r1m)}、近 3 個月 ${fmtPct(r3m)}；` +
     `在 200 日均線${ma >= 0 ? '上方' : '下方'} ${pp(ma)}%；RSI ${fmtNum(rsi, 1)}（${rsiWord(rsi)}）；` +
-    `最近 1 個月的波動是過去一年的 ${fmtNum(vol, 2)} 倍（${volWord(vol)}）${volNote}；離一年內最高點 ${fmtPct(dd)}。` +
+    `最近 1 個月的波動是過去一年的 ${fmtNum(vol, 2)} 倍（${volWord(vol)}；1.3 倍以上算比較激烈、0.8 倍以下算比較平靜）${volNote}；離一年內最高點 ${fmtPct(dd)}。` +
     bigMove
   );
 }
 
+export interface SimilarityStats {
+  /** 差距超過 1 個標準差（1 把尺）的有幾項 */
+  over: number;
+  /** 差最多的那一項 */
+  worst: { j: number; z: number; avg: number } | null;
+  /** 要不要提醒「其實沒有很像」 */
+  warn: boolean;
+}
+
 /**
- * 最像的日子其實也不太像時（例如現在一個月跌了兩成，相似的日子平均只跌 7%），提醒參考價值比較低。
- * 比較「漲跌、和均線的距離、離高點多遠」這幾個百分比的特徵：現在和相似日子平均的差距，
- * 超過這個特徵在歷史上的 1 個標準差（比特幣本來就波動大，所以用各自的標準差來量）就提醒。
+ * 最像的日子到底像不像：比較「漲跌、和均線的距離、離高點多遠」這幾個百分比的特徵，
+ * 現在和相似日子的平均差幾個標準差（用各自歷史上的標準差當尺，比特幣本來就波動大）。
+ * 有一項差超過 1.5 把尺，或兩項以上差超過 1 把尺，才提醒（只有一項剛好超過一點點不算）。
  */
-export function similarityNote(f: Forecast, labels: readonly { label: string; kind: string }[], limit = 1): string | null {
-  let worst: { j: number; z: number; avg: number } | null = null;
+export function similarityStats(f: Forecast, labels: readonly { label: string; kind: string }[]): SimilarityStats {
+  let worst: SimilarityStats['worst'] = null;
+  let over = 0;
   f.features.forEach((now, j) => {
     const sd = f.featureSd[j];
     if (labels[j]?.kind !== 'pct' || !sd) return;
     const avg = f.analogFeatures.reduce((a, row) => a + row[j]!, 0) / f.analogFeatures.length;
     const z = Math.abs(now - avg) / sd;
+    if (z >= 1) over++;
     if (!worst || z > worst.z) worst = { j, z, avg };
   });
-  const w = worst as { j: number; z: number; avg: number } | null;
-  if (!w || w.z < limit) return null;
-  return `現在的狀況在過去很少見，最像的日子其實也沒有很像：例如「${labels[w.j]!.label}」現在是 ${fmtPct(f.features[w.j]!)}，相似日子的平均是 ${fmtPct(w.avg)}。相似的日子不夠像時，它們之後的走法參考價值比較低，實際的漲跌可能比預測範圍更極端。`;
+  const w = worst as SimilarityStats['worst'];
+  return { over, worst: w, warn: !!w && (w.z >= 1.5 || over >= 2) };
+}
+
+export function similarityNote(f: Forecast, labels: readonly { label: string; kind: string }[]): string | null {
+  const st = similarityStats(f, labels);
+  const w = st.worst;
+  if (!st.warn || !w) return null;
+  return `現在的狀況在過去很少見，最像的日子其實也沒有很像：例如「${labels[w.j]!.label}」現在是 ${fmtPct(f.features[w.j]!)}，相似日子的平均是 ${fmtPct(w.avg)}，差了 ${fmtNum(w.z, 1)} 把尺（1 把尺＝1 個標準差）。相似的日子不夠像時，它們之後的走法參考價值比較低，實際的漲跌可能比預測範圍更極端。`;
 }
 
 export type CheckTone = 'good' | 'meh' | 'bad';

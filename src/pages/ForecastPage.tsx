@@ -6,7 +6,7 @@ import { PriceChart, type ChartIndicator } from '../components/chart/PriceChart'
 import { Card, Fold, Notice, PageTitle, Segmented, Spinner } from '../components/ui';
 import { DEFAULT_ASSET_ID, getAsset, type AssetConfig } from '../config/assets';
 import { FEATURES, analogForecast, horizonsFor, walkForwardCheck, type CheckResult, type Forecast, type HorizonKey } from '../forecast/analog';
-import { checkPoints, describeNow, historyTail, similarityNote, summarizeCheck, usageTips, type CheckTone } from '../forecast/summary';
+import { checkPoints, describeNow, historyTail, similarityNote, similarityStats, summarizeCheck, usageTips, type CheckTone } from '../forecast/summary';
 import { fmtDate, fmtNum, fmtPct, fmtPrice, signClass } from '../data/format';
 import { useAsset } from '../data/load';
 import { completedLength } from '../data/parse';
@@ -248,9 +248,10 @@ function ForecastView({
       <Fold title="現在的狀態，和最像現在的日子" sub="相似的日子是只用價格算出來的數字挑出來的，不包含消息面。">
         <p className="text-sm leading-relaxed text-fg">{describeNow(forecast, candles, asset)}</p>
         <p className="mt-2 text-xs leading-relaxed text-muted">
-          {similarityNote(forecast, FEATURES)
-            ? '下表裡現在和相似日子差很多，所以結果上方有「最像的日子其實也沒有很像」的提醒。'
-            : '這次相似的日子和現在大致相像：下表每一項的差距，都在這個特徵歷史上的 1 個標準差以內（差太多時，結果上方會出現提醒）。'}
+          {(() => {
+            const st = similarityStats(forecast, FEATURES);
+            return `下表裡，現在和相似日子的差距超過 1 把尺的有 ${st.over} 項${st.worst ? `，差最多的是「${FEATURES[st.worst.j]!.label}」（${fmtNum(st.worst.z, 1)} 把尺）` : ''}。有一項超過 1.5 把尺、或兩項以上超過 1 把尺時，結果上方才會提醒「其實沒有很像」${st.warn ? '，這次就是這樣。' : '；這次沒有，算是大致相像。'}`;
+          })()}
           最右邊一欄就是 1 個標準差，可以當成「差多少算多」的尺：現在和相似日子的平均，差距比它小就算像，比它大就算差很多。例如「近 1 個月漲跌」這把尺是 {fmtPct(forecast.featureSd[2]!, 1, false)}。
         </p>
         <div className="table-scroll mt-3">
