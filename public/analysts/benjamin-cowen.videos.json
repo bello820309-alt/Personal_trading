@@ -1,8 +1,13 @@
 {
  "schemaVersion": 1,
  "channelId": "UCRvqjQPSeaWn-uEx-w0XOIg",
- "fetchedAt": "2026-11-13T21:35:31.558Z",
+ "fetchedAt": "2026-11-14T22:23:31.970Z",
  "videos": [
+  {
+   "id": "hj5ySVDYASI",
+   "title": "Bitcoin: The Capitulation Spiral",
+   "published": "2026-11-14T20:51:00.000Z"
+  },
   {
    "id": "7XTLBzDzOHA",
    "title": "Bitcoin Drops Below $70k",
