@@ -200,7 +200,7 @@ function H2({ children, sub }: { children: ReactNode; sub?: ReactNode }) {
 function StatusLine({ exp, today }: { exp: LabExperiment; today: string }) {
   const phase = phaseOf(exp, today);
   const total = dayNumber(exp, exp.end);
-  const when = `每天台灣時間${runTimeText(exp.runTime)} 左右操作一次`;
+  const when = `每個平日（週一到週五）台灣時間${runTimeText(exp.runTime)} 左右操作一次`;
   let text: ReactNode;
   if (phase === 'before') text = <>實驗還沒開始：第一天是 <b className="text-fg">{shortDay(exp.start)}</b>，{when}，共 {total} 天。</>;
   else if (phase === 'running')
@@ -564,7 +564,7 @@ function Rules({ exp }: { exp: LabExperiment }) {
             `${specialists.map((a) => `${a.name}只能買賣 ${assetName(specialtyOf(exp, a.id)!)}`).join('、')}。`}
         </li>
         <li>
-          期間 {shortDay(exp.start)}～{shortDay(exp.end)}，每天（含週末，比特幣週末也會動）台灣時間{runTimeText(exp.runTime)} 左右操作一次，{shortDay(exp.wrapUp)} 結算。
+          期間 {shortDay(exp.start)}～{shortDay(exp.end)}，台灣時間{runTimeText(exp.runTime)} 左右操作一次，{shortDay(exp.wrapUp)} 結算。一開始是每天（含週末）都操作；為了節省用量，11/14 起改成只在平日（週一到週五）操作。11/12、11/13 因為排程出了問題沒有操作，那兩天沒有心得。
         </li>
         <li>學習的來源只有這個網站：先看網站上的說明、圖表、回測和預測，再自己決定。每筆單都要寫理由，每天寫心得。</li>
         <li>
