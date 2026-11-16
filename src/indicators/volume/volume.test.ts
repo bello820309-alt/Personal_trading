@@ -63,6 +63,46 @@ describe('最近的爆量', () => {
     expect(d.detail).toContain('今天是週末');
   });
 
+  it('量回到平常之後又放大，算新的一波，3～5 天從新的那天重新算', () => {
+    // 平常 100 → 10/26 起放量（150、600、600）→ 10/29、10/30 回到 110、105（平常）→ 今天 300
+    const vols = [...Array(25).fill(100), 150, 600, 600, 110, 105, 300];
+    const closes = [...Array(30).fill(100), 95];
+    const c = candles(vols, closes);
+    const p = { ma1: 5, ma2: 20 };
+    const r = volumeIndicator.compute(c, p);
+    const avg = r.lines.find((l) => l.key === 'ma2')!.values;
+    expect(recentSpike(vols, avg, vols.length)).toEqual({ start: 25, base: 100, calm: 28, again: 30 });
+    const d = volumeIndicator.describe!(c, r, p)!.detail;
+    expect(d).toContain('上一波放量從 10/26 開始，10/29 起量就回到平常');
+    expect(d).toContain('10/31 又放大到放量之前的 1.3 倍以上，算是新的一波');
+    expect(d).toContain('要從 10/31 重新算');
+    expect(d).toContain('放量之前（10/25 為止）20 日均量的 3.0 倍');
+  });
+
+  it('只有一天回到平常不算；回到平常但還沒再放大時也寫出來', () => {
+    const p = { ma1: 5, ma2: 20 };
+    // 回到 110 只有一天，接著又 200：同一波還沒結束
+    const a = [...Array(25).fill(100), 600, 110, 200];
+    const ra = volumeIndicator.compute(candles(a), p);
+    const sa = recentSpike(a, ra.lines.find((l) => l.key === 'ma2')!.values, a.length);
+    expect(sa).toEqual({ start: 25, base: 100 });
+    expect(volumeIndicator.describe!(candles(a), ra, p)!.detail).toContain('量還沒有回到平常');
+    // 連續 2 天回到平常
+    const b = [...Array(25).fill(100), 600, 110, 100];
+    const rb = volumeIndicator.compute(candles(b), p);
+    expect(volumeIndicator.describe!(candles(b), rb, p)!.detail).toContain('10/27 起量已經回到平常');
+  });
+
+  it('比特幣週末放量時，說明週末本來量就少', () => {
+    // 最後一根 2026/11/07（週六），量是平常的 2 倍
+    const vols = [...Array(30).fill(100), 200];
+    const c = candles(vols).map((x, i) => ({ ...x, time: new Date(Date.UTC(2026, 9, 8) + i * 86400000).toISOString().slice(0, 10) }));
+    const p = { ma1: 5, ma2: 20 };
+    const d = volumeIndicator.describe!(c, volumeIndicator.compute(c, p), p)!.detail;
+    expect(d).toContain('週末還能放量');
+    expect(d).not.toContain('週末量縮不一定代表什麼');
+  });
+
   it('爆量之後量縮回平常：說明「量縮」是和被拉高的均量比，不說追價意願不強', () => {
     // 平常 100，爆量 3 天 600，之後回到 105（和放量之前比約 1.05 倍，和最近 20 天比是量縮）
     const vols = [...Array(25).fill(100), 600, 600, 600, 105];

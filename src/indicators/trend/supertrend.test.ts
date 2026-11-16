@@ -13,6 +13,19 @@ describe('SuperTrend 翻多的日期', () => {
     const p = supertrendIndicator.defaults;
     const d = supertrendIndicator.describe!(c, supertrendIndicator.compute(c, p), p)!;
     expect(d.tone).toBe('bullish');
-    expect(d.detail).toContain(`${Number(day(40).slice(5, 7))}/${Number(day(40).slice(8, 10))} 翻多，到今天是第 1 根 K 棒，還沒經過 2～3 天的確認`);
+    expect(d.detail).toContain(`${Number(day(40).slice(5, 7))}/${Number(day(40).slice(8, 10))} 翻多，到今天是第 1 根 K 棒，還沒經過有些人用的「連續 2～3 天才算」確認`);
+  });
+
+  it('翻多之後反而大跌、還沒碰到支撐線：說明為什麼還是多方，以及照回測隔天買進的損益', () => {
+    // 一路跌、10/11 大漲翻多，之後三天往下（還沒跌破支撐線）
+    const closes = [...Array.from({ length: 40 }, (_, i) => 100 - i * 0.5), 130, 127, 125, 124];
+    const c: Candle[] = closes.map((close, i) => ({ time: day(i), open: close, high: close + 0.5, low: close - 0.5, close, volume: 1 }));
+    const p = supertrendIndicator.defaults;
+    const d = supertrendIndicator.describe!(c, supertrendIndicator.compute(c, p), p)!;
+    expect(d.tone).toBe('bullish');
+    expect(d.detail).toContain('到今天是第 4 根 K 棒，已經超過有些人用的「連續 2～3 天才算」');
+    expect(d.detail).toContain('翻多那天收盤 130.00，到今天反而跌了 4.62%');
+    // 隔天（10/12）開盤 127 買進，今天收 124：虧 2.36%
+    expect(d.detail).toContain('隔天開盤（10/12 的 127.00）買進的話，到今天虧 2.36%');
   });
 });

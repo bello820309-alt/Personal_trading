@@ -250,7 +250,8 @@ function ForecastView({
         <p className="mt-2 text-xs leading-relaxed text-muted">
           {(() => {
             const st = similarityStats(forecast, FEATURES);
-            return `下表裡，現在和相似日子的差距超過 1 把尺的有 ${st.over} 項${st.worst ? `，差最多的是「${FEATURES[st.worst.j]!.label}」（${fmtNum(st.worst.z, 1)} 把尺）` : ''}。有一項超過 1.5 把尺、或兩項以上超過 1 把尺時，結果上方才會提醒「其實沒有很像」${st.warn ? '，這次就是這樣。' : '；這次沒有，算是大致相像。'}`;
+            const near = st.worst && !st.warn && st.worst.z >= 1.3 ? '，還沒到 1.5' : '';
+            return `下表裡，現在和相似日子的差距在 1 把尺以上的有 ${st.over} 項${st.worst ? `，差最多的是「${FEATURES[st.worst.j]!.label}」（${fmtNum(st.worst.z, 2)} 把尺${near}）` : ''}。有一項到 1.5 把尺以上、或兩項以上到 1 把尺以上時，結果上方才會提醒「其實沒有很像」${st.warn ? '，這次就是這樣。' : '；這次沒有，算是大致相像。'}`;
           })()}
           最右邊一欄就是 1 個標準差，可以當成「差多少算多」的尺：現在和相似日子的平均，差距比它小就算像，比它大就算差很多。例如「近 1 個月漲跌」這把尺是 {fmtPct(forecast.featureSd[2]!, 1, false)}。
         </p>

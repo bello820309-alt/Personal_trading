@@ -104,10 +104,24 @@ export const macdIndicator: IndicatorDef<MacdParams> = {
         : growing
           ? `，而且${days}放大（${side}的力道在增強${streak >= 3 ? '' : streak === 2 ? '；才連續 2 天，有人 2 天就算，比較保守的做法是等到第 3 天' : '，只變一天可能是雜訊，常見的看法是連續 2～3 天以上才比較算數'}）`
           : `，而且${days}縮小（${side}的力道在減弱${streak >= 3 ? '' : streak === 2 ? '；才連續 2 天，有人 2 天就算，比較保守的做法是等到第 3 天' : '，只變一天可能是雜訊，常見的看法是連續 2～3 天以上才比較算數'}）`;
+    // 最近一次 DIF 和訊號線交叉
+    const difL = getLine(r, 'dif');
+    const sigL = getLine(r, 'macd');
+    let cross = '';
+    for (let i = n - 1; i >= 1 && i >= n - 120; i--) {
+      const a = difL[i], b = sigL[i], pa = difL[i - 1], pb = sigL[i - 1];
+      if (a == null || b == null || pa == null || pb == null) break;
+      const golden = pa <= pb && a > b;
+      const dead = pa >= pb && a < b;
+      if (!golden && !dead) continue;
+      const day = `${Number(candles[i]!.time.slice(5, 7))}/${Number(candles[i]!.time.slice(8, 10))}`;
+      cross = ` 最近一次交叉是 ${day} 的${golden ? '黃金交叉（DIF 往上穿過訊號線）' : '死亡交叉（DIF 往下穿過訊號線）'}，發生在 0 軸${a >= 0 ? '之上' : '之下'}，到今天是第 ${n - i} 根 K 棒。`;
+      break;
+    }
     return {
       tone,
       headline: `DIF ${fmtNum(dif)}／MACD ${fmtNum(sig)}`,
-      detail: `${text}柱狀體（OSC）目前為${o1 >= 0 ? '正值' : '負值'}${growth}。（DIF 是短期和長期均線的差距，訊號線是 DIF 的平均，柱狀體是兩者相減；0 軸代表短期和長期均線一樣高。）`,
+      detail: `${text}柱狀體（OSC）目前為${o1 >= 0 ? '正值' : '負值'}${growth}。${cross}（DIF 是短期和長期均線的差距，訊號線是 DIF 的平均，柱狀體是兩者相減；0 軸代表短期和長期均線一樣高。）`,
     };
   },
   strategy: {

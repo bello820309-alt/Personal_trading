@@ -1,6 +1,7 @@
 import { fmtNum } from '../../data/format';
 import { closes, crossOver, scanSignals, sma, stdev, validSlice, zip } from '../math/core';
 import { getLine, type IndicatorDef, type Series } from '../types';
+import { squeezeStatus, squeezeText } from './squeeze';
 
 export type BollingerParams = { period: number; mult: number };
 
@@ -67,10 +68,11 @@ export const bollingerIndicator: IndicatorDef<BollingerParams> = {
     const w = widthLine[n - 1];
     if (b == null || w == null) return null;
     const recent = validSlice(widthLine, n - 120, n);
-    const squeeze = recent.length >= 60 && w <= Math.min(...recent) * 1.05;
     const maxW = recent.length >= 60 ? Math.max(...recent) : 0;
     const wide = maxW > 0 && w >= maxW * 0.8;
-    const sq = squeeze ? ' 通道寬度接近半年來最窄（「擠壓」），常常是大行情前的醞釀期。' : '';
+    // 擠壓：和肯特納通道的卡片用同一個判斷（兩種說法都寫出來）
+    const st = squeezeStatus(candles);
+    const sq = st ? squeezeText(st, candles[n - 1]!.close) : '';
     const widthNote = maxW > 0 ? ` 現在通道的寬度是最近半年最寬時的 ${fmtNum((w / maxW) * 10, 1)} 成（8 成以上算很寬）。` : '';
     const head = `%B = ${fmtNum(b, 2)}`;
     if (b > 1)

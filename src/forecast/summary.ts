@@ -35,9 +35,10 @@ export function describeNow(f: Forecast, candles: Candle[], asset: AssetConfig):
   const cal = calendarFor(asset);
   const sdMonth = dailySd(candles, f.target, cal.month);
   const sdYear = dailySd(candles, f.target, cal.year);
+  const atrNote = '指標百科的 ATR 看的是最近 14 天、包含盤中最高最低的震幅，算法不同，說法有時會和這裡不一樣。';
   const volNote =
     sdMonth !== null && sdYear !== null
-      ? `（這裡的「波動」是每天漲跌幅的標準差，大約是一天通常會漲跌幾 %：最近 1 個月約 ±${fmtNum(sdMonth * 100, 2)}%，過去一年約 ±${fmtNum(sdYear * 100, 2)}%。）`
+      ? `（這裡的「波動」是每天漲跌幅的標準差，大約是一天通常會漲跌幾 %：最近 1 個月約 ±${fmtNum(sdMonth * 100, 2)}%，過去一年約 ±${fmtNum(sdYear * 100, 2)}%；${atrNote}）`
       : '（這裡的「波動」是每天漲跌幅的標準差，大約是一天通常會漲跌幾 %。）';
   // 最近 1 個月：幾天漲、幾天跌，以及最大的一天漲跌（全部照資料寫，不憑印象）
   const moves: number[] = [];
@@ -112,7 +113,7 @@ export function similarityNote(f: Forecast, labels: readonly { label: string; ki
   const st = similarityStats(f, labels);
   const w = st.worst;
   if (!st.warn || !w) return null;
-  return `現在的狀況在過去很少見，最像的日子其實也沒有很像：例如「${labels[w.j]!.label}」現在是 ${fmtPct(f.features[w.j]!)}，相似日子的平均是 ${fmtPct(w.avg)}，差了 ${fmtNum(w.z, 1)} 把尺（1 把尺＝1 個標準差）。相似的日子不夠像時，它們之後的走法參考價值比較低，實際的漲跌可能比預測範圍更極端。`;
+  return `現在的狀況在過去很少見，最像的日子其實也沒有很像：例如「${labels[w.j]!.label}」現在是 ${fmtPct(f.features[w.j]!)}，相似日子的平均是 ${fmtPct(w.avg)}，差了 ${fmtNum(w.z, 2)} 把尺（1 把尺＝1 個標準差）。相似的日子不夠像時，它們之後的走法參考價值比較低，實際的漲跌可能比預測範圍更極端。`;
 }
 
 export type CheckTone = 'good' | 'meh' | 'bad';

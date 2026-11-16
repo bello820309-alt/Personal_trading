@@ -1,6 +1,7 @@
 import { fmtNum } from '../../data/format';
 import { atrWilder, closes, crossOver, crossUnder, ema, scanSignals, zip } from '../math/core';
 import { getLine, type IndicatorDef } from '../types';
+import { squeezeStatus, squeezeText } from './squeeze';
 
 export type KeltnerParams = { emaPeriod: number; atrPeriod: number; mult: number };
 
@@ -46,19 +47,9 @@ export const keltnerIndicator: IndicatorDef<KeltnerParams> = {
     const l = getLine(r, 'lower')[n - 1];
     if (u == null || m == null || l == null) return null;
     const c = candles[n - 1]!.close;
-    // 擠壓：布林通道（20 日、2 倍標準差）整個縮進肯特納通道裡
-    let squeezeNote = '';
-    if (n >= 20) {
-      const xs = candles.slice(n - 20).map((k) => k.close);
-      const mean = xs.reduce((a, x) => a + x, 0) / 20;
-      const sd = Math.sqrt(xs.reduce((a, x) => a + (x - mean) ** 2, 0) / 20);
-      const bu = mean + 2 * sd;
-      const bl = mean - 2 * sd;
-      squeezeNote =
-        bu < u && bl > l
-          ? ` 布林通道（${fmtNum(bl)}～${fmtNum(bu)}）整個縮在肯特納通道裡，就是「擠壓」：波動變得很小，常常是大行情發動前的醞釀。`
-          : ` 布林通道（${fmtNum(bl)}～${fmtNum(bu)}）沒有縮進肯特納通道裡，現在沒有「擠壓」。`;
-    }
+    // 擠壓：和布林通道的卡片用同一個判斷（兩種說法都寫出來）
+    const st = squeezeStatus(candles);
+    const squeezeNote = st ? squeezeText(st, c) : '';
     if (c > u) return { tone: 'bullish', headline: '收盤價突破上軌', detail: `上軌 ${fmtNum(u)}：價格衝出通道，代表趨勢很強。${squeezeNote}` };
     if (c < l) return { tone: 'bearish', headline: '收盤價跌破下軌', detail: `下軌 ${fmtNum(l)}：價格跌出通道，代表跌勢很強。${squeezeNote}` };
     return c >= m

@@ -11,24 +11,57 @@ const md = (time: string) => `${Number(time.slice(5, 7))}/${Number(time.slice(8,
  * 爆量那幾天會把最近的均量拉高，所以「量有沒有縮回來」要和放量之前的均量比。
  * lookback：只看最近幾根（太久以前的爆量就不提了）。
  */
-export function recentSpike(volumes: readonly number[], avg: Series, n: number, lookback = 10): { start: number; base: number } | null {
+/** 放量之後「回到平常」：連續 2 天都在放量之前均量的 1.3 倍以內 */
+export const CALM_RATIO = 1.3;
+export const CALM_DAYS = 2;
+
+export type Spike = {
+  /** 這一波放量開始的那天 */
+  start: number;
+  /** 放量之前（start 的前一天為止）的均量 */
+  base: number;
+  /** 量回到平常的第一天（連續 CALM_DAYS 天在 base 的 CALM_RATIO 倍以內）；還沒回到平常就沒有 */
+  calm?: number;
+  /** 回到平常之後又放大（base 的 CALM_RATIO 倍以上）的第一天：算新的一波 */
+  again?: number;
+};
+
+/**
+ * 最近 lookback 天裡最早的一次爆量（≥ 均量 2 倍），往前找這一波放量（≥ 1.3 倍）的開始，
+ * 再往後看量有沒有回到平常、回到平常之後有沒有又放大。
+ * 用最早的那次，是因為新的一波常常只和被拉高的均量比、看起來沒有爆量。
+ */
+export function recentSpike(volumes: readonly number[], avg: Series, n: number, lookback = 10): Spike | null {
   const big = (i: number, k: number) => {
     const a = avg[i];
     return a != null && a > 0 && volumes[i]! >= k * a;
   };
-  let last = -1;
-  for (let i = n - 1; i >= Math.max(1, n - lookback); i--) {
+  let first = -1;
+  for (let i = Math.max(1, n - lookback); i <= n - 1; i++) {
     if (big(i, 2)) {
-      last = i;
+      first = i;
       break;
     }
   }
-  if (last < 0) return null;
+  if (first < 0) return null;
   // 往前找這一波放量（≥ 1.3 倍）是從哪一天開始的
-  let start = last;
+  let start = first;
   while (start - 1 >= 1 && big(start - 1, 1.3)) start--;
   const base = avg[start - 1];
-  return base != null && base > 0 ? { start, base } : null;
+  if (base == null || base <= 0) return null;
+  const spike: Spike = { start, base };
+  let run = 0;
+  for (let i = first + 1; i <= n - 1; i++) {
+    const r = volumes[i]! / base;
+    if (spike.calm == null) {
+      run = r <= CALM_RATIO ? run + 1 : 0;
+      if (run >= CALM_DAYS) spike.calm = i - CALM_DAYS + 1;
+    } else if (r >= CALM_RATIO) {
+      spike.again = i;
+      break;
+    }
+  }
+  return spike;
 }
 
 export const volumeIndicator: IndicatorDef<VolumeParams> = {
@@ -81,7 +114,12 @@ export const volumeIndicator: IndicatorDef<VolumeParams> = {
     };
     // 比特幣週末的成交量通常比平日少三、四成（只有比特幣有週末的 K 棒）
     const weekday = new Date(`${candles[n - 1]!.time}T00:00:00Z`).getUTCDay();
-    const weekend = weekday === 0 || weekday === 6 ? ' 今天是週末：比特幣週末的成交量通常比平日少三、四成，週末量縮不一定代表什麼。' : '';
+    const isWeekend = weekday === 0 || weekday === 6;
+    const weekend = !isWeekend
+      ? ''
+      : ratio >= 1.3
+        ? ' 今天是週末：比特幣週末的成交量通常比平日少三、四成，均量裡大多是平日的量；週末還能放量到均量的這個倍數，和平常的週末比放大得更多，代表交易特別熱絡。'
+        : ' 今天是週末：比特幣週末的成交量通常比平日少三、四成，週末量縮不一定代表什麼。';
     const level = ratio >= 2 ? '爆量' : ratio >= 1.3 ? '量增' : ratio <= 0.6 ? '量縮' : '量能持平';
     const priceWord = up ? '價漲' : down ? '價跌' : '價平';
     const spike = recentSpike(
@@ -96,7 +134,7 @@ export const volumeIndicator: IndicatorDef<VolumeParams> = {
       comment = '上漲時成交量放大，代表買盤積極，上漲比較有說服力。（0050、VOO 這類 ETF 有造市商，量的訊號只能參考。）';
     } else if (ratio >= 1.3 && down) {
       tone = 'bearish';
-      comment = '下跌時成交量放大，代表賣壓沉重。也有另一種可能：大家恐慌性地賣，賣完反而接近短期低點。常見的看法是再觀察 3～5 個交易日：如果量縮回爆量之前的 20 日均量附近（爆量那幾天會把最近的均量拉高，所以要和爆量前比）、價格不再創新低，比較像賣壓出清；如果繼續放量下跌，就是賣壓還沒結束。這只是常見的經驗，不保證準。（0050、VOO 這類 ETF 有造市商，量的訊號只能參考。）';
+      comment = '下跌時成交量放大，代表賣壓沉重。也有另一種可能：大家恐慌性地賣，賣完反而接近短期低點。常見的看法是再觀察 3～5 個交易日（從這一波開始放量的那天算起；量回到平常之後又放大，就算新的一波）：如果量縮回爆量之前的 20 日均量附近（爆量那幾天會把最近的均量拉高，所以要和爆量前比）、價格不再創新低，比較像賣壓出清；如果繼續放量下跌，就是賣壓還沒結束。這只是常見的經驗，不保證準。（0050、VOO 這類 ETF 有造市商，量的訊號只能參考。）';
     } else if (ratio <= 0.6) {
       comment = up ? '上漲但量縮，追價意願不強。' : down ? '下跌但量縮，賣壓可能正在減輕。' : '交易清淡，市場在觀望。';
       // 爆量之後的「量縮」：只是和被拉高的均量比；和放量之前比已經回到平常，就不要說成追價意願不強
@@ -104,13 +142,24 @@ export const volumeIndicator: IndicatorDef<VolumeParams> = {
         comment = `這裡的「量縮」是和最近 ${p.ma2} 天（包含爆量那幾天）的均量比；和放量之前比是 ${fmtNum(v / spike.base, 1)} 倍，算是回到平常的水準。爆量之後量縮回平常、價格又沒有再創新低，比較像賣壓出清${up ? '，所以這時的「上漲但量縮」不一定是追價意願不強' : ''}。`;
       }
     }
-    const spikeText = spike
-      ? ` 這一波放量從 ${md(candles[spike.start]!.time)} 開始。${
-          unit
-            ? `放量之前（${md(candles[spike.start - 1]!.time)} 為止）的 ${p.ma2} 日均量是 ${amount(spike.base)}，今天 ${amount(v)}，是它的 ${fmtNum(v / spike.base, 1)} 倍。`
-            : `今天的量是放量之前（${md(candles[spike.start - 1]!.time)} 為止）${p.ma2} 日均量的 ${fmtNum(v / spike.base, 1)} 倍。`
-        }兩個倍數差在比的對象：前面的 ${fmtNum(ratio, 1)} 倍是和最近 ${p.ma2} 天的均量比，但這 ${p.ma2} 天已經包含爆量那幾天、均量被拉高了；${fmtNum(v / spike.base, 1)} 倍是和放量之前比，比較看得出今天的量到底有多大。之後看量有沒有縮回來，就看這個數字：降到 1 倍左右，才算回到爆量之前的水準。`
-      : '';
+    const twoRatios = (x: number) =>
+      `兩個倍數差在比的對象：前面的 ${fmtNum(ratio, 1)} 倍是和最近 ${p.ma2} 天的均量比，但這 ${p.ma2} 天包含爆量那幾天、均量被拉高了；${fmtNum(x, 1)} 倍是和放量之前比，比較看得出今天的量到底有多大。`;
+    let spikeText = '';
+    if (spike) {
+      const x = v / spike.base;
+      const before = md(candles[spike.start - 1]!.time);
+      const vsBase = unit
+        ? `放量之前（${before} 為止）的 ${p.ma2} 日均量是 ${amount(spike.base)}，今天 ${amount(v)}，是它的 ${fmtNum(x, 1)} 倍。`
+        : `今天的量是放量之前（${before} 為止）${p.ma2} 日均量的 ${fmtNum(x, 1)} 倍。`;
+      const calmRule = `（本站的算法：連續 ${CALM_DAYS} 天都在放量之前均量的 ${CALM_RATIO} 倍以內，就算回到平常）`;
+      if (spike.again != null) {
+        spikeText = ` 上一波放量從 ${md(candles[spike.start]!.time)} 開始，${md(candles[spike.calm!]!.time)} 起量就回到平常${calmRule}；${md(candles[spike.again]!.time)} 又放大到放量之前的 ${CALM_RATIO} 倍以上，算是新的一波，「再觀察 3～5 個交易日」要從 ${md(candles[spike.again]!.time)} 重新算。現在的 ${p.ma2} 日均量還包含上一波爆量的那幾天，所以還是和上一波放量之前比：${vsBase}${twoRatios(x)}`;
+      } else if (spike.calm != null) {
+        spikeText = ` 這一波放量從 ${md(candles[spike.start]!.time)} 開始，${md(candles[spike.calm]!.time)} 起量已經回到平常${calmRule}。${vsBase}${twoRatios(x)}`;
+      } else {
+        spikeText = ` 這一波放量從 ${md(candles[spike.start]!.time)} 開始，量還沒有回到平常${calmRule}。${vsBase}${twoRatios(x)}之後看量有沒有縮回來，就看這個數字：降到 1 倍左右，才算回到爆量之前的水準。`;
+      }
+    }
     return {
       tone,
       headline: `${priceWord}${level}（${fmtNum(ratio, 1)} 倍均量）`,
