@@ -35,7 +35,7 @@ describe('均線往哪邊彎', () => {
         line('MA50', [100, 100, 100, 100, 100, 101]),
       ],
     };
-    expect(maDirections(r, 6)).toBe('MA20（月線）往下、MA60（季線）走平、MA50往上');
+    expect(maDirections(r, 6)).toBe('MA20（月線）往下、MA60（季線）走平、MA50 往上');
   });
 });
 

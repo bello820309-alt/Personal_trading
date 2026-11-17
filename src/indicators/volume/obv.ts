@@ -1,6 +1,6 @@
 import { fmtNum } from '../../data/format';
 import { closes, crossOver, crossUnder, highest, nulls, scanSignals, sma } from '../math/core';
-import { getLine, type IndicatorDef } from '../types';
+import { getLine, type IndicatorDef, notesOf } from '../types';
 
 export type ObvParams = { maPeriod: number };
 
@@ -73,7 +73,7 @@ export const obvIndicator: IndicatorDef<ObvParams> = {
           const ad = vd / dn;
           const big = obvUp ? '上漲' : '下跌';
           const ratio = obvUp ? au / ad : ad / au;
-          yearNote = ` 放到一年來看：價格${priceChg > 0 ? '漲' : '跌'}了 ${fmtNum(Math.abs(priceChg) * 100, 1)}%，OBV 卻往${obvUp ? '上' : '下'}。原因是這一年${big}的日子平均成交量是${obvUp ? '下跌' : '上漲'}日子的 ${fmtNum(ratio, 2)} 倍（上漲 ${up} 天、下跌 ${dn} 天）；OBV 把每天的量整筆加上或減掉，量大的日子影響最大${Math.abs(up - dn) <= 0.1 * (up + dn) ? '；這一年上漲、下跌的天數差不多，所以方向由量比較大的那一邊決定' : ''}。這種一整年的背離不一定是警訊：本站判斷「量價背離」只看最近 20 天的高點，一整年的方向容易被少數幾天的大量帶著走；0050、VOO 這類 ETF 有造市商，還有申購、買回，量的訊號只能參考。`;
+          yearNote = `放到一年來看：價格${priceChg > 0 ? '漲' : '跌'}了 ${fmtNum(Math.abs(priceChg) * 100, 1)}%，OBV 卻往${obvUp ? '上' : '下'}。原因是這一年${big}的日子平均成交量是${obvUp ? '下跌' : '上漲'}日子的 ${fmtNum(ratio, 2)} 倍（上漲 ${up} 天、下跌 ${dn} 天）；OBV 把每天的量整筆加上或減掉，量大的日子影響最大${Math.abs(up - dn) <= 0.1 * (up + dn) ? '；這一年上漲、下跌的天數差不多，所以方向由量比較大的那一邊決定' : ''}。這種一整年的背離不一定是警訊：本站判斷「量價背離」只看最近 20 天的高點，一整年的方向容易被少數幾天的大量帶著走；0050、VOO 這類 ETF 有造市商，還有申購、買回，量的訊號只能參考。`;
         }
       }
     }
@@ -81,12 +81,13 @@ export const obvIndicator: IndicatorDef<ObvParams> = {
       return {
         tone: 'neutral',
         headline: '量價背離：價格創 20 日新高，OBV 沒跟上',
-        detail: `價格創新高，但累積的成交量沒有同步創新高，代表上漲的資金動能可能不足，要多留意。${yearNote}`,
+        detail: '價格創新高，但累積的成交量沒有同步創新高，代表上漲的資金動能可能不足，要多留意。',
+        notes: notesOf(['價格和 OBV 一整年方向相反', yearNote]),
       };
     }
     return o > m
-      ? { tone: 'bullish', headline: 'OBV 在均線之上', detail: `最近上漲日的成交量比下跌日多，資金偏向流入。${yearNote}` }
-      : { tone: 'bearish', headline: 'OBV 在均線之下', detail: `最近下跌日的成交量比上漲日多，資金偏向流出。${yearNote}` };
+      ? { tone: 'bullish', headline: 'OBV 在均線之上', detail: '最近上漲日的成交量比下跌日多，資金偏向流入。', notes: notesOf(['價格和 OBV 一整年方向相反', yearNote]) }
+      : { tone: 'bearish', headline: 'OBV 在均線之下', detail: '最近下跌日的成交量比上漲日多，資金偏向流出。', notes: notesOf(['價格和 OBV 一整年方向相反', yearNote]) };
   },
   strategy: {
     name: 'OBV 上穿均線買、跌破均線賣',

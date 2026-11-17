@@ -1,7 +1,7 @@
 import type { Candle } from '../../data/types';
 import { fmtNum, fmtPct } from '../../data/format';
 import { closes, crossOver, crossUnder, ema, scanSignals, sma } from '../math/core';
-import { getLine, seriesColor, type IndicatorDef, type IndicatorResult, type StateSummary } from '../types';
+import { getLine, seriesColor, type IndicatorDef, type IndicatorResult, type StateSummary, notesOf } from '../types';
 
 export type MaParams = { periods: number[]; signalPeriod: number };
 
@@ -55,7 +55,7 @@ export function maDirections(r: IndicatorResult, n: number): string {
     const ch = now / past - 1;
     const word = Math.abs(ch) < 0.002 ? '走平' : ch > 0 ? '往上' : '往下';
     const nick = MA_NICKNAMES[Number(l.label.replace(/\D/g, ''))];
-    parts.push(`${l.label}${nick && l.label.startsWith('MA') ? `（${nick}）` : ''}${word}`);
+    parts.push(`${l.label}${nick && l.label.startsWith('MA') ? `（${nick}）` : ' '}${word}`);
   }
   return parts.join('、');
 }
@@ -78,6 +78,7 @@ function describeMa(prefix: string, candles: Candle[], r: IndicatorResult): Stat
   }
   const tone = above.length === vals.length ? 'bullish' : above.length === 0 ? 'bearish' : 'neutral';
   let detail: string;
+  let phase = '';
   if (vals.length >= 3 && bullAlign) {
     detail = `均線「多頭排列」：價格在最上面，短天期均線在長天期之上，代表各種時間尺度的趨勢都向上。`;
   } else if (vals.length >= 3 && bearAlign) {
@@ -86,20 +87,22 @@ function describeMa(prefix: string, candles: Candle[], r: IndicatorResult): Stat
     const parts: string[] = [];
     if (above.length) parts.push(`在 ${above.map((x) => x.label).join('、')} 之上`);
     if (below.length) parts.push(`在 ${below.map((x) => x.label).join('、')} 之下`);
-    detail = `收盤價${parts.join('，')}。${tone === 'neutral' ? phaseText(close, vals) : ''}`;
+    detail = `收盤價${parts.join('，')}。`;
+    if (tone === 'neutral') phase = phaseText(close, vals);
   }
   const longest = vals[vals.length - 1]!;
   const dist = close / longest.v - 1;
-  detail += ` 距離 ${longest.label}（${fmtNum(longest.v)}）${fmtPct(dist)}。`;
-  if (Math.abs(dist) < 0.01) {
-    detail += `價格就貼在 ${longest.label} 附近：站得住常被當成支撐，跌破則是轉弱的訊號。常見的做法是等收盤連續 2～3 天都在線的同一邊，再確認方向。`;
-  }
+  detail += `距離 ${longest.label}（${fmtNum(longest.v)}）${fmtPct(dist)}。`;
+  const near =
+    Math.abs(dist) < 0.01
+      ? `價格就貼在 ${longest.label} 附近（差不到 1%）：站得住的話，有人把它當支撐；跌破則被當成轉弱。一種比較保守的做法是等收盤連續 2～3 天都在線的同一邊，再確認方向。`
+      : '';
   const dirs = maDirections(r, n);
-  if (dirs) detail += ` 均線往哪邊彎（和 5 天前比）：${dirs}。`;
   return {
     tone,
     headline: `收盤價站上 ${above.length}／${vals.length} 條${prefix === 'EMA' ? ' EMA' : '均線'}`,
     detail,
+    notes: notesOf(['短期、長期方向不一樣時怎麼看', phase], [`價格貼著 ${longest.label}`, near], ['均線往哪邊彎', dirs && `和 5 天前比：${dirs}。`]),
   };
 }
 

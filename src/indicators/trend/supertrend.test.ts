@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { summaryText } from '../types';
 import type { Candle } from '../../data/types';
 import { supertrendIndicator } from './supertrend';
 
@@ -13,7 +14,7 @@ describe('SuperTrend 翻多的日期', () => {
     const p = supertrendIndicator.defaults;
     const d = supertrendIndicator.describe!(c, supertrendIndicator.compute(c, p), p)!;
     expect(d.tone).toBe('bullish');
-    expect(d.detail).toContain(`${Number(day(40).slice(5, 7))}/${Number(day(40).slice(8, 10))} 翻多，到今天是第 1 根 K 棒，還沒經過有些人用的「連續 2～3 天才算」確認`);
+    expect(summaryText(d)).toContain(`${Number(day(40).slice(5, 7))}/${Number(day(40).slice(8, 10))} 翻多，到今天是第 1 根 K 棒，還沒經過有些人用的「連續 2～3 天才算」確認`);
   });
 
   it('翻多之後反而大跌、還沒碰到支撐線：說明為什麼還是多方，以及照回測隔天買進的損益', () => {
@@ -23,9 +24,9 @@ describe('SuperTrend 翻多的日期', () => {
     const p = supertrendIndicator.defaults;
     const d = supertrendIndicator.describe!(c, supertrendIndicator.compute(c, p), p)!;
     expect(d.tone).toBe('bullish');
-    expect(d.detail).toContain('到今天是第 4 根 K 棒，已經超過有些人用的「連續 2～3 天才算」');
-    expect(d.detail).toContain('翻多那天收盤 130.00，到今天反而跌了 4.62%');
+    expect(summaryText(d)).toContain('到今天是第 4 根 K 棒，已經超過有些人用的「連續 2～3 天才算」');
+    expect(summaryText(d)).toContain('翻多那天收盤 130.00，到今天反而跌了 4.62%');
     // 隔天（10/12）開盤 127 買進，今天收 124：虧 2.36%
-    expect(d.detail).toContain('隔天開盤（10/12 的 127.00）買進的話，到今天虧 2.36%');
+    expect(summaryText(d)).toContain('隔天開盤（10/12 的 127.00）買進的話，到今天虧 2.36%');
   });
 });

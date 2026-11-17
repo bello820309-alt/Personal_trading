@@ -4,6 +4,7 @@ import { AssetTabs } from '../components/AssetTabs';
 import { PriceChart, type ChartIndicator, type ChartMarker } from '../components/chart/PriceChart';
 import { ArrowGuide, LineGuide } from '../components/LineGuide';
 import { Notice, Spinner, ToneBadge } from '../components/ui';
+import { StateNotes } from '../components/StateNotes';
 import { ASSETS, DEFAULT_ASSET_ID, getAsset, type AssetConfig } from '../config/assets';
 import { defaultCosts, runIndicatorBacktest } from '../backtest/strategies';
 import { getContent } from '../content';
@@ -249,6 +250,7 @@ function LiveChart({ def, asset, series }: { def: IndicatorDef; asset: AssetConf
             <span className="font-medium">{asset.name}現在：{d.headline}</span>
           </div>
           <p className="mt-1 text-muted">{d.detail}</p>
+          <StateNotes notes={d.notes} className="mt-2" />
         </div>
       )}
       <button

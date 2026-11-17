@@ -1,12 +1,20 @@
 import { fmtCompact, fmtNum } from '../../data/format';
 import type { ExtraKey } from '../../data/extra';
 import { crossOver, crossUnder, scanSignals, sma } from '../math/core';
-import { getLine, type IndicatorDef } from '../types';
+import { afterStats, afterText } from '../math/after';
+import { getLine, type IndicatorDef, notesOf } from '../types';
 import { extraSeries, freshLast } from './common';
 
 export type OnchainTrendParams = { fast: number; slow: number };
 
 /** 兩條均線比較「最近」和「比較長一段時間」的鏈上活動：短的在上面代表越來越熱絡 */
+/** 某一邊（短均線在上／在下）的說明；after 有寫的話，另外算出「過去這種情況之後價格怎麼走」 */
+type OnchainSide = {
+  headline: string;
+  detail: string;
+  after?: { title: string; what: string; bars: number; side: 'up' | 'down' };
+};
+
 function onchainTrend(opts: {
   id: string;
   shortName: string;
@@ -19,8 +27,8 @@ function onchainTrend(opts: {
   defaults: OnchainTrendParams;
   buyLabel: string;
   sellLabel: string;
-  up: { headline: string; detail: string };
-  down: { headline: string; detail: string };
+  up: OnchainSide;
+  down: OnchainSide;
   strategy: { name: string; buyRule: string; sellRule: string };
 }): IndicatorDef<OnchainTrendParams> {
   return {
@@ -58,16 +66,40 @@ function onchainTrend(opts: {
       const diff = s > 0 ? f / s - 1 : 0;
       const v = `${opts.what}的短均線 ${fmtCompact(f)}，比長均線${diff >= 0 ? '高' : '低'} ${fmtNum(Math.abs(diff) * 100, 1)}%`;
       // 差不到 1% 時兩條線幾乎黏在一起，不要說成明顯的轉強或轉弱
+      // 兩條線過去交叉幾次、幾次很快又交叉回去：用資料算，不憑印象
+      const fastL = getLine(r, 'fast');
+      const slowL = getLine(r, 'slow');
+      const side = (i: number) => { const a = fastL[i], b = slowL[i]; return a == null || b == null ? 0 : a > b ? 1 : -1; };
+      let crosses = 0;
+      let backSoon = 0;
+      const SOON = 10;
+      for (let i = 1; i + SOON < candles.length; i++) {
+        if (side(i) === 0 || side(i - 1) === 0 || side(i) === side(i - 1)) continue;
+        crosses++;
+        for (let j = i + 1; j <= i + SOON; j++) {
+          if (side(j) !== 0 && side(j) !== side(i)) {
+            backSoon++;
+            break;
+          }
+        }
+      }
+      const crossNote = crosses >= 5 ? `這份資料裡兩條線交叉過 ${crosses} 次，其中 ${backSoon} 次在 ${SOON} 天內又交叉回去。回測的規則是一交叉就買賣、不管兩條線差多少，成績已經包含這些來回。` : '';
+      // 差不到 1% 時兩條線幾乎黏在一起，不要說成明顯的轉強或轉弱
       if (Math.abs(diff) < 0.01) {
         return {
           tone: 'neutral',
           headline: `${opts.shortName}：短期和長期差不多`,
-          detail: `${v}，差不到 1%，兩條線幾乎黏在一起，還不算明顯的變化。回測的規則是一交叉就買賣、不管差多少；這裡是提醒：差距這麼小時，常常剛交叉又交叉回去，訊號比較容易反覆。`,
+          detail: `${v}，差不到 1%，兩條線幾乎黏在一起，還不算明顯的變化。`,
+          notes: notesOf(['差這麼小，交叉算不算', crossNote]),
         };
       }
+      const after = diff >= 0 ? opts.up.after : opts.down.after;
+      const stats = after
+        ? afterText(afterStats(candles, (i) => side(i) === (diff >= 0 ? 1 : -1), after.bars), after.what, after.side)
+        : '';
       return diff >= 0
-        ? { tone: 'bullish', headline: opts.up.headline, detail: `${v}。${opts.up.detail}` }
-        : { tone: 'bearish', headline: opts.down.headline, detail: `${v}。${opts.down.detail}` };
+        ? { tone: 'bullish', headline: opts.up.headline, detail: `${v}。${opts.up.detail}`, notes: notesOf([opts.up.after?.title ?? '', stats], ['兩條線交叉過幾次', crossNote]) }
+        : { tone: 'bearish', headline: opts.down.headline, detail: `${v}。${opts.down.detail}`, notes: notesOf([opts.down.after?.title ?? '', stats], ['兩條線交叉過幾次', crossNote]) };
     },
     strategy: opts.strategy,
   };
@@ -104,8 +136,12 @@ export const hashRibbonsIndicator = onchainTrend({
   defaults: { fast: 30, slow: 60 },
   buyLabel: '礦工投降結束',
   sellLabel: '礦工投降',
-  up: { headline: '算力帶：算力穩定成長', detail: '礦工持續加入、投入更多機器，網路很健康。「偏多」是指礦工沒有投降、沒有被迫賣幣的壓力，不是說價格會漲：價格下跌時算力還在成長也很常見。' },
-  down: { headline: '算力帶：礦工投降中', detail: '算力下降，代表有礦工撐不下去關機了（例如幣價大跌、減半後收入減少）；歷史上常出現在階段性低點附近。' },
+  up: { headline: '算力帶：算力穩定成長', detail: '礦工持續加入、投入更多機器。「偏多」是指礦工沒有投降、沒有被迫賣幣的壓力，不是說價格會漲：價格下跌時，算力也可能還在成長。' },
+  down: {
+    headline: '算力帶：礦工投降中',
+    detail: '算力下降，代表有礦工撐不下去關機了（例如幣價大跌、減半後收入減少）。',
+    after: { title: '過去礦工投降期間之後', what: '算力短均線在長均線之下（礦工投降）', bars: 90, side: 'up' },
+  },
   strategy: {
     name: '算力短均線上穿長均線買、下穿賣',
     buyRule: '算力的 30 日平均由下往上穿越 60 日平均（礦工投降結束、算力回升），隔天開盤買進。',

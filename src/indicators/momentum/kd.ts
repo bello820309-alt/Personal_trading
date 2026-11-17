@@ -2,7 +2,7 @@ import type { Candle } from '../../data/types';
 import { fmtNum } from '../../data/format';
 import { closes, crossOver, crossUnder, highest, highs, lowest, lows, scanSignals, smoothFrom } from '../math/core';
 import { dmiIndicator } from '../trend/dmi';
-import { getLine, type IndicatorDef, type Series } from '../types';
+import { getLine, notesOf, type IndicatorDef, type Series } from '../types';
 
 export type KdParams = { period: number; kSmooth: number; dSmooth: number; overbought: number; oversold: number };
 
@@ -136,6 +136,7 @@ export const kdIndicator: IndicatorDef<KdParams> = {
     };
     // 最近一次 K、D 交叉
     let cross = '';
+    let crossWhy = '';
     let lastCross: { i: number; golden: boolean; d: number } | null = null;
     for (let i = n - 1; i >= 1 && i >= n - 60; i--) {
       const a = k[i], b = d[i], pa = k[i - 1], pb = d[i - 1];
@@ -146,7 +147,7 @@ export const kdIndicator: IndicatorDef<KdParams> = {
       const day = `${Number(candles[i]!.time.slice(5, 7))}/${Number(candles[i]!.time.slice(8, 10))}`;
       const zone = golden ? (b < p.oversold ? `，交叉當天的 D 值 ${fmtNum(b, 1)} 在 ${p.oversold} 以下，算「低檔黃金交叉」` : `，交叉當天的 D 值 ${fmtNum(b, 1)}，不在 ${p.oversold} 以下，不算低檔交叉`)
         : b > p.overbought ? `，交叉當天的 D 值 ${fmtNum(b, 1)} 在 ${p.overbought} 以上，算「高檔死亡交叉」` : `，交叉當天的 D 值 ${fmtNum(b, 1)}，不在 ${p.overbought} 以上，不算高檔交叉`;
-      cross = ` 最近一次交叉是 ${day} 的${golden ? '黃金交叉（K 往上穿過 D）' : '死亡交叉（K 往下穿過 D）'}${zone}。`;
+      cross = `最近一次交叉是 ${day} 的${golden ? '黃金交叉（K 往上穿過 D）' : '死亡交叉（K 往下穿過 D）'}${zone}。`;
       // 交叉那天價格反而是跌（漲）的：用那天實際的 RSV、K、D 說明為什麼還是交叉
       const chg = i >= 1 ? candles[i]!.close / candles[i - 1]!.close - 1 : 0;
       if ((golden && chg < 0) || (dead && chg > 0)) {
@@ -155,7 +156,7 @@ export const kdIndicator: IndicatorDef<KdParams> = {
         const close1 = fmtNum(a, 1) === fmtNum(b, 1);
         const ka = fmtNum(a, close1 ? 2 : 1);
         const kb = fmtNum(b, close1 ? 2 : 1);
-        cross += ` 那天價格其實${golden ? '跌' : '漲'}了 ${fmtNum(Math.abs(chg) * 100, 2)}%：KD 看的不是當天漲跌，而是收盤在最近 ${p.period} 天最高、最低之間的位置（RSV）。那天${text}；前一天的 K 是 ${fmtNum(pa, 1)}，RSV 比它${golden ? '高' : '低'}，${pull}，所以 K 被往${golden ? '上拉' : '下拉'}到 ${ka}，${golden ? '超過' : '跌破'}了 D（${kb}），出現交叉。這種交叉也可能只是短線的${golden ? '反彈' : '回檔'}，不一定代表${golden ? '跌勢' : '漲勢'}結束。`;
+        crossWhy = `那天價格其實${golden ? '跌' : '漲'}了 ${fmtNum(Math.abs(chg) * 100, 2)}%：KD 看的不是當天漲跌，而是收盤在最近 ${p.period} 天最高、最低之間的位置（RSV）。那天${text}；前一天的 K 是 ${fmtNum(pa, 1)}，RSV 比它${golden ? '高' : '低'}，${pull}，所以 K 被往${golden ? '上拉' : '下拉'}到 ${ka}，${golden ? '超過' : '跌破'}了 D（${kb}），出現交叉。這種交叉也可能只是短線的${golden ? '反彈' : '回檔'}，不一定代表${golden ? '跌勢' : '漲勢'}結束。`;
       }
       lastCross = { i, golden, d: b };
       break;
@@ -178,52 +179,70 @@ export const kdIndicator: IndicatorDef<KdParams> = {
     const m60 = dir(60);
     const maNote =
       m20 && m60
-        ? ` 20 日均線${m20}、60 日均線${m60}（台股習慣叫月線、季線；美股和比特幣的圖表預設沒有 60 日線，可以在圖表的均線設定自己加上）${m20 === '往上彎' && m60 === '往上彎' ? '。' : '：如果你的規則是「月線、季線往上時才做 KD 的買進訊號」，現在還不符合。'}`
+        ? `20 日均線${m20}、60 日均線${m60}（台股習慣叫月線、季線；美股和比特幣的圖表預設沒有 60 日線，可以在圖表的均線設定自己加上）${m20 === '往上彎' && m60 === '往上彎' ? '。' : '：如果你的規則是「月線、季線往上時才做 KD 的買進訊號」，現在還不符合。'}`
         : '';
-    // 趨勢明確（ADX 25 以上）時，KD 的過冷、過熱和交叉比較容易失準
-    const adx = getLine(dmiIndicator.compute(candles, dmiIndicator.defaults), 'adx')[n - 1];
-    const adxNote =
-      adx != null && adx >= 25
-        ? ` 現在 ADX 是 ${fmtNum(adx, 1)}（25 以上代表趨勢明確）：趨勢明確時 KD 容易鈍化，低檔、高檔和交叉的訊號比較容易失準，要打折看。`
-        : '';
-    const extra = `${cross}${maNote}${adxNote}`;
+    // 趨勢明確（ADX 25 以上）時 KD 要不要打折：寫出一般的說法，再用這份資料數給你看
+    const adxLine = getLine(dmiIndicator.compute(candles, dmiIndicator.defaults), 'adx');
+    const adx = adxLine[n - 1];
+    let adxNote = '';
+    if (adx != null && adx >= 25) {
+      const AFTER = 10;
+      const strong = [0, 0];
+      const weak = [0, 0];
+      for (let i = 1; i + AFTER < n; i++) {
+        const a = k[i], b = d[i], pa = k[i - 1], pb = d[i - 1], x = adxLine[i];
+        if (a == null || b == null || pa == null || pb == null || x == null || !(pa <= pb && a > b && b < p.oversold)) continue;
+        const g = x >= 25 ? strong : weak;
+        g[0]!++;
+        if (candles[i + AFTER]!.close > candles[i]!.close) g[1]!++;
+      }
+      const few = strong[0]! < 20 || weak[0]! < 20 ? '次數很少，看不出明顯的差別，只能當參考。' : '';
+      adxNote = `現在 ADX 是 ${fmtNum(adx, 1)}（25 以上代表趨勢明確）。一般的說法是：趨勢明確時 KD 會鈍化，低檔、高檔和交叉的訊號要打折看。這份資料裡，低檔黃金交叉發生時 ADX 在 25 以上的有 ${strong[0]} 次，${AFTER} 根 K 棒之後價格比較高的有 ${strong[1]} 次；ADX 低於 25 的有 ${weak[0]} 次，其中 ${weak[1]} 次。${few}`;
+    }
+    /** 每種狀態共用的補充說明；first 是這個狀態自己要先講的 */
+    const notes = (...first: [string, string][]) =>
+      notesOf(...first, ['最近一次交叉', cross], ['交叉那天價格為什麼反向', crossWhy], ['均線方向', maNote], ['趨勢強度（ADX）', adxNote]);
     if (highRun >= 3) {
       return {
         tone: 'bullish',
         headline: `${head}，高檔鈍化`,
-        detail: `K 值已連續 ${highRun} 天高於 ${p.overbought}，代表買盤很強。這時「超買」反而是強勢的表現，不宜只因為 KD 高就看空。${extra}`,
+        detail: `K 值已連續 ${highRun} 天高於 ${p.overbought}，代表買盤很強。這時「超買」反而是強勢的表現，不宜只因為 KD 高就看空。`,
+        notes: notes(),
       };
     }
     if (lowRun >= 3) {
+      const dull =
+        lastCross && lastCross.golden && lastCross.d < p.oversold && n - 1 - lastCross.i < lowRun
+          ? `${md(lastCross.i)} 這次低檔黃金交叉，照本站回測的規則（D 低於 ${p.oversold} 時 K 往上穿過 D，隔天開盤買）算一次買進訊號；但它發生在低檔鈍化的期間（K 還一直在 ${p.oversold} 以下）。${dullCrossStats()}回測的成績已經包含這類交叉，沒有另外分開算。`
+          : '';
       return {
         tone: 'bearish',
         headline: `${head}，低檔鈍化`,
-        detail: `K 值已連續 ${lowRun} 天低於 ${p.oversold}，賣壓很重。低檔鈍化時，KD 低不代表馬上會反彈。${cross}${
-          lastCross && lastCross.golden && lastCross.d < p.oversold && n - 1 - lastCross.i < lowRun
-            ? ` ${md(lastCross.i)} 這次低檔黃金交叉，照本站回測的規則（D 低於 ${p.oversold} 時 K 往上穿過 D，隔天開盤買）算一次買進訊號；但它發生在低檔鈍化的期間（K 還一直在 ${p.oversold} 以下）。${dullCrossStats()}回測的成績已經包含這類交叉，沒有另外分開算。`
-            : ''
-        }${maNote}${adxNote}`,
+        detail: `K 值已連續 ${lowRun} 天低於 ${p.oversold}，賣壓很重。低檔鈍化時，KD 低不代表馬上會反彈。`,
+        notes: notesOf(['最近一次交叉', cross], ['鈍化期間的交叉算不算', dull], ['交叉那天價格為什麼反向', crossWhy], ['均線方向', maNote], ['趨勢強度（ADX）', adxNote]),
       };
     }
     if (kv >= p.overbought) {
-      const dNote = dv <= p.overbought ? ` 注意：交叉算不算「高檔死亡交叉」看的是 D 值，現在 D 是 ${fmtNum(dv, 1)}，還不在 ${p.overbought} 以上，這時 K 往下穿過 D 也不算高檔交叉。` : '';
-      return { tone: 'hot', headline: `${head}，進入高檔`, detail: `K 值高於 ${p.overbought}，短線漲多、偏熱。${dNote}${extra}` };
+      const dNote = dv <= p.overbought ? `交叉算不算「高檔死亡交叉」看的是 D 值，現在 D 是 ${fmtNum(dv, 1)}，還不在 ${p.overbought} 以上，這時 K 往下穿過 D 也不算高檔交叉。` : '';
+      return { tone: 'hot', headline: `${head}，進入高檔`, detail: `K 值高於 ${p.overbought}，短線漲多、偏熱。`, notes: notes(['現在交叉算不算高檔交叉', dNote]) };
     }
     if (kv <= p.oversold) {
-      const dNote = dv >= p.oversold ? ` 注意：交叉算不算「低檔黃金交叉」看的是 D 值，現在 D 是 ${fmtNum(dv, 1)}，還不在 ${p.oversold} 以下，這時 K 往上穿過 D 也不算低檔交叉。` : '';
-      return { tone: 'cold', headline: `${head}，進入低檔`, detail: `K 值低於 ${p.oversold}，短線跌深、偏冷。${dNote}${extra}` };
+      const dNote = dv >= p.oversold ? `交叉算不算「低檔黃金交叉」看的是 D 值，現在 D 是 ${fmtNum(dv, 1)}，還不在 ${p.oversold} 以下，這時 K 往上穿過 D 也不算低檔交叉。` : '';
+      return { tone: 'cold', headline: `${head}，進入低檔`, detail: `K 值低於 ${p.oversold}，短線跌深、偏冷。`, notes: notes(['現在交叉算不算低檔交叉', dNote]) };
     }
     const todayChg = n >= 2 ? candles[n - 1]!.close / candles[n - 2]!.close - 1 : 0;
     const pk = k[n - 2];
+    let lagTitle = '';
     let lagNote = '';
     if (pk != null && ((kv > dv && todayChg <= -0.03) || (kv < dv && todayChg >= 0.03))) {
       const fell = todayChg < 0;
       const { text } = rsvText(n - 1);
-      lagNote = ` 今天${fell ? '跌' : '漲'}了 ${fmtNum(Math.abs(todayChg) * 100, 2)}%，K 卻還在 D 之${fell ? '上' : '下'}：今天${text}；前一天的 K 是 ${fmtNum(pk, 1)}，${pull}，所以 K 只${fell ? '降' : '升'}到 ${fmtNum(kv, 1)}，還在 D（${fmtNum(dv, 1)}）之${fell ? '上' : '下'}。KD 反應比價格慢，大${fell ? '跌' : '漲'}當天常常還沒翻過來，要看接下來 K 會不會${fell ? '跌破' : '漲過'} D。`;
+      lagTitle = `今天大${fell ? '跌' : '漲'}，K 為什麼還在 D 之${fell ? '上' : '下'}`;
+      lagNote = `今天${fell ? '跌' : '漲'}了 ${fmtNum(Math.abs(todayChg) * 100, 2)}%，K 卻還在 D 之${fell ? '上' : '下'}：今天${text}；前一天的 K 是 ${fmtNum(pk, 1)}，${pull}，所以 K 只${fell ? '降' : '升'}到 ${fmtNum(kv, 1)}，還在 D（${fmtNum(dv, 1)}）之${fell ? '上' : '下'}。KD 是平滑過的，反應比價格慢，要看接下來 K 會不會${fell ? '跌破' : '漲過'} D。`;
     }
     return kv > dv
-      ? { tone: 'bullish', headline: `${head}，K 在 D 之上`, detail: `K 值在 D 值之上，短線動能偏多。${lagNote}${extra}` }
-      : { tone: 'bearish', headline: `${head}，K 在 D 之下`, detail: `K 值在 D 值之下，短線動能偏空。${lagNote}${extra}` };
+      ? { tone: 'bullish', headline: `${head}，K 在 D 之上`, detail: `K 值在 D 值之上，短線動能偏多。${lagNote ? '今天價格大跌，K 還沒翻過來（下面有說明）。' : ''}`, notes: notes([lagTitle, lagNote]) }
+      : { tone: 'bearish', headline: `${head}，K 在 D 之下`, detail: `K 值在 D 值之下，短線動能偏空。${lagNote ? '今天價格大漲，K 還沒翻過來（下面有說明）。' : ''}`, notes: notes([lagTitle, lagNote]) };
   },
   strategy: {
     name: 'KD 低檔黃金交叉買、高檔死亡交叉賣',

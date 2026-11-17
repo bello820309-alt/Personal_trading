@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { summaryText } from '../types';
 import type { Candle } from '../../data/types';
 import { obvIndicator } from './obv';
 
@@ -17,7 +18,7 @@ describe('OBV 一整年的方向', () => {
       c.push({ time: day(i), open: close, high: close, low: close, close, volume: upDay ? 100 : 160 });
     }
     const p = obvIndicator.defaults;
-    const d = obvIndicator.describe!(c, obvIndicator.compute(c, p), p)!.detail;
+    const d = summaryText(obvIndicator.describe!(c, obvIndicator.compute(c, p), p)!);
     expect(d).toContain('放到一年來看：價格漲了');
     expect(d).toContain('OBV 卻往下');
     expect(d).toContain('下跌的日子平均成交量是上漲日子的 1.60 倍');
@@ -30,6 +31,6 @@ describe('OBV 一整年的方向', () => {
       return { time: day(i), open: close, high: close, low: close, close, volume: 100 };
     });
     const p = obvIndicator.defaults;
-    expect(obvIndicator.describe!(c, obvIndicator.compute(c, p), p)!.detail).not.toContain('放到一年來看');
+    expect(summaryText(obvIndicator.describe!(c, obvIndicator.compute(c, p), p)!)).not.toContain('放到一年來看');
   });
 });

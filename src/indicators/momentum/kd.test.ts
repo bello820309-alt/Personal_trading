@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { summaryText } from '../types';
 import type { Candle } from '../../data/types';
 import { kdIndicator, kdSeries } from './kd';
 
@@ -17,7 +18,7 @@ describe('KD 的說明', () => {
     const { rsv, k, d } = kdSeries(c, 9, 3, 3);
     const n = c.length;
     expect(k[n - 2]! <= d[n - 2]! && k[n - 1]! > d[n - 1]!).toBe(true);
-    const text = describeKd(c).detail;
+    const text = summaryText(describeKd(c));
     expect(text).toContain('最近一次交叉是 10/22 的黃金交叉');
     expect(text).toContain('那天價格其實跌了 0.10%');
     // 最近 9 天：最低是 10/20 的 100（101 − 1），最高是 10/14 的 108（107 + 1）
@@ -37,14 +38,14 @@ describe('KD 的說明', () => {
     expect(k[n - 1]! > d[n - 1]! && k[n - 1]! < 80).toBe(true);
     const r = describeKd(c);
     expect(r.headline).toContain('K 在 D 之上');
-    expect(r.detail).toContain('今天跌了 4.50%，K 卻還在 D 之上');
-    expect(r.detail).toContain(`前一天的 K 是 ${k[n - 2]!.toFixed(1)}`);
-    expect(r.detail).toContain(`K 只降到 ${k[n - 1]!.toFixed(1)}，還在 D（${d[n - 1]!.toFixed(1)}）之上`);
+    expect(summaryText(r)).toContain('今天跌了 4.50%，K 卻還在 D 之上');
+    expect(summaryText(r)).toContain(`前一天的 K 是 ${k[n - 2]!.toFixed(1)}`);
+    expect(summaryText(r)).toContain(`K 只降到 ${k[n - 1]!.toFixed(1)}，還在 D（${d[n - 1]!.toFixed(1)}）之上`);
   });
 
   it('均線方向寫「往上彎、走平」，不寫「走平彎」', () => {
     const c = mk(Array.from({ length: 80 }, (_, i) => 100 + i));
-    const text = describeKd(c).detail;
+    const text = summaryText(describeKd(c));
     expect(text).toContain('20 日均線往上彎、60 日均線往上彎');
     expect(text).not.toContain('走平彎');
   });

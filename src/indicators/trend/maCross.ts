@@ -1,7 +1,7 @@
 import type { Candle } from '../../data/types';
 import { daysBetween, fmtDate, fmtPct } from '../../data/format';
 import { closes, crossOver, crossUnder, ema, scanSignals, sma } from '../math/core';
-import { getLine, type IndicatorDef } from '../types';
+import { getLine, type IndicatorDef, notesOf } from '../types';
 
 export type MaCrossParams = { fast: number; slow: number; maType: string };
 
@@ -96,7 +96,8 @@ export const maCrossIndicator: IndicatorDef<MaCrossParams> = {
     const close = candles[n - 1]!.close;
     const gap = f / s - 1;
     const daily = tradesDaily(candles);
-    let detail = `${label(p, 'fast')} 是最近 ${p.fast} 天的平均（${spanText(p.fast, daily)}），${label(p, 'slow')} 是最近 ${p.slow} 天（${spanText(p.slow, daily)}）。兩條均線相差 ${fmtPct(gap)}。`;
+    const what = `${label(p, 'fast')} 是最近 ${p.fast} 天的平均（${spanText(p.fast, daily)}），${label(p, 'slow')} 是最近 ${p.slow} 天（${spanText(p.slow, daily)}）。`;
+    let detail = `兩條均線相差 ${fmtPct(gap)}。`;
     if (lastIdx >= 0) {
       const kind = crossOver(fast, slow, lastIdx) ? '黃金交叉' : '死亡交叉';
       const date = candles[lastIdx]!.time;
@@ -107,15 +108,16 @@ export const maCrossIndicator: IndicatorDef<MaCrossParams> = {
     const near = Math.abs(gap) < 0.03;
     if (bull && close < f && close < s) {
       tone = 'neutral';
-      detail += ` 但收盤價已經跌到兩條均線下面${near ? '，兩條線也越來越近：如果繼續跌，可能快要出現死亡交叉' : '：短期走弱，要留意'}。`;
+      detail += `但收盤價已經跌到兩條均線下面${near ? '，兩條線也越來越近：如果繼續跌，可能快要出現死亡交叉' : '：短期走弱，要留意'}。`;
     } else if (!bull && close > f && close > s) {
       tone = 'neutral';
-      detail += ` 但收盤價已經站上兩條均線${near ? '，兩條線也越來越近：如果繼續漲，可能快要出現黃金交叉' : '：短期轉強，要留意'}。`;
+      detail += `但收盤價已經站上兩條均線${near ? '，兩條線也越來越近：如果繼續漲，可能快要出現黃金交叉' : '：短期轉強，要留意'}。`;
     }
     return {
       tone,
       headline: `${label(p, 'fast')} 在 ${label(p, 'slow')} 之${bull ? '上' : '下'}`,
       detail,
+      notes: notesOf(['這兩條均線是什麼', what]),
     };
   },
   strategy: {

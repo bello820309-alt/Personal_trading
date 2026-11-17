@@ -1,6 +1,6 @@
 import { fmtNum } from '../../data/format';
 import { atrWilder, closes, crossOver, crossUnder, ema, scanSignals, zip } from '../math/core';
-import { getLine, type IndicatorDef } from '../types';
+import { getLine, notesOf, type IndicatorDef } from '../types';
 import { squeezeStatus, squeezeText } from './squeeze';
 
 export type KeltnerParams = { emaPeriod: number; atrPeriod: number; mult: number };
@@ -50,11 +50,14 @@ export const keltnerIndicator: IndicatorDef<KeltnerParams> = {
     // 擠壓：和布林通道的卡片用同一個判斷（兩種說法都寫出來）
     const st = squeezeStatus(candles);
     const squeezeNote = st ? squeezeText(st, c) : '';
-    if (c > u) return { tone: 'bullish', headline: '收盤價突破上軌', detail: `上軌 ${fmtNum(u)}：價格衝出通道，代表趨勢很強。${squeezeNote}` };
-    if (c < l) return { tone: 'bearish', headline: '收盤價跌破下軌', detail: `下軌 ${fmtNum(l)}：價格跌出通道，代表跌勢很強。${squeezeNote}` };
+    const squeezed = !!st && (st.nearMin || st.inside);
+    const sqHint = squeezed ? '另外，現在有「擠壓」的跡象（下面有說明）。' : '';
+    const notes = notesOf(['有沒有「擠壓」', squeezeNote]);
+    if (c > u) return { tone: 'bullish', headline: '收盤價突破上軌', detail: `上軌 ${fmtNum(u)}：價格衝出通道，代表趨勢很強。${sqHint}`, notes };
+    if (c < l) return { tone: 'bearish', headline: '收盤價跌破下軌', detail: `下軌 ${fmtNum(l)}：價格跌出通道，代表跌勢很強。${sqHint}`, notes };
     return c >= m
-      ? { tone: 'bullish', headline: '在中線與上軌之間', detail: `通道 ${fmtNum(l)}～${fmtNum(u)}，價格在中線（${fmtNum(m)}）之上。${squeezeNote}` }
-      : { tone: 'bearish', headline: '在中線與下軌之間', detail: `通道 ${fmtNum(l)}～${fmtNum(u)}，價格在中線（${fmtNum(m)}）之下。${squeezeNote}` };
+      ? { tone: 'bullish', headline: '在中線與上軌之間', detail: `通道 ${fmtNum(l)}～${fmtNum(u)}，價格在中線（${fmtNum(m)}）之上。${sqHint}`, notes }
+      : { tone: 'bearish', headline: '在中線與下軌之間', detail: `通道 ${fmtNum(l)}～${fmtNum(u)}，價格在中線（${fmtNum(m)}）之下。${sqHint}`, notes };
   },
   strategy: {
     name: '突破上軌買、跌破中線賣（順勢）',

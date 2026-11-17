@@ -1,6 +1,6 @@
 import { fmtNum } from '../../data/format';
 import { atrWilder, validSlice } from '../math/core';
-import { getLine, type IndicatorDef, type Series } from '../types';
+import { getLine, type IndicatorDef, type Series, notesOf } from '../types';
 
 export type AtrParams = { period: number };
 
@@ -37,7 +37,11 @@ export const atrIndicator: IndicatorDef<AtrParams> = {
     return {
       tone: 'neutral',
       headline: `ATR(${p.period}) = ${fmtNum(a)}（約股價的 ${fmtNum(pct, 2)}%）`,
-      detail: `最近平均每天的波動約 ${fmtNum(a)}，${cmp}過去一年的平均水準（${fmtNum(avg, 2)}%）。ATR 只看波動大小、不分漲跌。（ATR 看的是最近 14 天、包含盤中最高最低的震幅；走勢預測頁的「波動」是用一個月的收盤價漲跌算的，兩頁算法不同，說法有時會不一樣。）`,
+      detail: `最近平均每天的波動約 ${fmtNum(a)}，${cmp}過去一年的平均水準（${fmtNum(avg, 2)}%）。ATR 只看波動大小、不分漲跌。`,
+      notes: notesOf([
+        '和走勢預測頁的「波動」不一樣',
+        `ATR 看的是最近 ${p.period} 天、包含盤中最高最低的震幅；走勢預測頁的「波動」是用一個月的收盤價漲跌算的。兩頁算法不同，說法有時會不一樣。`,
+      ]),
     };
   },
   noSignalReason:

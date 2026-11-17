@@ -4,6 +4,7 @@ import { DataTimeNote } from '../components/DataTimeNote';
 import { LineChart, type LineSpec } from '../components/chart/LineChart';
 import { Sparkline } from '../components/Sparkline';
 import { Card, Fold, Notice, PageTitle, Segmented, SectionTitle, Spinner, ToneBadge } from '../components/ui';
+import { StateNotes } from '../components/StateNotes';
 import { ASSETS, DEFAULT_ASSET_ID, getAsset, MARKET_LABELS, type AssetConfig } from '../config/assets';
 import { equityMetrics, periodsPerYear, type EquityMetrics } from '../backtest/metrics';
 import { fmtDate, fmtDateTime, fmtMoney, fmtNum, fmtPct, fmtPrice, signClass } from '../data/format';
@@ -150,10 +151,13 @@ function StateItem({ def, d }: { def: IndicatorDef; d: StateSummary | null }) {
         </Link>
       </div>
       {d && (
-        <p className="mt-0.5 leading-relaxed text-muted">
-          <span className="text-fg">{d.headline}。</span>
-          {d.detail}
-        </p>
+        <>
+          <p className="mt-0.5 leading-relaxed text-muted">
+            <span className="text-fg">{d.headline}。</span>
+            {d.detail}
+          </p>
+          <StateNotes notes={d.notes} className="mt-1" />
+        </>
       )}
     </li>
   );

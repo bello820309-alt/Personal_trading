@@ -1,6 +1,6 @@
 import { fmtNum } from '../../data/format';
 import { crossOver, nulls, rma, scanSignals, trueRange } from '../math/core';
-import { getLine, type IndicatorDef, type Series } from '../types';
+import { getLine, type IndicatorDef, type Series, notesOf } from '../types';
 
 export type DmiParams = { period: number; adxThreshold: number };
 
@@ -85,13 +85,14 @@ export const dmiIndicator: IndicatorDef<DmiParams> = {
     return {
       tone: adx < 20 ? 'neutral' : up ? 'bullish' : 'bearish',
       headline: `ADX ${fmtNum(adx, 1)}：${strength}`,
-      detail: `+DI ${fmtNum(pdi, 1)}、−DI ${fmtNum(mdi, 1)}：${up ? '上漲力道大於下跌力道' : '下跌力道大於上漲力道'}。${
-        adx < 20 ? 'ADX 偏低時，DI 交叉訊號比較容易失準。' : ''
-      }${
-        adx < 25
-          ? 'ADX 是把最近 14 天平滑後算的，反應比較慢：單日的大漲大跌不會馬上讓它升高，要看之後幾天 ADX 有沒有往上走過 20～25，才知道新的趨勢有沒有成形。'
-          : ''
-      }`,
+      detail: `+DI ${fmtNum(pdi, 1)}、−DI ${fmtNum(mdi, 1)}：${up ? '上漲力道大於下跌力道' : '下跌力道大於上漲力道'}。`,
+      notes: notesOf(
+        ['ADX 偏低時的 DI 交叉', adx < 20 && 'ADX 在 20 以下代表沒有明顯的趨勢；本站回測的規則這時不採用 +DI、−DI 的交叉（要 ADX 高於門檻才買）。'],
+        [
+          'ADX 反應比較慢',
+          adx < 25 && 'ADX 是把最近 14 天平滑後算的：單日的大漲大跌不會馬上讓它升高，要看之後幾天 ADX 有沒有往上走過 20～25，才知道新的趨勢有沒有成形。',
+        ],
+      ),
     };
   },
   strategy: {

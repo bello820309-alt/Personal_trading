@@ -1,6 +1,6 @@
 import { fmtNum } from '../../data/format';
 import { closes, crossOver, scanSignals, sma, stdev, validSlice, zip } from '../math/core';
-import { getLine, type IndicatorDef, type Series } from '../types';
+import { getLine, notesOf, type IndicatorDef, type Series } from '../types';
 import { squeezeStatus, squeezeText } from './squeeze';
 
 export type BollingerParams = { period: number; mult: number };
@@ -73,27 +73,35 @@ export const bollingerIndicator: IndicatorDef<BollingerParams> = {
     // 擠壓：和肯特納通道的卡片用同一個判斷（兩種說法都寫出來）
     const st = squeezeStatus(candles);
     const sq = st ? squeezeText(st, candles[n - 1]!.close) : '';
-    const widthNote = maxW > 0 ? ` 現在通道的寬度是最近半年最寬時的 ${fmtNum((w / maxW) * 10, 1)} 成（8 成以上算很寬）。` : '';
+    const widthNote = maxW > 0 ? `現在通道的寬度是最近半年最寬時的 ${fmtNum((w / maxW) * 10, 1)} 成（8 成以上算很寬）。` : '';
+    const squeezed = !!st && (st.nearMin || st.inside);
+    const sqHint = squeezed ? '另外，現在有「擠壓」的跡象（下面有說明）。' : '';
+    const trendNote = (side: '上' | '下') => `在趨勢明顯的行情裡（例如 ADX 25 以上），價格可能沿著${side}軌一路走，碰到${side}軌不一定會${side === '上' ? '回檔' : '反彈'}。`;
     const head = `%B = ${fmtNum(b, 2)}`;
     if (b > 1)
       return {
         tone: 'hot',
         headline: `${head}，突破上軌`,
         detail: wide
-          ? '收盤價在上軌之上，而且通道接近半年來最寬：代表漲勢又急又大，常出現在趨勢行情裡，價格可能沿著上軌繼續走，不一定是「漲太多該回檔」。' + widthNote
-          : `收盤價在上軌之上：走勢很強，但也偏離平均很多。不過在趨勢明顯的行情裡（例如 ADX 25 以上），價格可能沿著上軌一路走。${sq}${widthNote}`,
+          ? '收盤價在上軌之上，而且通道接近半年來最寬：漲勢又急又大，價格可能沿著上軌繼續走，不一定是「漲太多該回檔」。'
+          : `收盤價在上軌之上：走勢很強，但也偏離平均很多。${sqHint}`,
+        notes: notesOf(['趨勢行情裡要注意', !wide && trendNote('上')], ['通道現在寬不寬', widthNote], ['有沒有「擠壓」', !wide && sq]),
       };
     if (b < 0)
       return {
         tone: 'cold',
         headline: `${head}，跌破下軌`,
         detail: wide
-          ? '收盤價在下軌之下，而且通道接近半年來最寬：代表跌勢又急又大，常出現在趨勢行情裡，價格可能沿著下軌繼續走，不是「跌太多該反彈」的訊號。' + widthNote
-          : `收盤價在下軌之下：跌勢很急，常被視為超跌。不過在趨勢明顯的行情裡（例如 ADX 25 以上），價格可能沿著下軌一路走。${sq}${widthNote}`,
+          ? '收盤價在下軌之下，而且通道接近半年來最寬：跌勢又急又大，價格可能沿著下軌繼續走，不是「跌太多該反彈」的訊號。'
+          : `收盤價在下軌之下：跌勢很急，常被視為超跌。${sqHint}`,
+        notes: notesOf(['趨勢行情裡要注意', !wide && trendNote('下')], ['通道現在寬不寬', widthNote], ['有沒有「擠壓」', !wide && sq]),
       };
-    return b >= 0.5
-      ? { tone: 'bullish', headline: `${head}，在中軌之上`, detail: `收盤價在通道的上半部（1 = 上軌、0 = 下軌）。${sq}${widthNote}` }
-      : { tone: 'bearish', headline: `${head}，在中軌之下`, detail: `收盤價在通道的下半部（1 = 上軌、0 = 下軌）。${sq}${widthNote}` };
+    return {
+      tone: b >= 0.5 ? 'bullish' : 'bearish',
+      headline: `${head}，在中軌之${b >= 0.5 ? '上' : '下'}`,
+      detail: `收盤價在通道的${b >= 0.5 ? '上' : '下'}半部（1 = 上軌、0 = 下軌）。${sqHint}`,
+      notes: notesOf(['有沒有「擠壓」', sq], ['通道現在寬不寬', widthNote]),
+    };
   },
   strategy: {
     name: '跌破下軌買、回到中軌賣（逆勢）',

@@ -134,11 +134,36 @@ export const TONE_LABELS: Record<Tone, string> = {
   neutral: '中性',
 };
 
+/** 補充說明的其中一點：短標題＋內容，畫面上預設收起來，點開才看 */
+export interface StateNote {
+  title: string;
+  text: string;
+}
+
 /** 指標「目前怎麼說」的白話摘要 */
 export interface StateSummary {
   tone: Tone;
   headline: string;
+  /** 結論：一兩句話，畫面上一定會顯示 */
   detail: string;
+  /** 補充說明：為什麼、怎麼算、要注意什麼。越重要的放越前面 */
+  notes?: StateNote[];
+}
+
+/** 組出補充說明的清單：沒有內容的自動略過 */
+export function notesOf(...items: ([title: string, text: string | null | undefined | false] | null | undefined | false)[]): StateNote[] | undefined {
+  const out: StateNote[] = [];
+  for (const it of items) {
+    if (!it) continue;
+    const text = typeof it[1] === 'string' ? it[1].trim() : '';
+    if (text) out.push({ title: it[0], text });
+  }
+  return out.length ? out : undefined;
+}
+
+/** 結論和所有補充說明接成一段文字（測試、純文字輸出用） */
+export function summaryText(s: StateSummary): string {
+  return [s.detail, ...(s.notes ?? []).map((n) => n.text)].join(' ');
 }
 
 /** 買進或賣出訊號：在第 index 根 K 棒收盤時成立 */

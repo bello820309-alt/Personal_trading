@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { summaryText } from '../types';
 import type { ExtraDataFile } from '../../data/extra';
 import type { Candle } from '../../data/types';
 import { fearGreedIndicator } from './fearGreed';
@@ -18,8 +19,8 @@ describe('恐懼貪婪：比最後一根 K 棒還新的數字', () => {
     expect(r.newer).toEqual({ date: '2026-11-07', value: 25 });
     const d = fearGreedIndicator.describe!(candles, r, p)!;
     expect(d.headline).toBe('恐懼貪婪指數 28：恐懼');
-    expect(d.detail).toContain('11/6 台灣時間早上 8 點公布');
-    expect(d.detail).toContain('11/7 早上 8 點是 25（恐懼）');
+    expect(summaryText(d)).toContain('11/6 台灣時間早上 8 點公布');
+    expect(summaryText(d)).toContain('11/7 早上 8 點是 25（恐懼）');
   });
 
   it('有當天的即時 K 棒時（網頁上有即時報價），新數字就直接對到那一根，不另外說明', () => {

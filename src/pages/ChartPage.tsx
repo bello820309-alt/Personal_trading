@@ -12,6 +12,7 @@ import { IndicatorPicker } from '../components/IndicatorPicker';
 import { ArrowGuide, LineGuide } from '../components/LineGuide';
 import { ParamEditor } from '../components/ParamEditor';
 import { Card, Segmented, ToneBadge } from '../components/ui';
+import { StateNotes } from '../components/StateNotes';
 import { DEFAULT_ASSET_ID, getAsset, type AssetConfig } from '../config/assets';
 import { fmtBarDate, fmtPct, fmtPrice, signClass } from '../data/format';
 import { useAsset, useExtra } from '../data/load';
@@ -317,6 +318,7 @@ function ReadingGuide({
                         <span className="text-sm font-medium text-fg">現在：{d.headline}</span>
                       </div>
                       <p className="mt-1 text-sm leading-relaxed text-muted">{d.detail}</p>
+                      <StateNotes notes={d.notes} className="mt-2" />
                     </>
                   ) : (
                     <p className="text-sm text-muted">資料不夠長，還算不出目前的狀態。</p>

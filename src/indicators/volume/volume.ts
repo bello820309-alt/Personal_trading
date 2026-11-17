@@ -1,6 +1,6 @@
 import { fmtCompact, fmtNum } from '../../data/format';
 import { sma } from '../math/core';
-import { getLine, type IndicatorDef, type Series } from '../types';
+import { getLine, notesOf, type IndicatorDef, type Series } from '../types';
 
 export type VolumeParams = { ma1: number; ma2: number };
 
@@ -64,6 +64,18 @@ export function recentSpike(volumes: readonly number[], avg: Series, n: number, 
   return spike;
 }
 
+/** 過去一年，週末的平均成交量比平日少幾成（0.4 = 少 4 成）；週末或平日的資料太少就不算 */
+export function weekendVolumeGap(candles: readonly { time: string; volume: number }[]): number | null {
+  let we = 0, wd = 0, nWe = 0, nWd = 0;
+  for (const c of candles.slice(-365)) {
+    const d = new Date(`${c.time}T00:00:00Z`).getUTCDay();
+    if (d === 0 || d === 6) (we += c.volume), nWe++;
+    else (wd += c.volume), nWd++;
+  }
+  if (nWe < 20 || nWd < 50 || wd <= 0) return null;
+  return 1 - we / nWe / (wd / nWd);
+}
+
 export const volumeIndicator: IndicatorDef<VolumeParams> = {
   id: 'volume',
   shortName: '成交量',
@@ -112,14 +124,20 @@ export const volumeIndicator: IndicatorDef<VolumeParams> = {
       const scaled = x / unit.divisor;
       return `${scaled >= 10000 ? fmtCompact(scaled) : fmtNum(scaled, 0)} ${unit.unit}`;
     };
-    // 比特幣週末的成交量通常比平日少三、四成（只有比特幣有週末的 K 棒）
-    const weekday = new Date(`${candles[n - 1]!.time}T00:00:00Z`).getUTCDay();
-    const isWeekend = weekday === 0 || weekday === 6;
-    const weekend = !isWeekend
+    // 比特幣週末的成交量比平日少（只有比特幣有週末的 K 棒）
+    const dayOf = (t: string) => new Date(`${t}T00:00:00Z`).getUTCDay();
+    const isWeekendDay = (t: string) => dayOf(t) === 0 || dayOf(t) === 6;
+    const isWeekend = isWeekendDay(candles[n - 1]!.time);
+    // 最近兩週有週末的 K 棒，就是全年無休的市場（比特幣），不是 ETF
+    const alwaysOpen = candles.slice(-14).some((c) => isWeekendDay(c.time));
+    const weekendGap = alwaysOpen ? weekendVolumeGap(candles) : null;
+    // 資料不夠算、或週末其實沒有比較少，就不提
+    const weekendBase = weekendGap !== null && weekendGap > 0.05 ? `過去一年，比特幣週末的平均成交量比平日少 ${fmtNum(weekendGap * 100, 0)}%` : '';
+    const weekend = !isWeekend || !weekendBase
       ? ''
       : ratio >= 1.3
-        ? ' 今天是週末：比特幣週末的成交量通常比平日少三、四成，均量裡大多是平日的量；週末還能放量到均量的這個倍數，和平常的週末比放大得更多，代表交易特別熱絡。'
-        : ' 今天是週末：比特幣週末的成交量通常比平日少三、四成，週末量縮不一定代表什麼。';
+        ? `今天是週末。${weekendBase}，均量裡大多是平日的量；週末還能放量到均量的 ${fmtNum(ratio, 2)} 倍，和平常的週末比放大得更多。`
+        : `今天是週末。${weekendBase}，所以週末量縮不一定代表什麼。`;
     const level = ratio >= 2 ? '爆量' : ratio >= 1.3 ? '量增' : ratio <= 0.6 ? '量縮' : '量能持平';
     const priceWord = up ? '價漲' : down ? '價跌' : '價平';
     const spike = recentSpike(
@@ -129,22 +147,26 @@ export const volumeIndicator: IndicatorDef<VolumeParams> = {
     );
     let tone: 'bullish' | 'bearish' | 'neutral' = 'neutral';
     let comment = '量能沒有特別放大，訊息有限。';
+    // 放量下跌之後怎麼觀察、爆量後的量縮怎麼看：比較長，放在補充說明
+    let watch = '';
+    let shrink = '';
     if (ratio >= 1.3 && up) {
       tone = 'bullish';
-      comment = '上漲時成交量放大，代表買盤積極，上漲比較有說服力。（0050、VOO 這類 ETF 有造市商，量的訊號只能參考。）';
+      comment = '上漲時成交量放大，代表買盤積極，上漲比較有說服力。';
     } else if (ratio >= 1.3 && down) {
       tone = 'bearish';
-      comment = '下跌時成交量放大，代表賣壓沉重。也有另一種可能：大家恐慌性地賣，賣完反而接近短期低點。常見的看法是再觀察 3～5 個交易日（從這一波開始放量的那天算起；量回到平常之後又放大，就算新的一波）：如果量縮回爆量之前的 20 日均量附近（爆量那幾天會把最近的均量拉高，所以要和爆量前比）、價格不再創新低，比較像賣壓出清；如果繼續放量下跌，就是賣壓還沒結束。這只是常見的經驗，不保證準。（0050、VOO 這類 ETF 有造市商，量的訊號只能參考。）';
+      comment = '下跌時成交量放大，代表賣壓沉重；也有另一種可能：大家恐慌性地賣，賣完反而接近短期低點。';
+      watch = `一種常見的做法是再觀察 3～5 個交易日（從這一波開始放量的那天算起；量回到平常之後又放大，就算新的一波）：如果量縮回爆量之前的 ${p.ma2} 日均量附近（爆量那幾天會把最近的均量拉高，所以要和爆量前比）、價格不再創新低，比較像賣壓出清；如果繼續放量下跌，就是賣壓還沒結束。這是經驗上的做法，本站沒有回測過，不保證準。`;
     } else if (ratio <= 0.6) {
       comment = up ? '上漲但量縮，追價意願不強。' : down ? '下跌但量縮，賣壓可能正在減輕。' : '交易清淡，市場在觀望。';
       // 爆量之後的「量縮」：只是和被拉高的均量比；和放量之前比已經回到平常，就不要說成追價意願不強
       if (spike && v / spike.base >= 0.7) {
-        comment = `這裡的「量縮」是和最近 ${p.ma2} 天（包含爆量那幾天）的均量比；和放量之前比是 ${fmtNum(v / spike.base, 1)} 倍，算是回到平常的水準。爆量之後量縮回平常、價格又沒有再創新低，比較像賣壓出清${up ? '，所以這時的「上漲但量縮」不一定是追價意願不強' : ''}。`;
+        comment = `這裡的「量縮」是和被爆量拉高的均量比；和放量之前比是 ${fmtNum(v / spike.base, 1)} 倍，算是回到平常的水準。`;
+        shrink = `最近 ${p.ma2} 天的均量包含爆量那幾天，所以今天看起來是量縮。爆量之後量縮回平常、價格又沒有再創新低，比較像賣壓出清${up ? '，所以這時的「上漲但量縮」不一定是追價意願不強' : ''}。`;
       }
     }
-    const twoRatios = (x: number) =>
-      `兩個倍數差在比的對象：前面的 ${fmtNum(ratio, 1)} 倍是和最近 ${p.ma2} 天的均量比，但這 ${p.ma2} 天包含爆量那幾天、均量被拉高了；${fmtNum(x, 1)} 倍是和放量之前比，比較看得出今天的量到底有多大。`;
-    let spikeText = '';
+    let wave = '';
+    let twoRatios = '';
     if (spike) {
       const x = v / spike.base;
       const before = md(candles[spike.start - 1]!.time);
@@ -152,18 +174,27 @@ export const volumeIndicator: IndicatorDef<VolumeParams> = {
         ? `放量之前（${before} 為止）的 ${p.ma2} 日均量是 ${amount(spike.base)}，今天 ${amount(v)}，是它的 ${fmtNum(x, 1)} 倍。`
         : `今天的量是放量之前（${before} 為止）${p.ma2} 日均量的 ${fmtNum(x, 1)} 倍。`;
       const calmRule = `（本站的算法：連續 ${CALM_DAYS} 天都在放量之前均量的 ${CALM_RATIO} 倍以內，就算回到平常）`;
+      twoRatios = `前面的 ${fmtNum(ratio, 1)} 倍是和最近 ${p.ma2} 天的均量比，但這 ${p.ma2} 天包含爆量那幾天、均量被拉高了；${fmtNum(x, 1)} 倍是和放量之前比，比較看得出今天的量到底有多大。之後看量有沒有縮回來，就看後面這個數字：降到 1 倍左右，才算回到爆量之前的水準。`;
       if (spike.again != null) {
-        spikeText = ` 上一波放量從 ${md(candles[spike.start]!.time)} 開始，${md(candles[spike.calm!]!.time)} 起量就回到平常${calmRule}；${md(candles[spike.again]!.time)} 又放大到放量之前的 ${CALM_RATIO} 倍以上，算是新的一波，「再觀察 3～5 個交易日」要從 ${md(candles[spike.again]!.time)} 重新算。現在的 ${p.ma2} 日均量還包含上一波爆量的那幾天，所以還是和上一波放量之前比：${vsBase}${twoRatios(x)}`;
+        wave = `上一波放量從 ${md(candles[spike.start]!.time)} 開始，${md(candles[spike.calm!]!.time)} 起量就回到平常${calmRule}；${md(candles[spike.again]!.time)} 又放大到放量之前的 ${CALM_RATIO} 倍以上，算是新的一波，「再觀察 3～5 個交易日」要從 ${md(candles[spike.again]!.time)} 重新算。現在的 ${p.ma2} 日均量還包含上一波爆量的那幾天，所以還是和上一波放量之前比：${vsBase}`;
       } else if (spike.calm != null) {
-        spikeText = ` 這一波放量從 ${md(candles[spike.start]!.time)} 開始，${md(candles[spike.calm]!.time)} 起量已經回到平常${calmRule}。${vsBase}${twoRatios(x)}`;
+        wave = `這一波放量從 ${md(candles[spike.start]!.time)} 開始，${md(candles[spike.calm]!.time)} 起量已經回到平常${calmRule}。${vsBase}`;
       } else {
-        spikeText = ` 這一波放量從 ${md(candles[spike.start]!.time)} 開始，量還沒有回到平常${calmRule}。${vsBase}${twoRatios(x)}之後看量有沒有縮回來，就看這個數字：降到 1 倍左右，才算回到爆量之前的水準。`;
+        wave = `這一波放量從 ${md(candles[spike.start]!.time)} 開始，量還沒有回到平常${calmRule}。${vsBase}`;
       }
     }
     return {
       tone,
       headline: `${priceWord}${level}（${fmtNum(ratio, 1)} 倍均量）`,
-      detail: `今天的成交量${unit ? `（${amount(v)}）` : ''}是 ${p.ma2} 日均量${unit ? `（${amount(avg)}）` : ''}的 ${fmtNum(ratio, 2)} 倍。${comment}${spikeText}${weekend}`,
+      detail: `今天的成交量${unit ? `（${amount(v)}）` : ''}是 ${p.ma2} 日均量${unit ? `（${amount(avg)}）` : ''}的 ${fmtNum(ratio, 2)} 倍。${comment}`,
+      notes: notesOf(
+        ['這一波放量從哪天開始', wave],
+        ['放量下跌之後怎麼觀察', watch],
+        ['爆量之後的量縮怎麼看', shrink],
+        ['兩個倍數差在哪裡', twoRatios],
+        ['週末的量', weekend],
+        ['ETF 的成交量', ratio >= 1.3 && !alwaysOpen && '0050、VOO 這類 ETF 有造市商（負責隨時報價買賣的券商），成交量不完全代表投資人的買賣意願，量的訊號只能參考。'],
+      ),
     };
   },
   noSignalReason:

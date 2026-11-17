@@ -1,6 +1,7 @@
 import { fmtNum } from '../../data/format';
 import { closes, crossOver, nulls, percentileRank, quantile, scanSignals, sma, validSlice } from '../math/core';
-import { getLine, seriesColor, type IndicatorDef, type Series } from '../types';
+import { afterStats, afterText } from '../math/after';
+import { getLine, seriesColor, type IndicatorDef, type Series, notesOf } from '../types';
 
 export type BiasParams = { periods: number[]; lookback: number; percentile: number };
 
@@ -40,6 +41,16 @@ export function trailingQuantile(values: Series, window: number, p: number, minC
     if (old != null) sorted.splice(lowerBound(old), 1);
   }
   return out;
+}
+
+/** 之後看幾根 K 棒 */
+export const AFTER_BARS = 10;
+
+/** 過去乖離率到過這麼極端（和現在一樣或更極端）的日子，之後價格怎麼走 */
+export function afterExtreme(candles: readonly { close: number }[], bias: Series, now: number, side: 'high' | 'low'): string {
+  const st = afterStats(candles, (i) => { const b = bias[i]; return b != null && (side === 'high' ? b >= now : b <= now); }, AFTER_BARS);
+  const level = `${now >= 0 ? '+' : ''}${fmtNum(now, 2)}%`;
+  return `${afterText(st, `乖離率到 ${level} 以${side === 'high' ? '上' : '下'}`, side === 'high' ? 'down' : 'up')}也可以對照指標百科下面的回測成績。`;
 }
 
 export const biasIndicator: IndicatorDef<BiasParams> = {
@@ -126,14 +137,23 @@ export const biasIndicator: IndicatorDef<BiasParams> = {
       return { tone: 'neutral', headline: head, detail: `收盤價${where} ${fmtNum(Math.abs(v), 2)}%。` };
     }
     const rank = percentileRank(hist, v);
-    const detail = `收盤價${where} ${fmtNum(Math.abs(v), 2)}%。和過去 ${hist.length} 天相比，現在的乖離率排在第 ${fmtNum(
-      rank,
-      0,
-    )} 百分位（0 = 最低、100 = 最高）。`;
-    const trendNote = '不過在趨勢明顯的行情裡（例如 ADX 25 以上），乖離可能越拉越大；這個「容易」是指常見的情況，不保證，可以對照指標百科下面的回測成績。';
-    if (rank >= 95) return { tone: 'hot', headline: `${head}，正乖離過大`, detail: `${detail}離均線很遠，容易回檔修正。${trendNote}` };
+    const detail = `收盤價${where} ${fmtNum(Math.abs(v), 2)}%，在過去 ${hist.length} 天裡排第 ${fmtNum(rank, 0)} 百分位（0 = 最低、100 = 最高）。`;
+    const trendNote = '在趨勢明顯的行情裡（例如 ADX 25 以上），乖離可能越拉越大，離均線遠不代表馬上會拉回來。';
+    if (rank >= 95) {
+      return {
+        tone: 'hot',
+        headline: `${head}，正乖離過大`,
+        detail: `${detail}漲離均線很遠。`,
+        notes: notesOf(['過去漲到這麼高之後', afterExtreme(candles, bias, v, 'high')], ['趨勢行情裡要注意', trendNote]),
+      };
+    }
     if (rank <= p.percentile) {
-      return { tone: 'cold', headline: `${head}，負乖離過大`, detail: `${detail}跌離均線很遠，容易出現反彈。${trendNote}` };
+      return {
+        tone: 'cold',
+        headline: `${head}，負乖離過大`,
+        detail: `${detail}跌離均線很遠。`,
+        notes: notesOf(['過去跌到這麼低之後', afterExtreme(candles, bias, v, 'low')], ['趨勢行情裡要注意', trendNote]),
+      };
     }
     return { tone: 'neutral', headline: head, detail: `${detail}屬於正常範圍。` };
   },

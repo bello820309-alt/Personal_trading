@@ -1,6 +1,6 @@
 import { fmtNum, fmtPct } from '../../data/format';
 import { nulls, rma, scanSignals } from '../math/core';
-import { getLine, type IndicatorDef, type Series } from '../types';
+import { getLine, notesOf, type IndicatorDef, type Series } from '../types';
 
 export type SuperTrendParams = { atrPeriod: number; multiplier: number };
 
@@ -111,15 +111,16 @@ export const supertrendIndicator: IndicatorDef<SuperTrendParams> = {
         entry && pnl !== null
           ? `照回測的規則在翻${up ? '多' : '空'}隔天開盤（${Number(entry.time.slice(5, 7))}/${Number(entry.time.slice(8, 10))} 的 ${fmtNum(entry.open)}）${up ? '買進' : '賣出'}的話，到今天${up ? (pnl < 0 ? `虧 ${fmtNum(-pnl * 100, 2)}%` : `賺 ${fmtNum(pnl * 100, 2)}%`) : pnl > 0 ? `賣掉之後又漲了 ${fmtNum(pnl * 100, 2)}%` : `賣掉之後跌了 ${fmtNum(-pnl * 100, 2)}%`}，要等收盤${up ? '跌破' : '漲過'}線才會${up ? '賣出' : '買回'}。`
           : '';
-      against = ` 翻${up ? '多' : '空'}那天收盤 ${fmtNum(flipClose)}，到今天反而${up ? '跌' : '漲'}了 ${fmtNum(Math.abs(move) * 100, 2)}%，但收盤還沒${up ? '跌破支撐線' : '漲過壓力線'}，所以還是${up ? '多' : '空'}方：SuperTrend 只有收盤${up ? '跌破' : '漲過'}這條線才會翻轉。${trade}這是 SuperTrend 用「倍數 × ATR」和價格保持距離的代價：倍數越大越不容易被洗出場，但碰到線之前${up ? '回吐' : '錯過'}的也越多；倍數小一點會比較早翻轉，但盤整時也比較容易被洗出場。`;
+      against = `翻${up ? '多' : '空'}那天收盤 ${fmtNum(flipClose)}，到今天反而${up ? '跌' : '漲'}了 ${fmtNum(Math.abs(move) * 100, 2)}%，但收盤還沒${up ? '跌破支撐線' : '漲過壓力線'}，所以還是${up ? '多' : '空'}方：SuperTrend 只有收盤${up ? '跌破' : '漲過'}這條線才會翻轉。${trade}這是 SuperTrend 用「倍數 × ATR」和價格保持距離的代價：倍數越大越不容易被洗出場，但碰到線之前${up ? '回吐' : '錯過'}的也越多；倍數小一點會比較早翻轉，但盤整時也比較容易被洗出場。`;
     }
-    const since = from > 0 ? ` ${md} 翻${up ? '多' : '空'}，到今天是第 ${days} 根 K 棒${confirm}。${against}` : '';
+    const since = from > 0 ? `${md} 翻${up ? '多' : '空'}，到今天是第 ${days} 根 K 棒${confirm}。` : '';
     return {
       tone: up ? 'bullish' : 'bearish',
       headline: up ? 'SuperTrend 多方（線在價格下方）' : 'SuperTrend 空方（線在價格上方）',
       detail: `${up ? '支撐' : '壓力'}線在 ${fmtNum(v)}，距離收盤價 ${fmtPct(v / close - 1)}。${
         up ? '收盤跌破這條線才會翻空。' : '收盤漲過這條線才會翻多。'
-      }${since}`,
+      }${from > 0 ? `${md} 翻${up ? '多' : '空'}，到今天第 ${days} 根 K 棒。` : ''}`,
+      notes: notesOf([`翻${up ? '多' : '空'}幾天了、算不算確認`, since], [`翻${up ? '多' : '空'}之後反而${up ? '跌' : '漲'}，為什麼還是${up ? '多' : '空'}方`, against]),
     };
   },
   strategy: {
