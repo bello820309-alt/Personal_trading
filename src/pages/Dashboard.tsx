@@ -324,14 +324,14 @@ function StateGuide() {
       </li>
       <li>
         <strong className="font-semibold">意見不一致時</strong>：先看「趨向指標（DMI／ADX）」判斷現在是趨勢還是盤整。ADX 25 以上代表趨勢明確，這時以均線、MACD、DMI
-        這類趨勢指標為主，RSI、KD 的過冷、過熱比較容易失準；ADX 20 以下代表盤整，RSI、KD、布林通道比較有用；20～25 之間是趨勢正在形成或正在變弱，兩類指標都要打折看，可以只採用兩類意見一致的訊號，不一致就先觀望。詳細的說明在
+        這類趨勢指標為主，一般的說法是這時 RSI、KD 的過冷、過熱要打折看；ADX 20 以下代表盤整，一般的說法是這時 RSI、KD、布林通道比較有用；20～25 之間是趨勢正在形成或正在變弱，兩類指標都要打折看，可以只採用兩類意見一致的訊號，不一致就先觀望。這是教科書上的分法，不是保證：KD 的說明點開後，會寫出這份資料裡實際的次數。詳細的說明在
         <Link to="/basics/trend" className="text-accent">
           「趨勢、盤整與支撐壓力」
         </Link>
         。
       </li>
       <li>
-        <strong className="font-semibold">趨勢指標比較慢</strong>：均線、MACD、ADX 都是用過去的價格算的，等它們說「下跌趨勢明確」時，價格通常已經跌了一段。照偏空的訊號賣出，有時會剛好賣在相對低的地方，這是趨勢指標的代價。詳見
+        <strong className="font-semibold">趨勢指標比較慢</strong>：均線、MACD、ADX 都是用過去的價格算的，要價格先跌一段，它們才會說「下跌趨勢明確」。照偏空的訊號賣出，有時會剛好賣在相對低的地方，這是趨勢指標的代價。詳見
         <Link to="/basics/leading-lagging" className="text-accent">
           「領先指標與落後指標」
         </Link>

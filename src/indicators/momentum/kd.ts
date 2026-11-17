@@ -1,6 +1,7 @@
 import type { Candle } from '../../data/types';
 import { fmtNum } from '../../data/format';
 import { closes, crossOver, crossUnder, highest, highs, lowest, lows, scanSignals, smoothFrom } from '../math/core';
+import { zoneNote } from '../math/after';
 import { dmiIndicator } from '../trend/dmi';
 import { getLine, notesOf, type IndicatorDef, type Series } from '../types';
 
@@ -199,6 +200,8 @@ export const kdIndicator: IndicatorDef<KdParams> = {
       const few = strong[0]! < 20 || weak[0]! < 20 ? '次數很少，看不出明顯的差別，只能當參考。' : '';
       adxNote = `現在 ADX 是 ${fmtNum(adx, 1)}（25 以上代表趨勢明確）。一般的說法是：趨勢明確時 KD 會鈍化，低檔、高檔和交叉的訊號要打折看。這份資料裡，低檔黃金交叉發生時 ADX 在 25 以上的有 ${strong[0]} 次，${AFTER} 根 K 棒之後價格比較高的有 ${strong[1]} 次；ADX 低於 25 的有 ${weak[0]} 次，其中 ${weak[1]} 次。${few}`;
     }
+    const zoneHigh = () => zoneNote(candles, k, (x) => x > p.overbought, `K 高於 ${p.overbought}`, 'down');
+    const zoneLow = () => zoneNote(candles, k, (x) => x < p.oversold, `K 低於 ${p.oversold}`, 'up');
     /** 每種狀態共用的補充說明；first 是這個狀態自己要先講的 */
     const notes = (...first: [string, string][]) =>
       notesOf(...first, ['最近一次交叉', cross], ['交叉那天價格為什麼反向', crossWhy], ['均線方向', maNote], ['趨勢強度（ADX）', adxNote]);
@@ -207,7 +210,7 @@ export const kdIndicator: IndicatorDef<KdParams> = {
         tone: 'bullish',
         headline: `${head}，高檔鈍化`,
         detail: `K 值已連續 ${highRun} 天高於 ${p.overbought}，代表買盤很強。這時「超買」反而是強勢的表現，不宜只因為 KD 高就看空。`,
-        notes: notes(),
+        notes: notes(['過去 K 到高檔之後', zoneHigh()]),
       };
     }
     if (lowRun >= 3) {
@@ -219,16 +222,16 @@ export const kdIndicator: IndicatorDef<KdParams> = {
         tone: 'bearish',
         headline: `${head}，低檔鈍化`,
         detail: `K 值已連續 ${lowRun} 天低於 ${p.oversold}，賣壓很重。低檔鈍化時，KD 低不代表馬上會反彈。`,
-        notes: notesOf(['最近一次交叉', cross], ['鈍化期間的交叉算不算', dull], ['交叉那天價格為什麼反向', crossWhy], ['均線方向', maNote], ['趨勢強度（ADX）', adxNote]),
+        notes: notesOf(['過去 K 到低檔之後', zoneLow()], ['最近一次交叉', cross], ['鈍化期間的交叉算不算', dull], ['交叉那天價格為什麼反向', crossWhy], ['均線方向', maNote], ['趨勢強度（ADX）', adxNote]),
       };
     }
     if (kv >= p.overbought) {
       const dNote = dv <= p.overbought ? `交叉算不算「高檔死亡交叉」看的是 D 值，現在 D 是 ${fmtNum(dv, 1)}，還不在 ${p.overbought} 以上，這時 K 往下穿過 D 也不算高檔交叉。` : '';
-      return { tone: 'hot', headline: `${head}，進入高檔`, detail: `K 值高於 ${p.overbought}，短線漲多、偏熱。`, notes: notes(['現在交叉算不算高檔交叉', dNote]) };
+      return { tone: 'hot', headline: `${head}，進入高檔`, detail: `K 值高於 ${p.overbought}，短線漲多、偏熱。`, notes: notes(['過去 K 到高檔之後', zoneHigh()], ['現在交叉算不算高檔交叉', dNote]) };
     }
     if (kv <= p.oversold) {
       const dNote = dv >= p.oversold ? `交叉算不算「低檔黃金交叉」看的是 D 值，現在 D 是 ${fmtNum(dv, 1)}，還不在 ${p.oversold} 以下，這時 K 往上穿過 D 也不算低檔交叉。` : '';
-      return { tone: 'cold', headline: `${head}，進入低檔`, detail: `K 值低於 ${p.oversold}，短線跌深、偏冷。`, notes: notes(['現在交叉算不算低檔交叉', dNote]) };
+      return { tone: 'cold', headline: `${head}，進入低檔`, detail: `K 值低於 ${p.oversold}，短線跌深、偏冷。`, notes: notes(['過去 K 到低檔之後', zoneLow()], ['現在交叉算不算低檔交叉', dNote]) };
     }
     const todayChg = n >= 2 ? candles[n - 1]!.close / candles[n - 2]!.close - 1 : 0;
     const pk = k[n - 2];

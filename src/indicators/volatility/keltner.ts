@@ -1,7 +1,7 @@
 import { fmtNum } from '../../data/format';
 import { atrWilder, closes, crossOver, crossUnder, ema, scanSignals, zip } from '../math/core';
 import { getLine, notesOf, type IndicatorDef } from '../types';
-import { squeezeStatus, squeezeText } from './squeeze';
+import { squeezeHistoryText, squeezeStatus, squeezeText } from './squeeze';
 
 export type KeltnerParams = { emaPeriod: number; atrPeriod: number; mult: number };
 
@@ -49,7 +49,7 @@ export const keltnerIndicator: IndicatorDef<KeltnerParams> = {
     const c = candles[n - 1]!.close;
     // 擠壓：和布林通道的卡片用同一個判斷（兩種說法都寫出來）
     const st = squeezeStatus(candles);
-    const squeezeNote = st ? squeezeText(st, c) : '';
+    const squeezeNote = st ? squeezeText(st, c, squeezeHistoryText(candles)) : '';
     const squeezed = !!st && (st.nearMin || st.inside);
     const sqHint = squeezed ? '另外，現在有「擠壓」的跡象（下面有說明）。' : '';
     const notes = notesOf(['有沒有「擠壓」', squeezeNote]);

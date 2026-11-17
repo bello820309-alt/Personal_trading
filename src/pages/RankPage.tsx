@@ -181,7 +181,7 @@ function LongTermCard({ check, candles }: { check: LongTermCheck; candles: Candl
   const cagr = (total: number) => (years > 0 ? (1 + total) ** (1 / years) - 1 : null);
   return (
     <Card>
-      <H2 sub={`短期間的冠軍，常常只是剛好遇到適合它的行情。這裡把這段期間勝率第一、和贏過一直抱著的規則，放到近 10 年（${fmtDate(candles[long.start]!.time)}～${fmtDate(candles[long.end]!.time)}）再算一次。`}>
+      <H2 sub={`短期間的冠軍，可能只是剛好遇到適合它的行情。這裡把這段期間勝率第一、和贏過一直抱著的規則，放到近 10 年（${fmtDate(candles[long.start]!.time)}～${fmtDate(candles[long.end]!.time)}）再算一次。`}>
         放到近 10 年，還贏嗎？
       </H2>
       <div className="table-scroll">

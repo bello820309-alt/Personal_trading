@@ -1,6 +1,7 @@
 import { fmtNum } from '../../data/format';
 import { closes, crossOver, crossUnder, highest, highs, lowest, lows, scanSignals } from '../math/core';
-import { getLine, type IndicatorDef, type Series } from '../types';
+import { zoneNote } from '../math/after';
+import { getLine, type IndicatorDef, type Series, notesOf } from '../types';
 
 export type WilliamsRParams = { period: number; overbought: number; oversold: number };
 
@@ -56,6 +57,7 @@ export const williamsRIndicator: IndicatorDef<WilliamsRParams> = {
         tone: 'hot',
         headline: `${head}，超買區`,
         detail: `收盤價接近最近 ${p.period} 天的最高價（高於 ${p.overbought}）。`,
+        notes: notesOf(['過去到超買區之後', zoneNote(candles, getLine(r, 'wr'), (x) => x >= p.overbought, `%R 在 ${p.overbought} 以上`, 'down')]),
       };
     }
     if (v <= p.oversold) {
@@ -63,6 +65,7 @@ export const williamsRIndicator: IndicatorDef<WilliamsRParams> = {
         tone: 'cold',
         headline: `${head}，超賣區`,
         detail: `收盤價接近最近 ${p.period} 天的最低價（低於 ${p.oversold}）。`,
+        notes: notesOf(['過去到超賣區之後', zoneNote(candles, getLine(r, 'wr'), (x) => x <= p.oversold, `%R 在 ${p.oversold} 以下`, 'up')]),
       };
     }
     return v > -50

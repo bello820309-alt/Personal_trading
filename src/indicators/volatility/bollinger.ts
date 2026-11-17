@@ -1,7 +1,8 @@
 import { fmtNum } from '../../data/format';
 import { closes, crossOver, scanSignals, sma, stdev, validSlice, zip } from '../math/core';
+import { zoneNote } from '../math/after';
 import { getLine, notesOf, type IndicatorDef, type Series } from '../types';
-import { squeezeStatus, squeezeText } from './squeeze';
+import { squeezeHistoryText, squeezeStatus, squeezeText } from './squeeze';
 
 export type BollingerParams = { period: number; mult: number };
 
@@ -72,7 +73,7 @@ export const bollingerIndicator: IndicatorDef<BollingerParams> = {
     const wide = maxW > 0 && w >= maxW * 0.8;
     // 擠壓：和肯特納通道的卡片用同一個判斷（兩種說法都寫出來）
     const st = squeezeStatus(candles);
-    const sq = st ? squeezeText(st, candles[n - 1]!.close) : '';
+    const sq = st ? squeezeText(st, candles[n - 1]!.close, squeezeHistoryText(candles)) : '';
     const widthNote = maxW > 0 ? `現在通道的寬度是最近半年最寬時的 ${fmtNum((w / maxW) * 10, 1)} 成（8 成以上算很寬）。` : '';
     const squeezed = !!st && (st.nearMin || st.inside);
     const sqHint = squeezed ? '另外，現在有「擠壓」的跡象（下面有說明）。' : '';
@@ -85,7 +86,7 @@ export const bollingerIndicator: IndicatorDef<BollingerParams> = {
         detail: wide
           ? '收盤價在上軌之上，而且通道接近半年來最寬：漲勢又急又大，價格可能沿著上軌繼續走，不一定是「漲太多該回檔」。'
           : `收盤價在上軌之上：走勢很強，但也偏離平均很多。${sqHint}`,
-        notes: notesOf(['趨勢行情裡要注意', !wide && trendNote('上')], ['通道現在寬不寬', widthNote], ['有沒有「擠壓」', !wide && sq]),
+        notes: notesOf(['過去突破上軌之後', zoneNote(candles, getLine(r, 'pctB'), (x) => x > 1, '收盤在上軌之上', 'down')], ['趨勢行情裡要注意', !wide && trendNote('上')], ['通道現在寬不寬', widthNote], ['有沒有「擠壓」', !wide && sq]),
       };
     if (b < 0)
       return {
@@ -94,7 +95,7 @@ export const bollingerIndicator: IndicatorDef<BollingerParams> = {
         detail: wide
           ? '收盤價在下軌之下，而且通道接近半年來最寬：跌勢又急又大，價格可能沿著下軌繼續走，不是「跌太多該反彈」的訊號。'
           : `收盤價在下軌之下：跌勢很急，常被視為超跌。${sqHint}`,
-        notes: notesOf(['趨勢行情裡要注意', !wide && trendNote('下')], ['通道現在寬不寬', widthNote], ['有沒有「擠壓」', !wide && sq]),
+        notes: notesOf(['過去跌破下軌之後', zoneNote(candles, getLine(r, 'pctB'), (x) => x < 0, '收盤在下軌之下', 'up')], ['趨勢行情裡要注意', !wide && trendNote('下')], ['通道現在寬不寬', widthNote], ['有沒有「擠壓」', !wide && sq]),
       };
     return {
       tone: b >= 0.5 ? 'bullish' : 'bearish',

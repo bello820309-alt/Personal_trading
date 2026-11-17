@@ -16,6 +16,7 @@
     "fetch-extra": "tsx scripts/fetch-extra.ts",
     "fetch-analysts": "tsx scripts/fetch-analysts.ts",
     "analysts": "tsx scripts/analysts-status.ts",
+    "cards": "tsx scripts/print-cards.ts",
     "icons": "node scripts/generate-icons.mjs",
     "lab": "tsx scripts/lab/cli.ts",
     "lab:browse": "node scripts/lab/browse.cjs"

@@ -371,7 +371,7 @@ function BacktestSummary({ def }: { def: IndicatorDef }) {
           .join('、')}
         。
       </p>
-      <p className="mt-2 text-xs text-muted">年化報酬比買進持有低很常見，但有些策略能明顯降低最大回撤；要看你比較在意哪一個。</p>
+      <p className="mt-2 text-xs text-muted">年化報酬可能比買進持有低（上面的表可以直接比），但有些策略的最大回撤比較小；要看你比較在意哪一個。</p>
     </div>
   );
 }

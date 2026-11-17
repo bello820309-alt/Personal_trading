@@ -1,6 +1,7 @@
 import { fmtNum } from '../../data/format';
 import { closes, crossOver, crossUnder, firstValid, nulls, rma, scanSignals } from '../math/core';
-import { getLine, type IndicatorDef, type IndicatorResult, type Series, type StateSummary } from '../types';
+import { zoneNote } from '../math/after';
+import { getLine, type IndicatorDef, type IndicatorResult, type Series, type StateSummary, notesOf } from '../types';
 
 export type RsiParams = { period: number; period2: number; overbought: number; oversold: number };
 
@@ -32,20 +33,24 @@ export function describeOscillator(
   oversold: number,
   mid: number,
   digits = 1,
+  /** 有給的話，另外數出「過去到超買、超賣區之後價格怎麼走」 */
+  hist?: { candles: readonly { close: number }[]; line: Series },
 ): StateSummary {
   const v = fmtNum(value, digits);
   if (value >= overbought) {
     return {
       tone: 'hot',
       headline: `${name} = ${v}，進入超買區`,
-      detail: `高於 ${overbought}：短期漲得比較急。注意這不等於馬上會跌，強勢行情中可能在超買區停留很久。`,
+      detail: `高於 ${overbought}：短期漲得比較急。這不等於馬上會跌，強勢行情中可能在超買區停留很久。`,
+      notes: notesOf(['過去到超買區之後', hist && zoneNote(hist.candles, hist.line, (x) => x >= overbought, `${name} 在 ${overbought} 以上`, 'down')]),
     };
   }
   if (value <= oversold) {
     return {
       tone: 'cold',
       headline: `${name} = ${v}，進入超賣區`,
-      detail: `低於 ${oversold}：短期跌得比較急，可能醞釀反彈；但弱勢行情中也可能一直停在超賣區。`,
+      detail: `低於 ${oversold}：短期跌得比較急。這不等於馬上會反彈，弱勢行情中可能一直停在超賣區。`,
+      notes: notesOf(['過去到超賣區之後', hist && zoneNote(hist.candles, hist.line, (x) => x <= oversold, `${name} 在 ${oversold} 以下`, 'up')]),
     };
   }
   if (value >= mid) {
@@ -127,7 +132,7 @@ export const rsiIndicator: IndicatorDef<RsiParams> = {
   describe(candles, r, p) {
     const v = getLine(r, 'rsi')[candles.length - 1];
     if (v == null) return null;
-    return describeOscillator(`RSI(${p.period})`, v, p.overbought, p.oversold, 50);
+    return describeOscillator(`RSI(${p.period})`, v, p.overbought, p.oversold, 50, 1, { candles, line: getLine(r, 'rsi') });
   },
   strategy: {
     name: '超賣回升買、超買回落賣',

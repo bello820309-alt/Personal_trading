@@ -322,7 +322,7 @@ function TrendVsDca() {
   return (
     <ul className="list-disc space-y-2 pl-5 text-sm leading-relaxed text-fg">
       <li>
-        <strong className="font-semibold">順勢操作</strong>（均線、MACD 這類趨勢指標）：想抓到一段上漲。跌勢中先不買、甚至先賣，等趨勢轉好再進場。好處是比較能避開大跌；缺點是常常買在比較高的地方，盤整時也容易被來回洗。
+        <strong className="font-semibold">順勢操作</strong>（均線、MACD 這類趨勢指標）：想抓到一段上漲。跌勢中先不買、甚至先賣，等趨勢轉好再進場。好處是比較能避開大跌；缺點是要等漲了一段才會買（買得比低點高），盤整時也會被來回洗出場。
       </li>
       <li>
         <strong className="font-semibold">定期定額、動態定投</strong>：不判斷方向，長期分批買。跌的時候多買一點，是為了把平均成本壓低。前提是相信這個標的長期會往上（例如追蹤大盤的

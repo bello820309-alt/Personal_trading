@@ -23,7 +23,7 @@ export const macdIndicator: IndicatorDef<MacdParams> = {
         { value: 'close', label: '收盤價（國際常用）' },
         { value: 'di', label: 'DI＝(高＋低＋2×收)÷4（台灣傳統算法）' },
       ],
-      help: '不同看盤軟體的 MACD 數值略有差異，常常就是因為這個設定不同。',
+      help: '不同看盤軟體的 MACD 數值略有差異時，先看是不是這個設定不同。',
     },
   ],
   defaults: { fast: 12, slow: 26, signal: 9, source: 'close' },

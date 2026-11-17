@@ -78,13 +78,9 @@ export function summarizeRanking(result: RankResult, candles: Candle[], asset: A
   if (trend.length >= 3 && osc.length >= 3) {
     const t = average(trend);
     const o = average(osc);
-    let why = '';
-    if (Math.abs(t - o) >= 0.05) {
-      if (t > o && hold > 0.2) why = '：上漲行情裡，順勢的趨勢類比較抱得住，擺盪類常常太早賣出。';
-      else if (t > o && hold < -0.2) why = '：下跌行情裡，趨勢類通常比較早出場；擺盪類常在「看起來跌夠了」時買進，結果繼續跌。';
-      else if (o > t) why = '：價格來回震盪時，擺盪類「跌深買、漲多賣」比較吃香，趨勢類容易被來回洗出場。';
-    }
-    out.push(`趨勢類策略平均總報酬 ${fmtPct(t)}，動能／擺盪類平均 ${fmtPct(o)}${why || '。'}`);
+    // 只寫算出來的數字：哪一類比較好和這段期間的走勢有關，原因這裡沒有另外驗證，不編故事
+    const gap = Math.abs(t - o) >= 0.05 ? `這段期間${t > o ? '趨勢類' : '動能／擺盪類'}比較好；` : '兩類差不多；';
+    out.push(`趨勢類策略平均總報酬 ${fmtPct(t)}，動能／擺盪類平均 ${fmtPct(o)}。${gap}哪一類比較好和這段期間怎麼走有關，換一段期間可能就反過來，可以改上面的期間試試看。`);
   }
 
   if (lowSample.length) {

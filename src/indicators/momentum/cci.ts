@@ -1,6 +1,7 @@
 import { fmtNum } from '../../data/format';
 import { crossOver, crossUnder, nulls, scanSignals, sma } from '../math/core';
-import { getLine, type IndicatorDef, type Series } from '../types';
+import { zoneNote } from '../math/after';
+import { getLine, type IndicatorDef, type Series, notesOf } from '../types';
 
 export type CciParams = { period: number };
 
@@ -54,6 +55,7 @@ export const cciIndicator: IndicatorDef<CciParams> = {
         tone: 'bullish',
         headline: `${head}，強勢區`,
         detail: '高於 +100：價格明顯高於近期平均水準。CCI 原始用法是「進入 +100 以上就順勢做多」。',
+        notes: notesOf(['過去到強勢區之後', zoneNote(candles, getLine(r, 'cci'), (x) => x > 100, 'CCI 高於 +100', 'up')]),
       };
     }
     if (v < -100) {
@@ -61,6 +63,7 @@ export const cciIndicator: IndicatorDef<CciParams> = {
         tone: 'bearish',
         headline: `${head}，弱勢區`,
         detail: '低於 −100：價格明顯低於近期平均水準，走勢偏弱；也有人視為超賣。',
+        notes: notesOf(['過去到弱勢區之後', zoneNote(candles, getLine(r, 'cci'), (x) => x < -100, 'CCI 低於 −100', 'up')]),
       };
     }
     return {

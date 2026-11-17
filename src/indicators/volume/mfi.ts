@@ -58,7 +58,7 @@ export const mfiIndicator: IndicatorDef<MfiParams> = {
   describe(candles, r, p) {
     const v = getLine(r, 'mfi')[candles.length - 1];
     if (v == null) return null;
-    return describeOscillator(`MFI(${p.period})`, v, p.overbought, p.oversold, 50);
+    return describeOscillator(`MFI(${p.period})`, v, p.overbought, p.oversold, 50, 1, { candles, line: getLine(r, 'mfi') });
   },
   strategy: {
     name: 'MFI 超賣回升買、超買回落賣',

@@ -1,6 +1,7 @@
 import { fmtNum } from '../../data/format';
 import { closes, crossOver, crossUnder, highest, lowest, scanSignals, sma } from '../math/core';
-import { getLine, type IndicatorDef, type Series } from '../types';
+import { zoneNote } from '../math/after';
+import { getLine, type IndicatorDef, type Series, notesOf } from '../types';
 import { rsiSeries } from './rsi';
 
 export type StochRsiParams = {
@@ -75,11 +76,33 @@ export const stochRsiIndicator: IndicatorDef<StochRsiParams> = {
     const d = getLine(r, 'd')[n - 1];
     if (k == null || d == null) return null;
     const head = `%K ${fmtNum(k, 1)}／%D ${fmtNum(d, 1)}`;
+    // StochRSI 進出超買、超賣區有多頻繁：用最近一年的資料數
+    const kLine = getLine(r, 'k');
+    let intoHigh = 0;
+    let intoLow = 0;
+    const from = Math.max(1, n - 250);
+    for (let i = from; i < n; i++) {
+      const a = kLine[i], b = kLine[i - 1];
+      if (a == null || b == null) continue;
+      if (a >= p.overbought && b < p.overbought) intoHigh++;
+      if (a <= p.oversold && b > p.oversold) intoLow++;
+    }
+    const busy = `最近 ${n - from} 根 K 棒裡，StochRSI 進入超買區 ${intoHigh} 次、超賣區 ${intoLow} 次；它是「RSI 的 RSI」，比 RSI 靈敏很多，進到超買、超賣區不代表價格已經漲很多或跌很多。`;
     if (k >= p.overbought) {
-      return { tone: 'hot', headline: `${head}，超買區`, detail: 'RSI 正處在最近區間的高檔。StochRSI 很靈敏，常常在超買、超賣之間快速切換。' };
+      return {
+        tone: 'hot',
+        headline: `${head}，超買區`,
+        detail: 'RSI 正處在它自己最近區間的高檔。',
+        notes: notesOf(['它多常進到超買、超賣區', busy], ['過去到超買區之後', zoneNote(candles, kLine, (x) => x >= p.overbought, `%K 在 ${p.overbought} 以上`, 'down')]),
+      };
     }
     if (k <= p.oversold) {
-      return { tone: 'cold', headline: `${head}，超賣區`, detail: 'RSI 正處在最近區間的低檔。StochRSI 很靈敏，常常在超買、超賣之間快速切換。' };
+      return {
+        tone: 'cold',
+        headline: `${head}，超賣區`,
+        detail: 'RSI 正處在它自己最近區間的低檔。',
+        notes: notesOf(['它多常進到超買、超賣區', busy], ['過去到超賣區之後', zoneNote(candles, kLine, (x) => x <= p.oversold, `%K 在 ${p.oversold} 以下`, 'up')]),
+      };
     }
     return k > d
       ? { tone: 'bullish', headline: `${head}，%K 在 %D 之上`, detail: '短線動能偏多。' }

@@ -37,6 +37,8 @@ export const MIN_SAMPLE = 10;
  * 一定同時寫出「所有日子」的比例，不然看不出這個條件到底有沒有差。
  */
 export function afterText(st: AfterStats, what: string, side: 'up' | 'down'): string {
+  // 條件以數字結尾時（例如「CCI 低於 −100」）補一個空白，比較好讀
+  if (/[\d%]$/.test(what)) what += ' ';
   if (st.total < MIN_SAMPLE) return `這份資料裡，${what}的日子只有 ${st.total} 天，太少，看不出之後怎麼走。`;
   const k = side === 'up' ? st.up : st.total - st.up;
   const base = side === 'up' ? st.allUp : st.allTotal - st.allUp;
@@ -53,4 +55,23 @@ export function longestRun(n: number, hit: (i: number) => boolean): number {
     if (run > best) best = run;
   }
   return best;
+}
+
+/**
+ * 指標進到某個區間（例如超賣區）之後，價格怎麼走：一句話，附上最久連續待了幾根。
+ * line 是和 K 棒對齊的指標數值。
+ */
+export function zoneNote(
+  candles: readonly { close: number }[],
+  line: readonly (number | null | undefined)[],
+  inZone: (v: number) => boolean,
+  what: string,
+  side: 'up' | 'down',
+  bars = 10,
+): string {
+  const hit = (i: number) => {
+    const v = line[i];
+    return v != null && inZone(v);
+  };
+  return `${afterText(afterStats(candles, hit, bars), what, side)}最久曾經連續 ${longestRun(candles.length, hit)} 根 K 棒都在這個區間。`;
 }

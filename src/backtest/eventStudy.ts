@@ -233,7 +233,7 @@ export function summarizeEventGroup(label: string, stats: GroupStats, base: Grou
   } else if (dAvg < 0 && dUp <= 0) {
     out.push('這類事件之後比平常更常下跌、平均也比較差；但這是過去的統計，每一次的情況都不一樣。');
   } else {
-    out.push('平均和上漲比例的方向不一致：通常是少數幾次特別大的漲跌把平均拉偏了，看中位數和下面每一次的結果比較準。');
+    out.push('平均和上漲比例的方向不一致：代表有幾次漲跌特別大，把平均拉偏了，看中位數和下面每一次的結果比較準。');
   }
   const s30 = stats.after30;
   const b30 = base.after30;
@@ -243,7 +243,7 @@ export function summarizeEventGroup(label: string, stats: GroupStats, base: Grou
     );
   }
   if (group === 'crypto' || group === 'macro') {
-    out.push('注意：這類「大事」是事後挑出來的重大新聞，其中不少本身就是崩盤或恐慌，所以統計偏向下跌很正常，不能拿來預測下一次。');
+    out.push('注意：這類「大事」是事後挑出來的重大新聞，其中有些本身就是崩盤或恐慌，所以統計偏向下跌並不意外，不能拿來預測下一次。');
   }
   if (s.n < 8) out.push(`只有 ${s.n} 次，樣本太少，很容易被單一事件左右，參考就好。`);
   return out;

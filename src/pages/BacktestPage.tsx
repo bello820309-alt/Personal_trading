@@ -464,7 +464,7 @@ function BacktestView({
 
       <Notice>
         <strong className="font-semibold">回測的陷阱：</strong>
-        把參數一直調到「過去最好看」叫做過度最佳化，未來通常會差很多；交易次數太少的結果運氣成分很大；真實交易還有滑價與心理壓力。
+        把參數一直調到「過去最好看」叫做過度最佳化，換到沒看過的期間可能差很多（策略排行榜的「冠軍換一段期間還有效嗎？」可以看到）；交易次數太少的結果運氣成分很大；真實交易還有滑價與心理壓力。
         <Link to="/basics/backtest" className="ml-1 text-accent">
           了解更多
         </Link>
