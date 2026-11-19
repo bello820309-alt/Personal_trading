@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-11-19T13:04:21.889Z",
+  "generatedAt": "2026-11-19T21:32:49.680Z",
   "assets": [
     {
       "id": "0050",
@@ -14,9 +14,9 @@
       "id": "VOO",
       "symbol": "VOO",
       "status": "ok",
-      "updatedAt": "2026-11-19T03:26:38.856Z",
-      "lastDate": "2026-11-18",
-      "bars": 4074
+      "updatedAt": "2026-11-19T21:32:49.680Z",
+      "lastDate": "2026-11-19",
+      "bars": 4075
     },
     {
       "id": "BTC",

@@ -1,8 +1,13 @@
 {
  "schemaVersion": 1,
  "channelId": "UCRvqjQPSeaWn-uEx-w0XOIg",
- "fetchedAt": "2026-11-18T21:34:17.852Z",
+ "fetchedAt": "2026-11-19T21:32:56.718Z",
  "videos": [
+  {
+   "id": "ixMSi_KX89s",
+   "title": "The Anthropic IPO",
+   "published": "2026-11-19T14:18:17.000Z"
+  },
   {
    "id": "HNuV6mayKmk",
    "title": "Bitcoin: The Bull's Dilemma",
