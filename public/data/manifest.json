@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-11-20T03:14:23.650Z",
+  "generatedAt": "2026-11-20T07:34:12.610Z",
   "assets": [
     {
       "id": "0050",
       "symbol": "0050.TW",
       "status": "ok",
-      "updatedAt": "2026-11-19T13:04:21.889Z",
-      "lastDate": "2026-11-19",
-      "bars": 3125
+      "updatedAt": "2026-11-20T07:34:12.610Z",
+      "lastDate": "2026-11-20",
+      "bars": 3126
     },
     {
       "id": "VOO",
@@ -22,9 +22,9 @@
       "id": "BTC",
       "symbol": "BTC-USD",
       "status": "ok",
-      "updatedAt": "2026-11-19T07:34:20.163Z",
-      "lastDate": "2026-11-18",
-      "bars": 4446
+      "updatedAt": "2026-11-20T07:34:12.610Z",
+      "lastDate": "2026-11-19",
+      "bars": 4447
     }
   ]
 }
