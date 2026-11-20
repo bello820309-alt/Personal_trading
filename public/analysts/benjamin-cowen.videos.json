@@ -1,8 +1,13 @@
 {
  "schemaVersion": 1,
  "channelId": "UCRvqjQPSeaWn-uEx-w0XOIg",
- "fetchedAt": "2026-11-19T21:32:56.718Z",
+ "fetchedAt": "2026-11-20T21:05:15.085Z",
  "videos": [
+  {
+   "id": "6EpZVnKKrOE",
+   "title": "Bitcoin Drops Below $60k",
+   "published": "2026-11-20T16:03:54.000Z"
+  },
   {
    "id": "ixMSi_KX89s",
    "title": "The Anthropic IPO",
