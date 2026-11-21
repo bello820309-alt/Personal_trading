@@ -564,7 +564,7 @@ function Rules({ exp }: { exp: LabExperiment }) {
             `${specialists.map((a) => `${a.name}只能買賣 ${assetName(specialtyOf(exp, a.id)!)}`).join('、')}。`}
         </li>
         <li>
-          期間 {shortDay(exp.start)}～{shortDay(exp.end)}，台灣時間{runTimeText(exp.runTime)} 左右操作一次，{shortDay(exp.wrapUp)} 結算。一開始是每天（含週末）都操作；為了節省用量，11/14 起改成只在平日（週一到週五）操作。11/12、11/13 因為排程出了問題沒有操作，那兩天沒有心得。
+          期間 {shortDay(exp.start)}～{shortDay(exp.end)}，台灣時間{runTimeText(exp.runTime)} 左右操作一次，{shortDay(exp.wrapUp)} 結算。一開始是每天（含週末）都操作；為了節省用量，11/14 起改成只在平日（週一到週五）操作。11/12、11/13 和 11/17～11/20 因為排程出了問題沒有操作，那幾天沒有心得（不補做）。
         </li>
         <li>學習的來源只有這個網站：先看網站上的說明、圖表、回測和預測，再自己決定。每筆單都要寫理由，每天寫心得。</li>
         <li>
