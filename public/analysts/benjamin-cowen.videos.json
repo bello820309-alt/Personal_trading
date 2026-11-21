@@ -1,8 +1,13 @@
 {
  "schemaVersion": 1,
  "channelId": "UCRvqjQPSeaWn-uEx-w0XOIg",
- "fetchedAt": "2026-11-20T21:05:15.085Z",
+ "fetchedAt": "2026-11-21T07:33:51.772Z",
  "videos": [
+  {
+   "id": "ZNy4XdW59dc",
+   "title": "Bitcoin: The Lower Low",
+   "published": "2026-11-21T05:01:55.000Z"
+  },
   {
    "id": "6EpZVnKKrOE",
    "title": "Bitcoin Drops Below $60k",
