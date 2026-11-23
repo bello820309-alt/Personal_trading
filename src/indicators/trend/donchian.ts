@@ -1,6 +1,6 @@
 import { fmtNum } from '../../data/format';
 import { closes, highest, highs, lowest, lows, scanSignals, zip } from '../math/core';
-import { getLine, type IndicatorDef } from '../types';
+import { getLine, type IndicatorDef, notesOf } from '../types';
 
 export type DonchianParams = { period: number; exitPeriod: number };
 
@@ -92,17 +92,25 @@ export const donchianIndicator: IndicatorDef<DonchianParams> = {
         detail: `今天的最高價碰到通道上軌 ${fmtNum(u)}。突破新高是海龜法則的進場訊號。`,
       };
     }
+    // 最近 exitPeriod 天的最低就是最近 period 天的最低時，出場線和下軌會疊在一起
+    const ex = getLine(r, 'exit')[n - 1];
+    const overlap =
+      ex != null && Math.abs(ex - l) < 1e-9
+        ? `出場線（最近 ${p.exitPeriod} 天的最低價）和下軌（最近 ${p.period} 天的最低價）現在是同一個價位 ${fmtNum(l)}：最近 ${p.period} 天的最低點就出現在最近 ${p.exitPeriod} 天裡，所以兩條線疊在一起，不是畫錯。`
+        : '';
     if (c.low <= l) {
       return {
         tone: 'bearish',
         headline: `創 ${p.period} 日新低`,
         detail: `今天的最低價碰到通道下軌 ${fmtNum(l)}，走勢偏弱。`,
+        notes: notesOf(['出場線和下軌疊在一起', overlap]),
       };
     }
     return {
       tone: pos >= 50 ? 'bullish' : 'bearish',
       headline: `位於通道的 ${fmtNum(pos, 0)}% 位置`,
       detail: `通道範圍 ${fmtNum(l)}～${fmtNum(u)}（0% = 下軌、100% = 上軌）。`,
+      notes: notesOf(['出場線和下軌疊在一起', overlap]),
     };
   },
   strategy: {

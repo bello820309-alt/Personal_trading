@@ -52,7 +52,8 @@ describe('擠壓的兩種說法', () => {
     // 擠壓的日子大多在前半段（幾乎不動），之後的幅度比所有日子小
     expect(h.avgMove).toBeLessThan(h.allAvgMove);
     const text = squeezeHistoryText(c);
-    expect(text).toContain(`有擠壓的日子有 ${h.days} 天，之後 ${SQUEEZE_AFTER} 根 K 棒的漲跌幅度`);
+    expect(text).toContain(`有擠壓的日子（兩種說法任一種成立）有 ${h.days} 天，占 `);
+    expect(text).toContain(`之後 ${SQUEEZE_AFTER} 根 K 棒的漲跌幅度`);
     expect(text).toContain('反而比平常小');
     // 說明裡也帶得到這句
     expect(squeezeText(squeezeStatus(c)!, 100, text)).toContain('教科書常說「擠壓之後會有大行情」');

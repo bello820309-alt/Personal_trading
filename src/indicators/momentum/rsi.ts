@@ -67,6 +67,38 @@ export function describeOscillator(
   };
 }
 
+/**
+ * 背離：寫出最近兩個低點（或高點）的價格和指標數值，讓人自己對照。
+ * 最近的低點取最近 10 根 K 棒的最低收盤；前一個取再往前 11～40 根之間的最低收盤（兩個低點至少隔幾天，太近的不算）。
+ */
+export function divergenceText(candles: readonly { time: string; close: number }[], line: Series, name: string, side: 'low' | 'high'): string {
+  const n = candles.length;
+  if (n < 45) return '';
+  const pick = (from: number, to: number) => {
+    let best = -1;
+    for (let i = Math.max(0, from); i <= to; i++) {
+      if (line[i] == null) continue;
+      if (best < 0 || (side === 'low' ? candles[i]!.close < candles[best]!.close : candles[i]!.close > candles[best]!.close)) best = i;
+    }
+    return best;
+  };
+  const i1 = pick(n - 10, n - 1);
+  const i0 = pick(n - 40, n - 11);
+  if (i1 < 0 || i0 < 0) return '';
+  const md = (i: number) => `${Number(candles[i]!.time.slice(5, 7))}/${Number(candles[i]!.time.slice(8, 10))}`;
+  const p1 = candles[i1]!.close, p0 = candles[i0]!.close, r1 = line[i1]!, r0 = line[i0]!;
+  const word = side === 'low' ? '低' : '高';
+  const head = `最近 10 根 K 棒收盤最${word}是 ${md(i1)} 的 ${fmtNum(p1)}（${name} ${fmtNum(r1, 1)}）；再往前 11～40 根之間最${word}是 ${md(i0)} 的 ${fmtNum(p0)}（${name} ${fmtNum(r0, 1)}）。`;
+  const priceNew = side === 'low' ? p1 < p0 : p1 > p0;
+  const lineNew = side === 'low' ? r1 < r0 : r1 > r0;
+  const verdict = priceNew && !lineNew
+    ? `價格比前一個${word}點更${word}、${name} 卻沒有，符合「${side === 'low' ? '底' : '頂'}背離」的樣子。背離只是提醒，不代表馬上會轉向，也可能一直背離下去。`
+    : priceNew
+      ? `價格和 ${name} 都比前一個${word}點更${word}，方向一致，沒有背離。`
+      : `價格沒有比前一個${word}點更${word}，談不上背離。`;
+  return `${head}${verdict}本站沒有回測背離的規則。`;
+}
+
 export const rsiIndicator: IndicatorDef<RsiParams> = {
   id: 'rsi',
   shortName: 'RSI',
@@ -130,9 +162,19 @@ export const rsiIndicator: IndicatorDef<RsiParams> = {
     );
   },
   describe(candles, r, p) {
-    const v = getLine(r, 'rsi')[candles.length - 1];
+    const n = candles.length;
+    const rsi = getLine(r, 'rsi');
+    const v = rsi[n - 1];
     if (v == null) return null;
-    return describeOscillator(`RSI(${p.period})`, v, p.overbought, p.oversold, 50, 1, { candles, line: getLine(r, 'rsi') });
+    const name = `RSI(${p.period})`;
+    const base = describeOscillator(name, v, p.overbought, p.oversold, 50, 1, { candles, line: rsi });
+    // 今天剛好出現回測規則的訊號（圖上的箭頭）
+    const signal = crossOver(rsi, p.oversold, n - 1)
+      ? `今天 ${name} 從 ${p.oversold} 以下回到 ${p.oversold} 以上，這就是本站回測規則的買進訊號（圖上的箭頭），照回測的規則是隔天開盤買。`
+      : crossUnder(rsi, p.overbought, n - 1)
+        ? `今天 ${name} 從 ${p.overbought} 以上掉回 ${p.overbought} 以下，這就是本站回測規則的賣出訊號（圖上的箭頭），照回測的規則是隔天開盤賣。`
+        : '';
+    return { ...base, notes: notesOf(['今天的訊號', signal], ['有沒有背離', divergenceText(candles, rsi, name, v < 50 ? 'low' : 'high')], ...(base.notes ?? []).map((x) => [x.title, x.text] as [string, string])) };
   },
   strategy: {
     name: '超賣回升買、超買回落賣',

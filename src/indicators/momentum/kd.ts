@@ -198,7 +198,7 @@ export const kdIndicator: IndicatorDef<KdParams> = {
         if (candles[i + AFTER]!.close > candles[i]!.close) g[1]!++;
       }
       const few = strong[0]! < 20 || weak[0]! < 20 ? '次數很少，看不出明顯的差別，只能當參考。' : '';
-      adxNote = `現在 ADX 是 ${fmtNum(adx, 1)}（25 以上代表趨勢明確）。一般的說法是：趨勢明確時 KD 會鈍化，低檔、高檔和交叉的訊號要打折看。這份資料裡，低檔黃金交叉發生時 ADX 在 25 以上的有 ${strong[0]} 次，${AFTER} 根 K 棒之後價格比較高的有 ${strong[1]} 次；ADX 低於 25 的有 ${weak[0]} 次，其中 ${weak[1]} 次。${few}`;
+      adxNote = `現在 ADX 是 ${fmtNum(adx, 1)}（25 以上代表趨勢明確）。一般的說法是：趨勢明確時 KD 會鈍化，低檔、高檔和交叉的訊號要打折看。這份資料裡，低檔黃金交叉發生時 ADX 在 25 以上的有 ${strong[0]} 次，${AFTER} 根 K 棒之後價格比較高的有 ${strong[1]} 次；ADX 低於 25 的有 ${weak[0]} 次，其中 ${weak[1]} 次之後價格比較高。${few}`;
     }
     const zoneHigh = () => zoneNote(candles, k, (x) => x > p.overbought, `K 高於 ${p.overbought}`, 'down');
     const zoneLow = () => zoneNote(candles, k, (x) => x < p.oversold, `K 低於 ${p.oversold}`, 'up');

@@ -31,7 +31,7 @@ export type Spike = {
  * 再往後看量有沒有回到平常、回到平常之後有沒有又放大。
  * 用最早的那次，是因為新的一波常常只和被拉高的均量比、看起來沒有爆量。
  */
-export function recentSpike(volumes: readonly number[], avg: Series, n: number, lookback = 10): Spike | null {
+export function recentSpike(volumes: readonly number[], avg: Series, n: number, lookback = 10, period = 20): Spike | null {
   const big = (i: number, k: number) => {
     const a = avg[i];
     return a != null && a > 0 && volumes[i]! >= k * a;
@@ -45,8 +45,26 @@ export function recentSpike(volumes: readonly number[], avg: Series, n: number, 
   }
   if (first < 0) return null;
   // 往前找這一波放量（≥ 1.3 倍）是從哪一天開始的
-  let start = first;
-  while (start - 1 >= 1 && big(start - 1, 1.3)) start--;
+  const waveStart = (i: number) => {
+    let s = i;
+    while (s - 1 >= 1 && big(s - 1, 1.3)) s--;
+    return s;
+  };
+  let start = waveStart(first);
+  // 放量之前的 period 天裡如果還有更早的爆量，那時的均量已經被拉高了：改用更早那一波放量之前的均量。
+  // 只追最近 period 天裡的爆量（更早的放量已經不在現在的均量裡，不用管）
+  for (let k = 0; k < 3; k++) {
+    let earlier = -1;
+    for (let j = Math.max(1, start - period, n - period); j < start; j++) {
+      if (big(j, 2)) {
+        earlier = j;
+        break;
+      }
+    }
+    if (earlier < 0) break;
+    first = earlier;
+    start = waveStart(earlier);
+  }
   const base = avg[start - 1];
   if (base == null || base <= 0) return null;
   const spike: Spike = { start, base };
@@ -144,6 +162,8 @@ export const volumeIndicator: IndicatorDef<VolumeParams> = {
       candles.map((c) => c.volume),
       getLine(r, 'ma2'),
       n,
+      10,
+      p.ma2,
     );
     let tone: 'bullish' | 'bearish' | 'neutral' = 'neutral';
     let comment = '量能沒有特別放大，訊息有限。';
@@ -183,12 +203,29 @@ export const volumeIndicator: IndicatorDef<VolumeParams> = {
         wave = `這一波放量從 ${md(candles[spike.start]!.time)} 開始，量還沒有回到平常${calmRule}。${vsBase}`;
       }
     }
+    // 沒有爆量（2 倍）但前幾天量明顯放大：寫出來，免得看圖覺得放量、卡片卻沒提
+    let recent = '';
+    if (!spike) {
+      const ma = getLine(r, 'ma2');
+      let bi = -1;
+      let br = 0;
+      for (let i = Math.max(1, n - 6); i < n - 1; i++) {
+        const a = ma[i];
+        if (a == null || a <= 0) continue;
+        const x = candles[i]!.volume / a;
+        if (x > br) (br = x), (bi = i);
+      }
+      if (bi >= 0 && br >= 1.5) {
+        recent = `最近幾天量最大的是 ${md(candles[bi]!.time)}，是當時 ${p.ma2} 日均量的 ${fmtNum(br, 2)} 倍，算量增，還不到爆量（本站把 2 倍以上算爆量）。`;
+      }
+    }
     return {
       tone,
       headline: `${priceWord}${level}（${fmtNum(ratio, 1)} 倍均量）`,
       detail: `今天的成交量${unit ? `（${amount(v)}）` : ''}是 ${p.ma2} 日均量${unit ? `（${amount(avg)}）` : ''}的 ${fmtNum(ratio, 2)} 倍。${comment}`,
       notes: notesOf(
         ['這一波放量從哪天開始', wave],
+        ['前幾天的量', recent],
         ['放量下跌之後怎麼觀察', watch],
         ['爆量之後的量縮怎麼看', shrink],
         ['兩個倍數差在哪裡', twoRatios],

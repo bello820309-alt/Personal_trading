@@ -1,6 +1,6 @@
 import { fmtNum } from '../../data/format';
 import { closes, crossOver, crossUnder, highest, highs, lowest, lows, nulls, scanSignals, zip } from '../math/core';
-import { getLine, type IndicatorDef, type Series } from '../types';
+import { getLine, type IndicatorDef, type Series, notesOf } from '../types';
 
 export type IchimokuParams = { tenkan: number; kijun: number; senkouB: number; displacement: number };
 
@@ -86,19 +86,23 @@ export const ichimokuIndicator: IndicatorDef<IchimokuParams> = {
     if (t == null || b == null || tenkan == null || kijun == null) return null;
     const close = candles[n - 1]!.close;
     const pos = close > t ? 'above' : close < b ? 'below' : 'inside';
+    // 今天這根 K 棒的雲（shift 根之前算好、往後畫到今天）和最右邊還沒到的雲（今天算出來、畫在未來）是不同位置的雲
+    const nowA = spanA[n - 1 - shift];
+    const nowB = spanB[n - 1 - shift];
     const futureA = spanA[n - 1];
     const futureB = spanB[n - 1];
+    const kind = (a: number, b: number) => (a >= b ? '多方雲（先行帶 A 在上）' : '空方雲（先行帶 B 在上）');
+    const nowKind = nowA != null && nowB != null ? `，是${kind(nowA, nowB)}` : '';
     const future =
       futureA != null && futureB != null
-        ? futureA >= futureB
-          ? '前方的雲層是多方雲（先行帶 A 在上）。'
-          : '前方的雲層是空方雲（先行帶 B 在上）。'
+        ? `圖上最右邊、還沒到的那一段雲是用今天的資料算的，往後畫 ${shift} 根（參數寫 ${p.displacement}，是把今天算成第 1 根，所以實際往後移 ${shift} 根），現在是${kind(futureA, futureB)}。上面說的「今天的雲層」是 ${shift} 根之前算好、畫到今天的那一段${nowKind}；兩個是不同位置的雲，顏色可能不一樣。圖上游標停在今天時，圖例顯示的先行帶 A、B 是今天這根的數字。`
         : '';
     const tk = tenkan > kijun ? '轉換線在基準線之上（短線偏強）' : '轉換線在基準線之下（短線偏弱）';
     return {
       tone: pos === 'above' ? 'bullish' : pos === 'below' ? 'bearish' : 'neutral',
       headline: pos === 'above' ? '價格在雲層之上' : pos === 'below' ? '價格在雲層之下' : '價格在雲層裡（方向不明）',
-      detail: `雲層範圍 ${fmtNum(b)}～${fmtNum(t)}；${tk}。${future}`,
+      detail: `今天的雲層範圍 ${fmtNum(b)}～${fmtNum(t)}${nowKind}；${tk}。`,
+      notes: notesOf(['前方（未來）的雲', future]),
     };
   },
   strategy: {

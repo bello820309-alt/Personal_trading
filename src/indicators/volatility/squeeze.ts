@@ -94,7 +94,7 @@ export function squeezeHistoryText(candles: Candle[]): string {
   const h = squeezeHistory(candles);
   if (!h || h.days < 10) return '';
   const cmp = h.avgMove > h.allAvgMove * 1.1 ? '比平常大' : h.avgMove < h.allAvgMove * 0.9 ? '反而比平常小' : '和平常差不多';
-  return `教科書常說「擠壓之後會有大行情」。這份資料裡，有擠壓的日子有 ${h.days} 天，之後 ${SQUEEZE_AFTER} 根 K 棒的漲跌幅度（不分漲跌）平均是 ${fmtNum(h.avgMove * 100, 2)}%；所有日子平均是 ${fmtNum(h.allAvgMove * 100, 2)}%，${cmp}。`;
+  return `教科書常說「擠壓之後會有大行情」。這份資料裡，有擠壓的日子（兩種說法任一種成立）有 ${h.days} 天，占 ${fmtNum((h.days / h.allDays) * 100, 0)}% 的日子，之後 ${SQUEEZE_AFTER} 根 K 棒的漲跌幅度（不分漲跌）平均是 ${fmtNum(h.avgMove * 100, 2)}%；所有日子平均是 ${fmtNum(h.allAvgMove * 100, 2)}%，${cmp}。`;
 }
 
 /** 兩張卡片共用的說明：兩種說法各自成不成立 */

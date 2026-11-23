@@ -137,7 +137,13 @@ export const biasIndicator: IndicatorDef<BiasParams> = {
       return { tone: 'neutral', headline: head, detail: `收盤價${where} ${fmtNum(Math.abs(v), 2)}%。` };
     }
     const rank = percentileRank(hist, v);
-    const detail = `收盤價${where} ${fmtNum(Math.abs(v), 2)}%，在過去 ${hist.length} 天裡排第 ${fmtNum(rank, 0)} 百分位（0 = 最低、100 = 最高）。`;
+    const pos =
+      rank < 0.5
+        ? `比過去 ${hist.length} 天的每一天都低（第 0 百分位）`
+        : rank > 99.5
+          ? `比過去 ${hist.length} 天的每一天都高（第 100 百分位）`
+          : `在過去 ${hist.length} 天裡排第 ${fmtNum(rank, 0)} 百分位（大約有 ${fmtNum(rank, 0)}% 的日子比現在低）`;
+    const detail = `收盤價${where} ${fmtNum(Math.abs(v), 2)}%，${pos}。`;
     const trendNote = '在趨勢明顯的行情裡（例如 ADX 25 以上），乖離可能越拉越大，離均線遠不代表馬上會拉回來。';
     if (rank >= 95) {
       return {

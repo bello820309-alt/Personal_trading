@@ -1,6 +1,6 @@
 import { fmtNum } from '../../data/format';
 import { closes, crossOver, scanSignals, sma, stdev, validSlice, zip } from '../math/core';
-import { zoneNote } from '../math/after';
+import { afterStats, afterText, zoneNote } from '../math/after';
 import { getLine, notesOf, type IndicatorDef, type Series } from '../types';
 import { squeezeHistoryText, squeezeStatus, squeezeText } from './squeeze';
 
@@ -78,6 +78,18 @@ export const bollingerIndicator: IndicatorDef<BollingerParams> = {
     const squeezed = !!st && (st.nearMin || st.inside);
     const sqHint = squeezed ? '另外，現在有「擠壓」的跡象（下面有說明）。' : '';
     const trendNote = (side: '上' | '下') => `在趨勢明顯的行情裡（例如 ADX 25 以上），價格可能沿著${side}軌一路走，碰到${side}軌不一定會${side === '上' ? '回檔' : '反彈'}。`;
+    // 把「通道很寬」（寬度達到最近半年最寬的 8 成以上）的日子分開算：說明說這時碰到軌道比較不像反彈、回檔的訊號
+    const wideAfter = (side: 'low' | 'high') => {
+      const pb = getLine(r, 'pctB');
+      const hit = (i: number) => {
+        const x = pb[i];
+        const wi = widthLine[i];
+        if (x == null || wi == null || (side === 'low' ? x >= 0 : x <= 1)) return false;
+        const past = validSlice(widthLine, i + 1 - 120, i + 1);
+        return past.length >= 60 && wi >= Math.max(...past) * 0.8;
+      };
+      return afterText(afterStats(candles, hit, 10), `通道很寬（最近半年最寬的 8 成以上）時收盤在${side === 'low' ? '下軌之下' : '上軌之上'}`, side === 'low' ? 'up' : 'down');
+    };
     const head = `%B = ${fmtNum(b, 2)}`;
     if (b > 1)
       return {
@@ -86,7 +98,7 @@ export const bollingerIndicator: IndicatorDef<BollingerParams> = {
         detail: wide
           ? '收盤價在上軌之上，而且通道接近半年來最寬：漲勢又急又大，價格可能沿著上軌繼續走，不一定是「漲太多該回檔」。'
           : `收盤價在上軌之上：走勢很強，但也偏離平均很多。${sqHint}`,
-        notes: notesOf(['過去突破上軌之後', zoneNote(candles, getLine(r, 'pctB'), (x) => x > 1, '收盤在上軌之上', 'down')], ['趨勢行情裡要注意', !wide && trendNote('上')], ['通道現在寬不寬', widthNote], ['有沒有「擠壓」', !wide && sq]),
+        notes: notesOf(['過去突破上軌之後', zoneNote(candles, getLine(r, 'pctB'), (x) => x > 1, '收盤在上軌之上', 'down')], ['通道很寬時突破上軌', wideAfter('high')], ['趨勢行情裡要注意', !wide && trendNote('上')], ['通道現在寬不寬', widthNote], ['有沒有「擠壓」', !wide && sq]),
       };
     if (b < 0)
       return {
@@ -95,7 +107,7 @@ export const bollingerIndicator: IndicatorDef<BollingerParams> = {
         detail: wide
           ? '收盤價在下軌之下，而且通道接近半年來最寬：跌勢又急又大，價格可能沿著下軌繼續走，不是「跌太多該反彈」的訊號。'
           : `收盤價在下軌之下：跌勢很急，常被視為超跌。${sqHint}`,
-        notes: notesOf(['過去跌破下軌之後', zoneNote(candles, getLine(r, 'pctB'), (x) => x < 0, '收盤在下軌之下', 'up')], ['趨勢行情裡要注意', !wide && trendNote('下')], ['通道現在寬不寬', widthNote], ['有沒有「擠壓」', !wide && sq]),
+        notes: notesOf(['過去跌破下軌之後', zoneNote(candles, getLine(r, 'pctB'), (x) => x < 0, '收盤在下軌之下', 'up')], ['通道很寬時跌破下軌', wideAfter('low')], ['趨勢行情裡要注意', !wide && trendNote('下')], ['通道現在寬不寬', widthNote], ['有沒有「擠壓」', !wide && sq]),
       };
     return {
       tone: b >= 0.5 ? 'bullish' : 'bearish',

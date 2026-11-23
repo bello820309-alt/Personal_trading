@@ -136,4 +136,17 @@ describe('最近的爆量', () => {
     expect(summaryText(d)).not.toContain('上漲但量縮，追價意願不強');
     expect(summaryText(d)).toContain('不一定是追價意願不強');
   });
+
+  it('新的一波放量之前的均量也被上一波拉高時，改用上一波放量之前的均量', () => {
+    // 平常 100 → 上一波 600×3 → 回到 100×4 → 新的一波：連續幾天 180（不到當時均量的 2 倍）再 500
+    const vols = [...Array(25).fill(100), 600, 600, 600, 100, 100, 100, 100, 180, 180, 500];
+    const c = candles(vols);
+    const p = { ma1: 5, ma2: 20 };
+    const r = volumeIndicator.compute(c, p);
+    const avg = r.lines.find((l) => l.key === 'ma2')!.values;
+    const sp = recentSpike(vols, avg, vols.length, 3)!;
+    // 最近 3 天裡最早的爆量只有最後一天；但它之前的 20 天裡有上一波，所以基準改成上一波之前的 100
+    expect(sp.base).toBe(100);
+    expect(sp.start).toBe(25);
+  });
 });
