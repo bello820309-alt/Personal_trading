@@ -1,8 +1,13 @@
 {
  "schemaVersion": 1,
  "channelId": "UCRvqjQPSeaWn-uEx-w0XOIg",
- "fetchedAt": "2026-11-21T07:33:51.772Z",
+ "fetchedAt": "2026-11-24T21:11:14.010Z",
  "videos": [
+  {
+   "id": "L62dFZxfjEk",
+   "title": "Bitcoin: The Weight of History",
+   "published": "2026-11-24T20:00:38.000Z"
+  },
   {
    "id": "ZNy4XdW59dc",
    "title": "Bitcoin: The Lower Low",
