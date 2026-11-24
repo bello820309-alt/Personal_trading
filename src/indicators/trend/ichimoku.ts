@@ -95,14 +95,20 @@ export const ichimokuIndicator: IndicatorDef<IchimokuParams> = {
     const nowKind = nowA != null && nowB != null ? `，是${kind(nowA, nowB)}` : '';
     const future =
       futureA != null && futureB != null
-        ? `圖上最右邊、還沒到的那一段雲是用今天的資料算的，往後畫 ${shift} 根（參數寫 ${p.displacement}，是把今天算成第 1 根，所以實際往後移 ${shift} 根），現在是${kind(futureA, futureB)}。上面說的「今天的雲層」是 ${shift} 根之前算好、畫到今天的那一段${nowKind}；兩個是不同位置的雲，顏色可能不一樣。圖上游標停在今天時，圖例顯示的先行帶 A、B 是今天這根的數字。`
+        ? `圖上最右邊、還沒到的那一段雲是用今天的資料算的，往後畫 ${shift} 根（參數寫 ${p.displacement}，是把今天算成第 1 根，所以實際往後移 ${shift} 根），範圍 ${fmtNum(Math.min(futureA, futureB))}～${fmtNum(Math.max(futureA, futureB))}，是${kind(futureA, futureB)}。上面說的「今天的雲層」是 ${shift} 根之前算好、畫到今天的那一段${nowKind}；兩個是不同位置的雲，顏色可能不一樣。圖上游標停在今天時，圖例顯示的先行帶 A、B 是今天這根的數字。`
+        : '';
+    // 遲行線：今天的收盤往回畫 shift 根，和那個位置的價格比
+    const back = n - 1 - shift;
+    const chikou =
+      back >= 0
+        ? `遲行線是把今天的收盤（${fmtNum(close)}）往回畫 ${shift} 根，畫在 ${Number(candles[back]!.time.slice(5, 7))}/${Number(candles[back]!.time.slice(8, 10))} 的位置，所以圖上游標停在最近 ${shift} 根時，遲行線那一格會是「—」。看法是拿它和那個位置的 K 棒比：今天的收盤比那天的收盤（${fmtNum(candles[back]!.close)}）${close > candles[back]!.close ? '高，算偏多' : close < candles[back]!.close ? '低，算偏空' : '一樣'}。`
         : '';
     const tk = tenkan > kijun ? '轉換線在基準線之上（短線偏強）' : '轉換線在基準線之下（短線偏弱）';
     return {
       tone: pos === 'above' ? 'bullish' : pos === 'below' ? 'bearish' : 'neutral',
       headline: pos === 'above' ? '價格在雲層之上' : pos === 'below' ? '價格在雲層之下' : '價格在雲層裡（方向不明）',
       detail: `今天的雲層範圍 ${fmtNum(b)}～${fmtNum(t)}${nowKind}；${tk}。`,
-      notes: notesOf(['前方（未來）的雲', future]),
+      notes: notesOf(['前方（未來）的雲', future], ['遲行線要跟什麼比', chikou]),
     };
   },
   strategy: {

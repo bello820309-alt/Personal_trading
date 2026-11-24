@@ -16,13 +16,15 @@ export interface AfterStats {
   /** 符合條件的日子，bars 根 K 棒之後的平均漲跌、最差的一次 */
   avgChg: number;
   worstChg: number;
+  /** 最差那一次是哪一天（資料有日期時） */
+  worstTime?: string;
   /** 所有日子（不管條件）的天數、上漲天數、平均漲跌，當成比較的基準 */
   allTotal: number;
   allUp: number;
   allAvgChg: number;
 }
 
-export function afterStats(candles: readonly { close: number }[], hit: (i: number) => boolean, bars: number): AfterStats {
+export function afterStats(candles: readonly { close: number; time?: string }[], hit: (i: number) => boolean, bars: number): AfterStats {
   const st: AfterStats = { bars, total: 0, up: 0, episodes: 0, avgChg: 0, worstChg: 0, allTotal: 0, allUp: 0, allAvgChg: 0 };
   let sum = 0;
   let allSum = 0;
@@ -38,7 +40,10 @@ export function afterStats(candles: readonly { close: number }[], hit: (i: numbe
     if (!h) continue;
     st.total++;
     sum += chg;
-    if (st.total === 1 || chg < st.worstChg) st.worstChg = chg;
+    if (st.total === 1 || chg < st.worstChg) {
+      st.worstChg = chg;
+      st.worstTime = candles[i]!.time;
+    }
     if (chg > 0) st.up++;
   }
   st.avgChg = st.total ? sum / st.total : 0;
@@ -65,12 +70,20 @@ export function afterText(st: AfterStats, what: string, side: 'up' | 'down'): st
   const sign = (x: number) => `${x >= 0 ? '+' : '−'}${fmtNum(Math.abs(x) * 100, 1)}%`;
   // 差距是不是巧合：連續的日子很像，所以用「幾段」當樣本數，粗估巧合時可能差到多少（約 2 個標準誤）
   const noise = 2 * Math.sqrt((p0 * (1 - p0)) / Math.max(1, st.episodes));
-  const diff = Math.round((p - p0) * 100);
+  // 用畫面上顯示的（四捨五入後的）百分比相減，才不會出現「59% 對 56% 差 2」
+  const diff = Math.round(p * 100) - Math.round(p0 * 100);
   const verdict =
     Math.abs(p - p0) < noise
       ? `差 ${Math.abs(diff)} 個百分點，不算明顯：這種情況分成 ${st.episodes} 段（連續的日子算一段），只有這麼多段時，光是巧合就可能差到約 ${pct(noise)} 個百分點，所以看不出這個條件有沒有差別。`
       : `${diff >= 0 ? '高' : '低'} ${Math.abs(diff)} 個百分點，算明顯：這種情況分成 ${st.episodes} 段（連續的日子算一段），光是巧合大約只會差到 ${pct(noise)} 個百分點。`;
-  return `這份資料裡，${what}的日子有 ${st.total} 天，其中 ${k} 天（${pct(p)}%）在 ${st.bars} 根 K 棒之後價格比較${side === 'up' ? '高' : '低'}；所有日子是 ${pct(p0)}%，${verdict}這些日子 ${st.bars} 根 K 棒之後平均 ${sign(st.avgChg)}、最差 ${sign(st.worstChg)}（所有日子平均 ${sign(st.allAvgChg)}）。這是過去的統計，不保證這次一樣。`;
+  // 比例和平均的方向不一樣時說明原因
+  const avgBetter = side === 'up' ? st.avgChg > st.allAvgChg : st.avgChg < st.allAvgChg;
+  const ratioBetter = p > p0;
+  const mixed =
+    diff !== 0 && avgBetter !== ratioBetter
+      ? `比例和平均的方向不一樣：比例只看漲還是跌，平均會被少數幾次特別大的漲跌拉動，所以可能一個比較好、一個比較差。`
+      : '';
+  return `這份資料裡，${what}的日子有 ${st.total} 天，其中 ${k} 天（${pct(p)}%）在 ${st.bars} 根 K 棒之後價格比較${side === 'up' ? '高' : '低'}；所有日子是 ${pct(p0)}%，${verdict}這些日子 ${st.bars} 根 K 棒之後平均 ${sign(st.avgChg)}、最差 ${sign(st.worstChg)}${st.worstTime ? `（${st.worstTime.replace(/-/g, '/')} 那天之後）` : ''}；所有日子平均 ${sign(st.allAvgChg)}。${mixed}這是過去的統計，不保證這次一樣。`;
 }
 
 /** 連續符合條件最久的一次有幾根 K 棒 */
@@ -89,7 +102,7 @@ export function longestRun(n: number, hit: (i: number) => boolean): number {
  * line 是和 K 棒對齊的指標數值。
  */
 export function zoneNote(
-  candles: readonly { close: number }[],
+  candles: readonly { close: number; time?: string }[],
   line: readonly (number | null | undefined)[],
   inZone: (v: number) => boolean,
   what: string,

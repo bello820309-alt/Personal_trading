@@ -95,7 +95,7 @@ export const psarIndicator: IndicatorDef<PsarParams> = {
       tone: up ? 'bullish' : 'bearish',
       headline: up ? 'SAR 在價格下方（多方）' : 'SAR 在價格上方（空方）',
       detail: `SAR = ${fmtNum(s)}，距離收盤價 ${fmtPct(s / close - 1)}。${
-        up ? '跌破這個價位就會翻空，常被當成「移動停損」的參考。' : '漲過這個價位就會翻多。'
+        up ? '盤中最低價跌破這個價位就會翻空（不用等收盤），常被當成「移動停損」的參考。' : '盤中最高價漲過這個價位就會翻多（不用等收盤）。'
       }`,
     };
   },

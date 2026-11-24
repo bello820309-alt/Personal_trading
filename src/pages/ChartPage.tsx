@@ -11,10 +11,10 @@ import { CloseIcon, InfoIcon, PlusIcon, SlidersIcon } from '../components/icons'
 import { IndicatorPicker } from '../components/IndicatorPicker';
 import { ArrowGuide, LineGuide } from '../components/LineGuide';
 import { ParamEditor } from '../components/ParamEditor';
-import { Card, Segmented, ToneBadge } from '../components/ui';
+import { Card, Fold, Segmented, ToneBadge } from '../components/ui';
 import { StateNotes } from '../components/StateNotes';
 import { DEFAULT_ASSET_ID, getAsset, type AssetConfig } from '../config/assets';
-import { fmtBarDate, fmtPct, fmtPrice, signClass } from '../data/format';
+import { fmtBarDate, fmtPct, fmtPrice, fmtVolume, signClass } from '../data/format';
 import { useAsset, useExtra } from '../data/load';
 import { TIMEFRAME_LABELS, type Timeframe } from '../data/resample';
 import type { AssetSeries, Candle } from '../data/types';
@@ -220,6 +220,8 @@ function ChartView({ asset, series }: { asset: AssetConfig; series: AssetSeries 
         {asset.historyNote ? ` ${asset.historyNote}` : ''}
       </p>
 
+      <RecentBars candles={candles} asset={asset} unit={TIMEFRAME_LABELS[s.timeframe]} />
+
       <ReadingGuide
         computed={computed}
         candles={candles}
@@ -249,6 +251,55 @@ function ChartView({ asset, series }: { asset: AssetConfig; series: AssetSeries 
         onApply={(p) => editId && s.setIndicatorParams(editId, p)}
       />
     </div>
+  );
+}
+
+/** 最近 10 根 K 棒的開高低收：想核對某一天的價格（例如有沒有跳空）時，不用在圖上一根一根按 */
+function RecentBars({ candles, asset, unit }: { candles: Candle[]; asset: AssetConfig; unit: string }) {
+  const rows = candles.slice(-11);
+  if (rows.length < 2) return null;
+  return (
+    <Fold title={`最近 10 根${unit} 的數字`} sub="開盤、最高、最低、收盤、漲跌和成交量。漲跌是和前一根的收盤比；有沒有跳空，看今天的最低是不是比前一根的最高還高（或最高比前一根的最低還低）。">
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[34rem] text-right text-sm tabular-nums">
+          <thead className="text-xs text-muted">
+            <tr>
+              <th className="py-1 text-left font-normal">日期</th>
+              <th className="py-1 font-normal">開盤</th>
+              <th className="py-1 font-normal">最高</th>
+              <th className="py-1 font-normal">最低</th>
+              <th className="py-1 font-normal">收盤</th>
+              <th className="py-1 font-normal">漲跌</th>
+              <th className="py-1 font-normal">成交量</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows
+              .slice(1)
+              .map((c, k) => {
+                const prev = rows[k]!;
+                const chg = c.close / prev.close - 1;
+                const gap = c.low > prev.high ? '跳空向上' : c.high < prev.low ? '跳空向下' : '';
+                return (
+                  <tr key={c.time} className="border-t border-line">
+                    <td className="py-1 text-left">
+                      {fmtBarDate(c.time, c.endTime)}
+                      {gap && <span className="ml-1 text-xs text-muted">（{gap}）</span>}
+                    </td>
+                    <td className="py-1">{fmtPrice(c.open, asset)}</td>
+                    <td className="py-1">{fmtPrice(c.high, asset)}</td>
+                    <td className="py-1">{fmtPrice(c.low, asset)}</td>
+                    <td className="py-1">{fmtPrice(c.close, asset)}</td>
+                    <td className={`py-1 ${signClass(chg)}`}>{fmtPct(chg)}</td>
+                    <td className="py-1">{fmtVolume(c.volume, asset)}</td>
+                  </tr>
+                );
+              })
+              .reverse()}
+          </tbody>
+        </table>
+      </div>
+    </Fold>
   );
 }
 

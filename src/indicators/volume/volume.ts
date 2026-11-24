@@ -185,6 +185,21 @@ export const volumeIndicator: IndicatorDef<VolumeParams> = {
         shrink = `最近 ${p.ma2} 天的均量包含爆量那幾天，所以今天看起來是量縮。爆量之後量縮回平常、價格又沒有再創新低，比較像賣壓出清${up ? '，所以這時的「上漲但量縮」不一定是追價意願不強' : ''}。`;
       }
     }
+    // 一價到底（開高低收都一樣）而且漲跌將近 10%：台股整天鎖在漲停（跌停）價，量少是因為沒人肯賣（買）
+    const last = candles[n - 1]!;
+    const locked = last.open === last.high && last.high === last.low && last.low === last.close && Math.abs(chg) >= 0.095;
+    if (locked) {
+      tone = up ? 'bullish' : 'bearish';
+      comment = up
+        ? `今天開盤、最高、最低、收盤都是 ${fmtNum(last.close)}，漲了 ${fmtNum(chg * 100, 2)}%：台股一天最多漲跌 10%，這是整天鎖在漲停價（叫「一字漲停」），想買的人很多、幾乎沒人肯賣，所以成交很少。這時的量少不代表追價意願不強。`
+        : `今天開盤、最高、最低、收盤都是 ${fmtNum(last.close)}，跌了 ${fmtNum(Math.abs(chg) * 100, 2)}%：台股一天最多漲跌 10%，這是整天鎖在跌停價（叫「一字跌停」），想賣的人很多、幾乎沒人肯買，所以成交很少。這時的量少不代表賣壓減輕。`;
+      shrink = '';
+    }
+    // 漲跌是和前一天收盤比，K 棒的紅綠是和當天開盤比：兩個可能不一樣
+    const colorNote =
+      !locked && ((up && last.close < last.open) || (down && last.close > last.open))
+        ? `這裡的「價${up ? '漲' : '跌'}」是和前一天的收盤比（${up ? '漲' : '跌'} ${fmtNum(Math.abs(chg) * 100, 2)}%）；K 棒的紅綠是和當天的開盤比，今天收盤${last.close < last.open ? '比開盤低，所以是綠 K' : '比開盤高，所以是紅 K'}（${up ? '開盤就跳空開高、之後往下' : '開盤就跳空開低、之後往上'}）。兩個比的對象不同，所以可能一個說${up ? '漲' : '跌'}、K 棒卻是${last.close < last.open ? '綠' : '紅'}的。`
+        : '';
     let wave = '';
     let twoRatios = '';
     if (spike) {
@@ -201,6 +216,24 @@ export const volumeIndicator: IndicatorDef<VolumeParams> = {
         wave = `這一波放量從 ${md(candles[spike.start]!.time)} 開始，${md(candles[spike.calm]!.time)} 起量已經回到平常${calmRule}。${vsBase}`;
       } else {
         wave = `這一波放量從 ${md(candles[spike.start]!.time)} 開始，量還沒有回到平常${calmRule}。${vsBase}`;
+      }
+    }
+    // 「放量下跌後再觀察 3～5 個交易日」的兩個條件，照資料寫出觀察到現在的結果
+    let verdict = '';
+    if (spike) {
+      const ws = spike.again ?? (spike.calm == null ? spike.start : null);
+      if (ws != null && ws >= 1 && candles[ws]!.close < candles[ws - 1]!.close) {
+        const days = n - ws;
+        let lowIdx = ws;
+        for (let i = ws; i < n; i++) if (candles[i]!.close < candles[lowIdx]!.close) lowIdx = i;
+        const x = v / spike.base;
+        const volBack = x <= CALM_RATIO;
+        const noNewLow = lowIdx < n - 1;
+        if (days >= 3) {
+          verdict = locked
+            ? `這一波放量下跌從 ${md(candles[ws]!.time)} 算到今天是第 ${days} 個交易日。今天是一字${up ? '漲' : '跌'}停，量少是因為整天鎖在${up ? '漲' : '跌'}停價、成交不了，不能拿來判斷量有沒有縮回來，要看之後幾天的量。`
+            : `這一波放量下跌從 ${md(candles[ws]!.time)} 算到今天是第 ${days} 個交易日（一種常見的做法是觀察 3～5 個交易日）。照那兩個條件看：量${volBack ? `已經縮回放量前均量附近（${fmtNum(x, 1)} 倍，${CALM_RATIO} 倍以內）` : `還沒縮回來（是放量前均量的 ${fmtNum(x, 1)} 倍）`}；這一波收盤最低是 ${md(candles[lowIdx]!.time)} 的 ${fmtNum(candles[lowIdx]!.close)}，${noNewLow ? '之後沒有再創新低' : '今天又創了這一波的新低'}。${volBack && noNewLow ? '兩個條件都符合，照這個經驗看法比較像賣壓出清。' : '兩個條件沒有都符合，照這個看法還不能說賣壓出清。'}這是經驗上的看法，本站沒有回測過，不保證準。`;
+        }
       }
     }
     // 沒有爆量（2 倍）但前幾天量明顯放大：寫出來，免得看圖覺得放量、卡片卻沒提
@@ -226,7 +259,10 @@ export const volumeIndicator: IndicatorDef<VolumeParams> = {
       notes: notesOf(
         ['這一波放量從哪天開始', wave],
         ['前幾天的量', recent],
+        ['漲跌和 K 棒顏色', colorNote],
+        ['幾倍算量增、爆量', `本站的分法（和最近 ${p.ma2} 天的均量比）：2 倍以上算爆量，1.3 倍以上算量增，0.6 倍以下算量縮，中間算持平。今天是 ${fmtNum(ratio, 2)} 倍。這是本站為了說明訂的門檻，各家看盤軟體不一定一樣。`],
         ['放量下跌之後怎麼觀察', watch],
+        ['觀察到現在的結果', verdict],
         ['爆量之後的量縮怎麼看', shrink],
         ['兩個倍數差在哪裡', twoRatios],
         ['週末的量', weekend],

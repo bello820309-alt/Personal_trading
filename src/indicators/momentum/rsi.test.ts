@@ -14,7 +14,7 @@ describe('RSI 的背離和今天的訊號', () => {
     closes[55] = 78; line[55] = 25; // 最近的低點：價格更低、RSI 比較高
     const text = divergenceText(mk(closes), line, 'RSI(14)', 'low');
     expect(text).toContain('最近 10 根 K 棒收盤最低是 8/25 的 78.00（RSI(14) 25.0）');
-    expect(text).toContain('再往前 11～40 根之間最低是 7/26 的 80.00（RSI(14) 15.0）');
+    expect(text).toContain('再往前 11～40 根之間的低點（比前後各 3 根都低的轉折）是 7/26 的 80.00（RSI(14) 15.0）');
     expect(text).toContain('符合「底背離」的樣子');
   });
 
@@ -41,5 +41,20 @@ describe('RSI 的背離和今天的訊號', () => {
     const cut = c.slice(0, k + 1);
     const d = rsiIndicator.describe!(cut, rsiIndicator.compute(cut, p), p)!;
     expect(summaryText(d)).toContain(`從 ${p.oversold} 以下回到 ${p.oversold} 以上，這就是本站回測規則的買進訊號`);
+  });
+
+  it('前一段一路往下、沒有真正的轉折低點：不拿分界上的那天來比', () => {
+    // 一路跌到最後：11～40 根之間每一天都比前一天低，沒有「比前後各 3 根都低」的點
+    const closes = Array.from({ length: 60 }, (_, i) => 100 - i);
+    const line = closes.map(() => 30);
+    expect(divergenceText(mk(closes), line, 'RSI(14)', 'low')).toContain('沒有明顯的低點');
+  });
+
+  it('今天沒有訊號時，寫出最近一次訊號是哪天', () => {
+    const closes = [...Array.from({ length: 60 }, (_, i) => 100 - i), 45, 50, 51, 52];
+    const c = mk(closes);
+    const p = rsiIndicator.defaults;
+    const d = rsiIndicator.describe!(c, rsiIndicator.compute(c, p), p)!;
+    expect(summaryText(d)).toMatch(/今天沒有回測規則的買賣訊號。最近一次是 \d+\/\d+ 的買進訊號/);
   });
 });

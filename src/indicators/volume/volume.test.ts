@@ -149,4 +149,25 @@ describe('最近的爆量', () => {
     expect(sp.base).toBe(100);
     expect(sp.start).toBe(25);
   });
+
+  it('一字漲停（開高低收一樣、漲將近 10%）：說明量少不是追價意願不強', () => {
+    const vols = [...Array(30).fill(100), 20];
+    const closes = [...Array(30).fill(87), 95.7];
+    const c = candles(vols, closes).map((x, i) => (i === 30 ? { ...x, open: 95.7, high: 95.7, low: 95.7 } : x));
+    const p = { ma1: 5, ma2: 20 };
+    const d = summaryText(volumeIndicator.describe!(c, volumeIndicator.compute(c, p), p)!);
+    expect(d).toContain('一字漲停');
+    expect(d).not.toContain('上漲但量縮，追價意願不強');
+    expect(d).toContain('量少不代表追價意願不強');
+  });
+
+  it('和前一天比是漲、K 棒卻是綠的（跳空開高走低）：說明兩個比的對象不同', () => {
+    const vols = Array(31).fill(100);
+    const closes = [...Array(30).fill(100), 104];
+    const c = candles(vols, closes).map((x, i) => (i === 30 ? { ...x, open: 106, high: 107, low: 103.5 } : x));
+    const p = { ma1: 5, ma2: 20 };
+    const d = summaryText(volumeIndicator.describe!(c, volumeIndicator.compute(c, p), p)!);
+    expect(d).toContain('這裡的「價漲」是和前一天的收盤比（漲 4.00%）');
+    expect(d).toContain('所以是綠 K');
+  });
 });

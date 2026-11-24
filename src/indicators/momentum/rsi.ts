@@ -1,6 +1,7 @@
 import { fmtNum } from '../../data/format';
 import { closes, crossOver, crossUnder, firstValid, nulls, rma, scanSignals } from '../math/core';
 import { zoneNote } from '../math/after';
+import { dmiIndicator } from '../trend/dmi';
 import { getLine, type IndicatorDef, type IndicatorResult, type Series, type StateSummary, notesOf } from '../types';
 
 export type RsiParams = { period: number; period2: number; overbought: number; oversold: number };
@@ -83,12 +84,25 @@ export function divergenceText(candles: readonly { time: string; close: number }
     return best;
   };
   const i1 = pick(n - 10, n - 1);
-  const i0 = pick(n - 40, n - 11);
+  // 前一個低點（高點）要是真的「轉折點」：比前後各 3 根都低（高）；剛好落在分界、還在一路往下的那一天不算
+  const isTurn = (i: number) => {
+    for (let j = i - 3; j <= i + 3; j++) {
+      if (j === i || j < 0 || j >= n) continue;
+      if (side === 'low' ? candles[j]!.close < candles[i]!.close : candles[j]!.close > candles[i]!.close) return false;
+    }
+    return true;
+  };
+  let i0 = -1;
+  for (let i = Math.max(0, n - 40); i <= n - 11; i++) {
+    if (line[i] == null || !isTurn(i)) continue;
+    if (i0 < 0 || (side === 'low' ? candles[i]!.close < candles[i0]!.close : candles[i]!.close > candles[i0]!.close)) i0 = i;
+  }
+  if (i0 < 0) return `再往前 11～40 根之間沒有明顯的${side === 'low' ? '低' : '高'}點（比前後各 3 根都${side === 'low' ? '低' : '高'}的轉折），沒辦法比較背離。`;
   if (i1 < 0 || i0 < 0) return '';
   const md = (i: number) => `${Number(candles[i]!.time.slice(5, 7))}/${Number(candles[i]!.time.slice(8, 10))}`;
   const p1 = candles[i1]!.close, p0 = candles[i0]!.close, r1 = line[i1]!, r0 = line[i0]!;
   const word = side === 'low' ? '低' : '高';
-  const head = `最近 10 根 K 棒收盤最${word}是 ${md(i1)} 的 ${fmtNum(p1)}（${name} ${fmtNum(r1, 1)}）；再往前 11～40 根之間最${word}是 ${md(i0)} 的 ${fmtNum(p0)}（${name} ${fmtNum(r0, 1)}）。`;
+  const head = `最近 10 根 K 棒收盤最${word}是 ${md(i1)} 的 ${fmtNum(p1)}（${name} ${fmtNum(r1, 1)}）；再往前 11～40 根之間的${word}點（比前後各 3 根都${word}的轉折）是 ${md(i0)} 的 ${fmtNum(p0)}（${name} ${fmtNum(r0, 1)}）。`;
   const priceNew = side === 'low' ? p1 < p0 : p1 > p0;
   const lineNew = side === 'low' ? r1 < r0 : r1 > r0;
   const verdict = priceNew && !lineNew
@@ -169,12 +183,39 @@ export const rsiIndicator: IndicatorDef<RsiParams> = {
     const name = `RSI(${p.period})`;
     const base = describeOscillator(name, v, p.overbought, p.oversold, 50, 1, { candles, line: rsi });
     // 今天剛好出現回測規則的訊號（圖上的箭頭）
-    const signal = crossOver(rsi, p.oversold, n - 1)
-      ? `今天 ${name} 從 ${p.oversold} 以下回到 ${p.oversold} 以上，這就是本站回測規則的買進訊號（圖上的箭頭），照回測的規則是隔天開盤買。`
-      : crossUnder(rsi, p.overbought, n - 1)
-        ? `今天 ${name} 從 ${p.overbought} 以上掉回 ${p.overbought} 以下，這就是本站回測規則的賣出訊號（圖上的箭頭），照回測的規則是隔天開盤賣。`
-        : '';
-    return { ...base, notes: notesOf(['今天的訊號', signal], ['有沒有背離', divergenceText(candles, rsi, name, v < 50 ? 'low' : 'high')], ...(base.notes ?? []).map((x) => [x.title, x.text] as [string, string])) };
+    const md = (i: number) => `${Number(candles[i]!.time.slice(5, 7))}/${Number(candles[i]!.time.slice(8, 10))}`;
+    // 趨勢強度：總覽的說法是 ADX 25 以上以趨勢指標為主，20～25 兩類都要打折看
+    const adx = getLine(dmiIndicator.compute(candles, dmiIndicator.defaults), 'adx')[n - 1];
+    const adxCtx =
+      adx == null
+        ? ''
+        : adx >= 25
+          ? `現在 ADX 是 ${fmtNum(adx, 1)}（25 以上）：照總覽「意見不一致時」的說法，這時以趨勢指標為主，RSI 的訊號要打折看。`
+          : adx >= 20
+            ? `現在 ADX 是 ${fmtNum(adx, 1)}（20～25 之間）：照總覽「意見不一致時」的說法，這時兩類指標都要打折看，可以只採用和趨勢指標意見一致的訊號，不一致就先觀望。`
+            : `現在 ADX 是 ${fmtNum(adx, 1)}（20 以下，盤整）：照總覽的說法，這時 RSI 這類擺盪指標比較派得上用場。`;
+    const buyNow = crossOver(rsi, p.oversold, n - 1);
+    const sellNow = crossUnder(rsi, p.overbought, n - 1);
+    let signal = '';
+    if (buyNow || sellNow) {
+      signal = buyNow
+        ? `今天 ${name} 從 ${p.oversold} 以下回到 ${p.oversold} 以上，這就是本站回測規則的買進訊號（圖上的箭頭），照回測的規則是隔天開盤買。${adxCtx}`
+        : `今天 ${name} 從 ${p.overbought} 以上掉回 ${p.overbought} 以下，這就是本站回測規則的賣出訊號（圖上的箭頭），照回測的規則是隔天開盤賣。${adxCtx}`;
+    } else {
+      // 今天沒有訊號：寫出最近一次是哪天，免得以為是沒顯示
+      let k = -1;
+      for (let i = n - 2; i >= 1 && i >= n - 250; i--) {
+        if (crossOver(rsi, p.oversold, i) || crossUnder(rsi, p.overbought, i)) {
+          k = i;
+          break;
+        }
+      }
+      signal =
+        k >= 0
+          ? `今天沒有回測規則的買賣訊號。最近一次是 ${md(k)} 的${crossOver(rsi, p.oversold, k) ? `買進訊號（${name} 從 ${p.oversold} 以下回到 ${p.oversold} 以上）` : `賣出訊號（${name} 從 ${p.overbought} 以上掉回 ${p.overbought} 以下）`}，到今天是第 ${n - 1 - k} 根 K 棒。`
+          : '今天沒有回測規則的買賣訊號，最近一年也沒有。';
+    }
+    return { ...base, notes: notesOf(['今天的訊號', signal], ['低點有沒有背離', divergenceText(candles, rsi, name, 'low')], ['高點有沒有背離', divergenceText(candles, rsi, name, 'high')], ...(base.notes ?? []).map((x) => [x.title, x.text] as [string, string])) };
   },
   strategy: {
     name: '超賣回升買、超買回落賣',
