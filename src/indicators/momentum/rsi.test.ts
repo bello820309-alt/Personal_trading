@@ -13,7 +13,7 @@ describe('RSI 的背離和今天的訊號', () => {
     closes[25] = 80; line[25] = 15; // 前一個低點：RSI 很低
     closes[55] = 78; line[55] = 25; // 最近的低點：價格更低、RSI 比較高
     const text = divergenceText(mk(closes), line, 'RSI(14)', 'low');
-    expect(text).toContain('最近 10 根 K 棒收盤最低是 8/25 的 78.00（RSI(14) 25.0）');
+    expect(text).toContain('最近 10 根 K 棒的低點（轉折）是 8/25 的 78.00（RSI(14) 25.0）');
     expect(text).toContain('再往前 11～40 根之間的低點（比前後各 3 根都低的轉折）是 7/26 的 80.00（RSI(14) 15.0）');
     expect(text).toContain('符合「底背離」的樣子');
   });

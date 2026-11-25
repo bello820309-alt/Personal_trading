@@ -259,7 +259,7 @@ function RecentBars({ candles, asset, unit }: { candles: Candle[]; asset: AssetC
   const rows = candles.slice(-11);
   if (rows.length < 2) return null;
   return (
-    <Fold title={`最近 10 根${unit} 的數字`} sub="開盤、最高、最低、收盤、漲跌和成交量。漲跌是和前一根的收盤比；有沒有跳空，看今天的最低是不是比前一根的最高還高（或最高比前一根的最低還低）。">
+    <Fold title={`最近 10 根${unit} 的數字`} sub="開盤、最高、最低、收盤、漲跌和成交量。漲跌是和前一根的收盤比；有沒有跳空，看今天的最低是不是比前一根的最高還高（或最高比前一根的最低還低）。前後都有缺口的 K 棒，就是基礎觀念裡說的「島狀」，但島狀反轉通常是指一段走勢的高點或低點，只看一兩根不能確定。">
       <div className="overflow-x-auto">
         <table className="w-full min-w-[34rem] text-right text-sm tabular-nums">
           <thead className="text-xs text-muted">
@@ -279,7 +279,12 @@ function RecentBars({ candles, asset, unit }: { candles: Candle[]; asset: AssetC
               .map((c, k) => {
                 const prev = rows[k]!;
                 const chg = c.close / prev.close - 1;
-                const gap = c.low > prev.high ? '跳空向上' : c.high < prev.low ? '跳空向下' : '';
+                const next = rows[k + 2];
+                const gapUp = c.low > prev.high;
+                const gapDown = c.high < prev.low;
+                // 前後都有缺口（今天和前一根、後一根的價格範圍都沒有重疊）：像一座孤島
+                const island = next && ((gapUp && next.high < c.low) || (gapDown && next.low > c.high));
+                const gap = island ? `${gapUp ? '跳空向上' : '跳空向下'}，隔天又反向跳空：前後都有缺口` : gapUp ? '跳空向上' : gapDown ? '跳空向下' : '';
                 return (
                   <tr key={c.time} className="border-t border-line">
                     <td className="py-1 text-left">

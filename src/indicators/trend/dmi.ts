@@ -89,6 +89,12 @@ export const dmiIndicator: IndicatorDef<DmiParams> = {
       notes: notesOf(
         ['ADX 偏低時的 DI 交叉', adx < 20 && 'ADX 在 20 以下代表沒有明顯的趨勢；本站回測的規則這時不採用 +DI、−DI 的交叉（要 ADX 高於門檻才買）。'],
         [
+          '離門檻多近',
+          Math.abs(adx - 25) < 1.5 || Math.abs(adx - 20) < 1.5
+            ? `ADX ${fmtNum(adx, 1)} 離 ${Math.abs(adx - 25) < 1.5 ? 25 : 20} 只差一點點，剛好在分界附近。ADX 是平滑過的，接近門檻時一兩天就可能跨過去又跨回來，可以看接下來幾天是繼續往${adx >= (Math.abs(adx - 25) < 1.5 ? 25 : 20) ? '上' : '下'}，還是又回到另一邊。`
+            : '',
+        ],
+        [
           'ADX 反應比較慢',
           adx < 25 && 'ADX 是把最近 14 天平滑後算的：單日的大漲大跌不會馬上讓它升高，要看之後幾天 ADX 有沒有往上走過 20～25，才知道新的趨勢有沒有成形。',
         ],

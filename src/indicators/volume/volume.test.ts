@@ -170,4 +170,16 @@ describe('最近的爆量', () => {
     expect(d).toContain('這裡的「價漲」是和前一天的收盤比（漲 4.00%）');
     expect(d).toContain('所以是綠 K');
   });
+
+  it('放量下跌超過 5 天：說明經驗看法只講到 3～5 天', () => {
+    // 平常 100 → 放量下跌 400 連續 8 天
+    const vols = [...Array(25).fill(100), ...Array(8).fill(400)];
+    const closes = [...Array(25).fill(100), ...Array.from({ length: 8 }, (_, i) => 99 - i)];
+    const c = candles(vols, closes);
+    const p = { ma1: 5, ma2: 20 };
+    const d = summaryText(volumeIndicator.describe!(c, volumeIndicator.compute(c, p), p)!);
+    expect(d).toContain('算到今天是第 8 個交易日');
+    expect(d).toContain('已經超過 3～5 天');
+    expect(d).toContain('今天又創了這一波的新低');
+  });
 });

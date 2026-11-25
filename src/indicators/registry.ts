@@ -133,10 +133,32 @@ export function signalsOf(ci: ComputedIndicator, candles: Candle[]): Signal[] {
 
 export function describeOf(ci: ComputedIndicator, candles: Candle[]): StateSummary | null {
   try {
-    return ci.def.describe ? ci.def.describe(candles, ci.result, ci.params) : null;
+    const d = ci.def.describe ? ci.def.describe(candles, ci.result, ci.params) : null;
+    if (!d) return null;
+    return { ...d, notes: withLastSignal(d.notes, ci, candles) };
   } catch {
     return null;
   }
+}
+
+/** 每個有回測規則的指標，都寫出最近一次訊號是哪天（說明裡已經寫了訊號的就不重複） */
+function withLastSignal(notes: StateSummary['notes'], ci: ComputedIndicator, candles: Candle[]): StateSummary['notes'] {
+  // RSI 這類自己已經寫了「今天的訊號」的不重複
+  if (!ci.def.signals || notes?.some((x) => x.title === '今天的訊號')) return notes;
+  const sigs = signalsOf(ci, candles);
+  const last = sigs[sigs.length - 1];
+  if (!last) return notes;
+  const t = candles[last.index]!.time;
+  const md = `${Number(t.slice(5, 7))}/${Number(t.slice(8, 10))}`;
+  const ago = candles.length - 1 - last.index;
+  const nth = ago + 1;
+  const text =
+    `${ago === 0 ? `今天（${md}）` : `${md}`}出現${last.side === 'buy' ? '買進' : '賣出'}訊號（${last.label}）${ago === 0 ? '' : `，算到今天是第 ${nth} 根 K 棒（訊號那天算第 1 根）`}。` +
+    (last.side === 'buy'
+      ? '這是最近一次訊號，之後還沒有賣出訊號，所以照回測的規則，這一筆現在還沒賣出（回測表裡的「還沒賣出」就是它）。'
+      : '這是最近一次訊號，照回測的規則現在沒有持有。') +
+    '照規則是訊號那天收盤後，隔天開盤買賣。';
+  return [...(notes ?? []), { title: '最近一次回測訊號', text }];
 }
 
 export const STRATEGY_INDICATORS = INDICATORS.filter((d) => d.strategy && d.signals);

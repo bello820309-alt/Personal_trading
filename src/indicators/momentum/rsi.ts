@@ -75,15 +75,7 @@ export function describeOscillator(
 export function divergenceText(candles: readonly { time: string; close: number }[], line: Series, name: string, side: 'low' | 'high'): string {
   const n = candles.length;
   if (n < 45) return '';
-  const pick = (from: number, to: number) => {
-    let best = -1;
-    for (let i = Math.max(0, from); i <= to; i++) {
-      if (line[i] == null) continue;
-      if (best < 0 || (side === 'low' ? candles[i]!.close < candles[best]!.close : candles[i]!.close > candles[best]!.close)) best = i;
-    }
-    return best;
-  };
-  const i1 = pick(n - 10, n - 1);
+
   // 前一個低點（高點）要是真的「轉折點」：比前後各 3 根都低（高）；剛好落在分界、還在一路往下的那一天不算
   const isTurn = (i: number) => {
     for (let j = i - 3; j <= i + 3; j++) {
@@ -92,17 +84,23 @@ export function divergenceText(candles: readonly { time: string; close: number }
     }
     return true;
   };
+  // 最近的低點（高點）也要是轉折：比前 3 根都低（高）；右邊不到 3 根時只看有的
+  let i1 = -1;
+  for (let i = n - 10; i <= n - 1; i++) {
+    if (line[i] == null || !isTurn(i)) continue;
+    if (i1 < 0 || (side === 'low' ? candles[i]!.close < candles[i1]!.close : candles[i]!.close > candles[i1]!.close)) i1 = i;
+  }
   let i0 = -1;
   for (let i = Math.max(0, n - 40); i <= n - 11; i++) {
     if (line[i] == null || !isTurn(i)) continue;
     if (i0 < 0 || (side === 'low' ? candles[i]!.close < candles[i0]!.close : candles[i]!.close > candles[i0]!.close)) i0 = i;
   }
   if (i0 < 0) return `再往前 11～40 根之間沒有明顯的${side === 'low' ? '低' : '高'}點（比前後各 3 根都${side === 'low' ? '低' : '高'}的轉折），沒辦法比較背離。`;
-  if (i1 < 0 || i0 < 0) return '';
+  if (i1 < 0) return `最近 10 根 K 棒裡沒有明顯的${side === 'low' ? '低' : '高'}點（比前後各 3 根都${side === 'low' ? '低' : '高'}的轉折；例如一路往下時，最近 10 根的最高點只是一開始那天，不算轉折），沒辦法比較背離。`;
   const md = (i: number) => `${Number(candles[i]!.time.slice(5, 7))}/${Number(candles[i]!.time.slice(8, 10))}`;
   const p1 = candles[i1]!.close, p0 = candles[i0]!.close, r1 = line[i1]!, r0 = line[i0]!;
   const word = side === 'low' ? '低' : '高';
-  const head = `最近 10 根 K 棒收盤最${word}是 ${md(i1)} 的 ${fmtNum(p1)}（${name} ${fmtNum(r1, 1)}）；再往前 11～40 根之間的${word}點（比前後各 3 根都${word}的轉折）是 ${md(i0)} 的 ${fmtNum(p0)}（${name} ${fmtNum(r0, 1)}）。`;
+  const head = `最近 10 根 K 棒的${word}點（轉折）是 ${md(i1)} 的 ${fmtNum(p1)}（${name} ${fmtNum(r1, 1)}）；再往前 11～40 根之間的${word}點（比前後各 3 根都${word}的轉折）是 ${md(i0)} 的 ${fmtNum(p0)}（${name} ${fmtNum(r0, 1)}）。`;
   const priceNew = side === 'low' ? p1 < p0 : p1 > p0;
   const lineNew = side === 'low' ? r1 < r0 : r1 > r0;
   const verdict = priceNew && !lineNew
@@ -194,6 +192,8 @@ export const rsiIndicator: IndicatorDef<RsiParams> = {
           : adx >= 20
             ? `現在 ADX 是 ${fmtNum(adx, 1)}（20～25 之間）：照總覽「意見不一致時」的說法，這時兩類指標都要打折看，可以只採用和趨勢指標意見一致的訊號，不一致就先觀望。`
             : `現在 ADX 是 ${fmtNum(adx, 1)}（20 以下，盤整）：照總覽的說法，這時 RSI 這類擺盪指標比較派得上用場。`;
+    // 背離成立時也一起提醒趨勢強度
+    const withAdx = (t: string) => (t.includes('背離」的樣子') ? `${t}${adxCtx}` : t);
     const buyNow = crossOver(rsi, p.oversold, n - 1);
     const sellNow = crossUnder(rsi, p.overbought, n - 1);
     let signal = '';
@@ -212,10 +212,10 @@ export const rsiIndicator: IndicatorDef<RsiParams> = {
       }
       signal =
         k >= 0
-          ? `今天沒有回測規則的買賣訊號。最近一次是 ${md(k)} 的${crossOver(rsi, p.oversold, k) ? `買進訊號（${name} 從 ${p.oversold} 以下回到 ${p.oversold} 以上）` : `賣出訊號（${name} 從 ${p.overbought} 以上掉回 ${p.overbought} 以下）`}，到今天是第 ${n - 1 - k} 根 K 棒。`
+          ? `今天沒有回測規則的買賣訊號。最近一次是 ${md(k)} 的${crossOver(rsi, p.oversold, k) ? `買進訊號（${name} 從 ${p.oversold} 以下回到 ${p.oversold} 以上）` : `賣出訊號（${name} 從 ${p.overbought} 以上掉回 ${p.overbought} 以下）`}，算到今天是第 ${n - k} 根 K 棒（訊號那天算第 1 根）。`
           : '今天沒有回測規則的買賣訊號，最近一年也沒有。';
     }
-    return { ...base, notes: notesOf(['今天的訊號', signal], ['低點有沒有背離', divergenceText(candles, rsi, name, 'low')], ['高點有沒有背離', divergenceText(candles, rsi, name, 'high')], ...(base.notes ?? []).map((x) => [x.title, x.text] as [string, string])) };
+    return { ...base, notes: notesOf(['今天的訊號', signal], ['低點有沒有背離', withAdx(divergenceText(candles, rsi, name, 'low'))], ['高點有沒有背離', withAdx(divergenceText(candles, rsi, name, 'high'))], ...(base.notes ?? []).map((x) => [x.title, x.text] as [string, string])) };
   },
   strategy: {
     name: '超賣回升買、超買回落賣',

@@ -1,7 +1,7 @@
 import { fmtNum } from '../../data/format';
 import { monthKey, weekKey, yearKey } from '../../data/resample';
 import { nulls } from '../math/core';
-import { getLine, type IndicatorDef } from '../types';
+import { getLine, type IndicatorDef, notesOf } from '../types';
 
 export type PivotParams = { basis: string };
 
@@ -84,12 +84,23 @@ export const pivotIndicator: IndicatorDef<PivotParams> = {
     const support = [...levels].reverse().find((l) => l.v <= close);
     const resist = levels.find((l) => l.v > close);
     const pv = levels.find((l) => l.name === 'P')!;
+    // 支撐（S）跌破之後在價格上方，就當成壓力看；壓力（R）突破之後在下方，就當成支撐看
+    const role = (l: { name: string }, as: '壓力' | '支撐') =>
+      (as === '壓力' && l.name.startsWith('S')) || (as === '支撐' && l.name.startsWith('R'))
+        ? `（原本叫${as === '壓力' ? '支撐' : '壓力'}，價格${as === '壓力' ? '跌破' : '突破'}之後它在${as === '壓力' ? '上' : '下'}方，就當成${as}看）`
+        : '';
+    const beyond = !support
+      ? '樞軸點只算到 S2，價格已經在所有支撐之下，樞軸點沒有更下面的價位可以參考；可以改看其他工具，例如前波低點、費波那契的價位。'
+      : !resist
+        ? '樞軸點只算到 R2，價格已經在所有壓力之上，樞軸點沒有更上面的價位可以參考。'
+        : '';
     return {
       tone: 'neutral',
       headline: `收盤價在樞軸 P（${fmtNum(pv.v)}）之${close >= pv.v ? '上' : '下'}`,
       detail: `依${BASIS_LABEL[p.basis] ?? ''}的高低收計算：${
-        resist ? `上方最近的壓力是 ${resist.name}（${fmtNum(resist.v)}）` : '已經在所有壓力之上'
-      }，${support ? `下方最近的支撐是 ${support.name}（${fmtNum(support.v)}）` : '已經跌破所有支撐'}。`,
+        resist ? `上方最近的壓力是 ${resist.name}（${fmtNum(resist.v)}）${role(resist, '壓力')}` : '已經在所有壓力之上'
+      }，${support ? `下方最近的支撐是 ${support.name}（${fmtNum(support.v)}）${role(support, '支撐')}` : '已經跌破所有支撐'}。`,
+      notes: notesOf(['再往下（往上）看哪裡', beyond]),
     };
   },
   noSignalReason:

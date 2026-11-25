@@ -58,7 +58,9 @@ export const mfiIndicator: IndicatorDef<MfiParams> = {
   describe(candles, r, p) {
     const v = getLine(r, 'mfi')[candles.length - 1];
     if (v == null) return null;
-    return describeOscillator(`MFI(${p.period})`, v, p.overbought, p.oversold, 50, 1, { candles, line: getLine(r, 'mfi') });
+    const base = describeOscillator(`MFI(${p.period})`, v, p.overbought, p.oversold, 50, 1, { candles, line: getLine(r, 'mfi') });
+    const th = `MFI 的過熱、過冷門檻是 ${p.overbought}／${p.oversold}，和 RSI 常用的 70／30 不一樣，所以兩個數字差不多時，標籤可能一個是「偏空」、一個是「過冷」。MFI 也是擺盪指標，基礎觀念說的「擺盪指標大多數都到過冷」可以把它算進去，但要照它自己的門檻看。`;
+    return { ...base, notes: [...(base.notes ?? []), { title: '門檻和 RSI 不一樣', text: th }] };
   },
   strategy: {
     name: 'MFI 超賣回升買、超買回落賣',

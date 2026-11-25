@@ -137,31 +137,46 @@ export const biasIndicator: IndicatorDef<BiasParams> = {
       return { tone: 'neutral', headline: head, detail: `收盤價${where} ${fmtNum(Math.abs(v), 2)}%。` };
     }
     const rank = percentileRank(hist, v);
+    // 判斷「乖離過大」用和回測訊號一樣的門檻（過去 lookback 天裡最低、最高的那 5%，線性內插），說法才不會和訊號打架
+    const minCount = Math.floor(p.lookback / 2);
+    const lowTh = trailingQuantile(bias, p.lookback, p.percentile, minCount)[n - 1];
+    const highTh = trailingQuantile(bias, p.lookback, 100 - p.percentile, minCount)[n - 1];
+    const pct = (x: number) => `${x >= 0 ? '+' : ''}${fmtNum(x, 2)}%`;
     const pos =
       rank < 0.5
         ? `比過去 ${hist.length} 天的每一天都低（第 0 百分位）`
         : rank > 99.5
           ? `比過去 ${hist.length} 天的每一天都高（第 100 百分位）`
-          : `在過去 ${hist.length} 天裡排第 ${fmtNum(rank, 0)} 百分位（大約有 ${fmtNum(rank, 0)}% 的日子比現在低）`;
+          : `在過去 ${hist.length} 天裡排第 ${fmtNum(rank, rank < 10 || rank > 90 ? 1 : 0)} 百分位（大約有 ${fmtNum(rank, rank < 10 || rank > 90 ? 1 : 0)}% 的日子比現在低）`;
+    const rule =
+      lowTh != null && highTh != null
+        ? `本站的門檻（和回測一樣）：低於過去 ${hist.length} 天最低的 ${p.percentile}% 那條線（現在是 ${pct(lowTh)}）算負乖離過大，高於最高的 ${p.percentile}% 那條線（現在是 ${pct(highTh)}）算正乖離過大。百分位是「有幾 % 的日子比現在低」，門檻線是把過去的數字排好、在第 ${p.percentile}% 的位置內插出來的，兩個算法剛好在門檻附近時會差一點，判斷以門檻線為準。`
+        : '';
     const detail = `收盤價${where} ${fmtNum(Math.abs(v), 2)}%，${pos}。`;
     const trendNote = '在趨勢明顯的行情裡（例如 ADX 25 以上），乖離可能越拉越大，離均線遠不代表馬上會拉回來。';
-    if (rank >= 95) {
+    if (highTh != null && v > highTh) {
       return {
         tone: 'hot',
         headline: `${head}，正乖離過大`,
         detail: `${detail}漲離均線很遠。`,
-        notes: notesOf(['過去漲到這麼高之後', afterExtreme(candles, bias, v, 'high')], ['趨勢行情裡要注意', trendNote]),
+        notes: notesOf(['過去漲到這麼高之後', afterExtreme(candles, bias, v, 'high')], ['趨勢行情裡要注意', trendNote], ['門檻怎麼算', rule]),
       };
     }
-    if (rank <= p.percentile) {
+    if (lowTh != null && v < lowTh) {
       return {
         tone: 'cold',
         headline: `${head}，負乖離過大`,
         detail: `${detail}跌離均線很遠。`,
-        notes: notesOf(['過去跌到這麼低之後', afterExtreme(candles, bias, v, 'low')], ['趨勢行情裡要注意', trendNote]),
+        notes: notesOf(['過去跌到這麼低之後', afterExtreme(candles, bias, v, 'low')], ['趨勢行情裡要注意', trendNote], ['門檻怎麼算', rule]),
       };
     }
-    return { tone: 'neutral', headline: head, detail: `${detail}屬於正常範圍。` };
+    const near =
+      lowTh != null && v - lowTh < 1
+        ? `現在 ${pct(v)}，比負乖離過大的門檻（${pct(lowTh)}）只高一點點，所以還不算。`
+        : highTh != null && highTh - v < 1
+          ? `現在 ${pct(v)}，比正乖離過大的門檻（${pct(highTh)}）只低一點點，所以還不算。`
+          : '';
+    return { tone: 'neutral', headline: head, detail: `${detail}屬於正常範圍。`, notes: notesOf(['離門檻多遠', near && `${near}${rule}`]) };
   },
   strategy: {
     name: '負乖離過大買、回到均線賣',
