@@ -11,7 +11,7 @@ import { getContent } from '../content';
 import { lastDate } from '../data/extra';
 import { fmtDate, fmtNum, fmtPct } from '../data/format';
 import { useAsset, useAssets, useExtra } from '../data/load';
-import { completedLength } from '../data/parse';
+import { completedLength, completedCandles } from '../data/parse';
 import type { AssetSeries } from '../data/types';
 import { barsForRange } from '../data/useSeries';
 import { INDICATORS, computeIndicator, describeOf, getIndicator, hasRequiredData, signalsOf, supportsAsset } from '../indicators/registry';
@@ -220,7 +220,13 @@ function LiveChart({ def, asset, series }: { def: IndicatorDef; asset: AssetConf
   );
   const signals = useMemo(() => signalsOf(ci, candles), [ci, candles]);
   const markers = useMemo<ChartMarker[]>(() => signals.map((s) => ({ index: s.index, side: s.side })), [signals]);
-  const d = describeOf(ci, candles);
+  // 「現在怎麼說」只用已收盤的 K 棒（比特幣盤中的 K 棒成交量只累積到當下）
+  const done = useMemo(() => completedCandles(series), [series]);
+  const ciDone = useMemo(
+    () => (done === candles ? ci : computeIndicator(def, done, asset.market, null, { extra, volume: asset.volume })),
+    [done, candles, ci, def, asset.market, asset.volume, extra],
+  );
+  const d = describeOf(ciDone, done);
   return (
     <div>
       <PriceChart

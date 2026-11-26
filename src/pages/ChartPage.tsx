@@ -229,6 +229,7 @@ function ChartView({ asset, series }: { asset: AssetConfig; series: AssetSeries 
         signalId={signalCi?.def.id ?? null}
         signals={signals}
         onExplain={setExplainId}
+        lastBarComplete={series.meta.lastBarComplete}
       />
 
       {signalCi && <SignalList ci={signalCi} candles={candles} asset={asset} timeframe={s.timeframe} />}
@@ -316,6 +317,7 @@ function ReadingGuide({
   signalId,
   signals,
   onExplain,
+  lastBarComplete,
 }: {
   computed: ComputedIndicator[];
   candles: Candle[];
@@ -323,6 +325,7 @@ function ReadingGuide({
   signalId: string | null;
   signals: Signal[];
   onExplain: (id: string) => void;
+  lastBarComplete: boolean;
 }) {
   const panes = computed.filter((c) => c.def.placement === 'pane');
   const barUnit = timeframe === 'W' ? '週' : timeframe === 'M' ? '個月' : undefined;
@@ -330,6 +333,11 @@ function ReadingGuide({
     <Card>
       <h2 className="text-base font-semibold text-fg">怎麼看這張圖</h2>
       <p className="mt-0.5 mb-4 text-xs text-muted">下面每個顏色樣本都和圖上的線一樣，對照著看就知道哪條是哪條。</p>
+      {!lastBarComplete && (
+        <p className="mb-4 text-xs leading-relaxed text-muted">
+          最後一根 K 棒還沒收盤（比特幣盤中會接上即時價格）：下面「現在」的說明是照目前價格算的，說明裡的「收盤價」指的是目前價格，成交量也只累積到現在，收盤前數字還會變。總覽和指標百科的「現在怎麼說」只用已收盤的 K 棒。
+        </p>
+      )}
       {barUnit && (
         <p className="mb-4 rounded-lg border border-hot/40 bg-hot/10 px-3 py-2 text-sm leading-relaxed text-fg">
           現在看的是{TIMEFRAME_LABELS[timeframe]}：一根 K 棒代表一{barUnit === '週' ? '週' : '個月'}，所以指標用的「天數」在這裡都是「{barUnit}數」。例如

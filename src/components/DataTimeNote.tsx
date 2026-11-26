@@ -37,7 +37,7 @@ export function DataTimeNote({ series, compact }: { series: AssetSeries; compact
   if (!last) return null;
   return (
     <span>
-      {fmtDate(last.time)} 收盤{series.meta.lastBarComplete ? '' : '（尚未收盤）'}
+      {series.meta.lastBarComplete ? `${fmtDate(last.time)} 收盤` : `${fmtDate(last.time)} 盤中的目前價格（尚未收盤）`}
       {compact ? '' : '・每天收盤後更新'}
     </span>
   );

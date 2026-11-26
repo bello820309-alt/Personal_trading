@@ -22,3 +22,17 @@ export function parseAssetFile(file: AssetDataFile): AssetSeries {
 export function completedLength(series: AssetSeries): number {
   return series.meta.lastBarComplete ? series.candles.length : Math.max(0, series.candles.length - 1);
 }
+
+/**
+ * 只取已收盤的 K 棒：指標的「現在怎麼說」要用這個算。
+ * 比特幣網頁開著時會接上幣安的盤中 K 棒，成交量只累積到當下，拿來算會變成「量縮」之類的錯誤說法。
+ */
+export function completedCandles(series: AssetSeries): Candle[] {
+  const n = completedLength(series);
+  return n === series.candles.length ? series.candles : series.candles.slice(0, n);
+}
+
+/** 價格卡上的價格是「收盤價」還是盤中的「目前價格」 */
+export function priceLabel(series: AssetSeries): '收盤價' | '目前價格' {
+  return series.meta.lastBarComplete ? '收盤價' : '目前價格';
+}

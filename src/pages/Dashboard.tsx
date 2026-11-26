@@ -9,7 +9,7 @@ import { ASSETS, DEFAULT_ASSET_ID, getAsset, MARKET_LABELS, type AssetConfig } f
 import { equityMetrics, periodsPerYear, type EquityMetrics } from '../backtest/metrics';
 import { fmtDate, fmtDateTime, fmtMoney, fmtNum, fmtPct, fmtPrice, signClass } from '../data/format';
 import { useAssets, useExtra, useManifest, type LoadState } from '../data/load';
-import { completedLength } from '../data/parse';
+import { completedCandles, completedLength, priceLabel } from '../data/parse';
 import type { AssetSeries } from '../data/types';
 import { computeIndicator, describeOf, indicatorsByCategory } from '../indicators/registry';
 import { CATEGORY_LABELS, type IndicatorDef, type StateSummary } from '../indicators/types';
@@ -110,6 +110,7 @@ function AssetCard({ asset, state }: { asset: AssetConfig; state: LoadState<Asse
         <Sparkline values={spark} />
       </div>
       <div className="mt-2 flex items-baseline gap-2">
+        <span className="text-xs text-muted">{priceLabel(state.data)}</span>
         <span className="text-2xl font-bold text-fg tabular">{fmtPrice(last.close, asset)}</span>
         <span className={`text-sm font-medium tabular ${signClass(chg)}`}>{fmtPct(chg)}</span>
       </div>
@@ -118,7 +119,7 @@ function AssetCard({ asset, state }: { asset: AssetConfig; state: LoadState<Asse
       </div>
       {yearChg !== null && (
         <div className="text-xs text-muted">
-          近一年股價 <span className={signClass(yearChg)}>{fmtPct(yearChg, 1)}</span>
+          近一年{asset.market === 'crypto' ? '價格' : '股價'} <span className={signClass(yearChg)}>{fmtPct(yearChg, 1)}</span>
           {asset.market !== 'crypto' && '（不含配息）'}
         </div>
       )}
@@ -165,7 +166,10 @@ function StateItem({ def, d }: { def: IndicatorDef; d: StateSummary | null }) {
 
 function IndicatorStates({ asset, series }: { asset: AssetConfig; series: AssetSeries }) {
   const [showAll, setShowAll] = useState(false);
-  const candles = series.candles;
+  // 指標狀態一律用已收盤的 K 棒算：盤中的即時 K 棒（比特幣）成交量只累積到當下，會說錯
+  const candles = useMemo(() => completedCandles(series), [series]);
+  const live = !series.meta.lastBarComplete;
+  const lastDone = candles[candles.length - 1];
   // 比特幣另外有情緒、合約、鏈上的指標
   const extra = useExtra(asset.id);
   const groups = useMemo(
@@ -180,6 +184,11 @@ function IndicatorStates({ asset, series }: { asset: AssetConfig; series: AssetS
   const featured = FEATURED.flatMap((id) => all.filter((x) => x.def.id === id));
   return (
     <div>
+      {live && lastDone && (
+        <p className="mb-3 text-xs leading-relaxed text-muted">
+          下面的指標狀態用最後一根已收盤的日 K（{fmtDate(lastDone.time)}）算；今天還沒收盤的即時價格只顯示在上面的價格卡，收盤之後才會算進來。
+        </p>
+      )}
       {showAll ? (
         <div className="grid gap-5 lg:grid-cols-2">
           {groups.map((g) => (
