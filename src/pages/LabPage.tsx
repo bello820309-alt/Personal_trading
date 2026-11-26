@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { LineChart, type LineSpec } from '../components/chart/LineChart';
+import { ChevronRightIcon } from '../components/icons';
 import { Card, Fold, Notice, PageTitle, Segmented, Spinner } from '../components/ui';
 import { getAsset, type AssetConfig } from '../config/assets';
 import { fmtPct, signClass } from '../data/format';
@@ -155,30 +156,35 @@ function LabView({ data }: { data: LabData }) {
   return (
     <div className="space-y-4">
       <StatusLine exp={exp} today={view.today} />
-      <Ranking people={[...view.people, view.bench]} capital={exp.capital} nowMs={nowMs} />
-      <Card>
-        <H2 sub="每天用收盤價和匯率估算一次（含現金）。比特幣週末也會動，所以週末也有點。">總資產的變化</H2>
+      <Ranking people={[...view.people, view.bench]} capital={exp.capital} nowMs={nowMs} exp={exp} />
+      {/* 預設只看成績和每人一行；圖表和每個人的細節收起來，手機上頁面才不會太長 */}
+      <Fold title="總資產的變化" sub="每天用收盤價和匯率估算一次（含現金）。比特幣週末也會動，所以週末也有點。">
         {anyFill ? (
           <ValueChart people={[...view.people, view.bench]} />
         ) : (
           <p className="py-6 text-center text-sm text-muted">第一筆成交之後就會開始畫（第一天下單，隔天成交）。</p>
         )}
         <DataNote market={view.market} />
-      </Card>
+      </Fold>
 
       {selected && (
-        <section className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-lg font-semibold text-fg">每位的操作和心得</h2>
+        <Fold
+          key={query.has('who') ? 'open' : 'closed'}
+          id="lab-people"
+          title="每位的操作和心得"
+          sub="選一位，看他現在的資產、每天的心得和全部的交易紀錄。"
+          defaultOpen={query.has('who')}
+        >
+          <div className="space-y-4">
             <Segmented
               value={selected.id}
               options={view.people.map((p) => ({ value: p.id, label: p.name }))}
-              onChange={(id) => navigate(withQuery('/lab', { who: id === view.people[0]?.id ? null : id }), { replace: true })}
+              onChange={(id) => navigate(withQuery('/lab', { who: id }), { replace: true })}
               ariaLabel="選擇參加者"
             />
+            <AgentDetail key={selected.id} p={selected} exp={exp} />
           </div>
-          <AgentDetail key={selected.id} p={selected} exp={exp} />
-        </section>
+        </Fold>
       )}
 
       <Feedback people={view.people} />
@@ -214,13 +220,17 @@ function StatusLine({ exp, today }: { exp: LabExperiment; today: string }) {
   return <p className="rounded-lg bg-surface-2 px-3 py-2 text-sm text-muted">{text}</p>;
 }
 
-function Ranking({ people, capital, nowMs }: { people: Participant[]; capital: number; nowMs: number }) {
+/** 最新一天的心得（journal 已經照日期由新到舊排） */
+const latest = (p: Participant) => p.journal[0];
+const dayLabel = (exp: LabExperiment, day: string) => (day > exp.end ? '結算日' : `第 ${dayNumber(exp, day)} 天`);
+
+function Ranking({ people, capital, nowMs, exp }: { people: Participant[]; capital: number; nowMs: number; exp: LabExperiment }) {
   const colorOf = useColors();
   // 依報酬率排名；一樣時照原本的順序（開始前大家都是 0%）
   const sorted = people.map((p, i) => ({ p, i })).sort((a, b) => b.p.now.returnPct - a.p.now.returnPct || a.i - b.i);
   return (
     <Card>
-      <H2 sub="依報酬率排序，用最新的收盤價估算（含現金）。">成績</H2>
+      <H2 sub="依報酬率排序，用最新的收盤價估算（含現金）。點名字看那個人的心得。">成績</H2>
       <ol className="divide-y divide-line">
         {sorted.map(({ p }, rank) => {
           const ret = p.now.returnPct;
@@ -233,7 +243,20 @@ function Ranking({ people, capital, nowMs }: { people: Participant[]; capital: n
               <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: colorOf(p) }} aria-hidden="true" />
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-x-2 text-sm">
-                  <span className="font-medium text-fg">{p.name}</span>
+                  {p.bench ? (
+                    <span className="font-medium text-fg">{p.name}</span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigate(withQuery('/lab', { who: p.id }), { replace: true });
+                        requestAnimationFrame(() => document.getElementById('lab-people')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+                      }}
+                      className="-my-2 min-h-10 font-medium text-fg underline decoration-dotted underline-offset-2"
+                    >
+                      {p.name}
+                    </button>
+                  )}
                   <span className={`rounded-full px-2 py-0.5 text-xs ${p.bench ? 'border border-dashed border-line text-muted' : 'bg-surface-2 text-muted'}`}>
                     {p.bench ? '對照' : p.scope}
                   </span>
@@ -243,6 +266,12 @@ function Ranking({ people, capital, nowMs }: { people: Participant[]; capital: n
                   {pending > 0 ? `・待成交 ${pending} 筆` : ''}
                   {p.ref ? `・同一檔分批買 ${fmtPct(p.ref.returnPct)}` : ''}
                 </div>
+                {latest(p) && (
+                  <p className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-fg">
+                    <span className="text-muted">{dayLabel(exp, latest(p)!.day)}：</span>
+                    {latest(p)!.summary}
+                  </p>
+                )}
               </div>
               <div className="shrink-0 text-right tabular">
                 <div className="text-sm font-semibold text-fg">{twd(p.now.value)}</div>
@@ -336,7 +365,7 @@ function AgentDetail({ p, exp }: { p: Participant; exp: LabExperiment }) {
         )}
       </Card>
       <Card>
-        <H2 sub="最新的在最上面。每天的單會在隔天成交，成交的價格和金額也寫在當天的心得裡。">每天的心得</H2>
+        <H2 sub="最新一天完整顯示，更早的點一天展開。每天的單會在隔天成交，成交的價格和金額也寫在當天的心得裡。">每天的心得</H2>
         <Journal p={p} exp={exp} />
       </Card>
       <Fold title={`全部的交易紀錄（${p.orders.length} 筆）`} sub="每一筆單的理由和成交結果。">
@@ -412,78 +441,111 @@ function OrderLine({ o, fill }: { o: LabOrder; fill?: LabFill }) {
 }
 
 function Journal({ p, exp }: { p: Participant; exp: LabExperiment }) {
-  const [all, setAll] = useState(false);
   if (p.journal.length === 0) return <p className="py-4 text-center text-sm text-muted">還沒有心得。第一天操作完就會出現在這裡。</p>;
-  const shown = all ? p.journal : p.journal.slice(0, 5);
   const fillOf = new Map(p.fills.map((f) => [f.orderId, f]));
+  const [first, ...older] = p.journal;
   return (
     <div>
-      {shown.map((j) => {
-        const orders = p.orders.filter((o) => o.day === j.day);
-        const n = dayNumber(exp, j.day);
-        return (
-          <article key={j.day} className="border-t border-line py-4 first:border-t-0 first:pt-0">
-            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-xs text-muted">
-              <span className="font-medium text-fg">{j.day > exp.end ? '結算日' : `第 ${n} 天`}</span>
-              <span>{shortDay(j.day)}</span>
-              {j.snapshot && (
-                <span className="tabular">
-                  總資產 {twd(j.snapshot.value)}（<span className={signClass(j.snapshot.returnPct)}>{fmtPct(j.snapshot.returnPct)}</span>）
-                </span>
-              )}
-              {j.confidence !== undefined && <span aria-label={`信心 ${j.confidence} 分`}>信心 {'●'.repeat(j.confidence)}{'○'.repeat(5 - j.confidence)}</span>}
-            </div>
-            <h3 className="mt-1 font-semibold text-fg">{j.summary}</h3>
-            <dl className="mt-2 space-y-2 text-sm leading-relaxed">
-              <Field label="怎麼判斷">{j.market}</Field>
-              <Field label="今天的決定">{j.decision}</Field>
-              {orders.length > 0 && (
-                <Field label="下的單">
-                  <ul className="space-y-1.5">
-                    {orders.map((o) => (
-                      <li key={o.id}>
-                        <OrderLine o={o} fill={fillOf.get(o.id)} />
-                      </li>
-                    ))}
-                  </ul>
-                </Field>
-              )}
-              {j.learned.length > 0 && (
-                <Field label="學到的">
-                  <Bullets items={j.learned} />
-                </Field>
-              )}
-              {j.confused.length > 0 && (
-                <Field label="看不懂的">
-                  <Bullets items={j.confused} />
-                </Field>
-              )}
-              <Field label="接下來">{j.plan}</Field>
-            </dl>
-            {j.pages.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {j.pages.map((r, i) =>
-                  r.startsWith('/') ? (
-                    <Link key={i} to={r} className="rounded-full border border-line px-2 py-0.5 text-xs text-accent hover:bg-surface-2">
-                      {pageLabel(r)}
-                    </Link>
-                  ) : (
-                    <span key={i} className="rounded-full border border-line px-2 py-0.5 text-xs text-muted">
-                      {r}
+      <article className="pb-2">
+        <JournalDay j={first!} p={p} exp={exp} fillOf={fillOf} />
+      </article>
+      {older.length > 0 && (
+        <>
+          <h3 className="mt-3 mb-1 text-xs font-medium text-muted">更早的心得（{older.length} 天，點一天展開）</h3>
+          <ul className="divide-y divide-line border-y border-line">
+            {older.map((j) => (
+              <li key={j.day}>
+                <details className="group">
+                  <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 py-2 text-sm [&::-webkit-details-marker]:hidden">
+                    <ChevronRightIcon className="h-4 w-4 shrink-0 text-muted transition-transform group-open:rotate-90" />
+                    <span className="shrink-0 text-xs text-muted tabular">
+                      {dayLabel(exp, j.day)} {shortDay(j.day)}
                     </span>
-                  ),
-                )}
-              </div>
-            )}
-          </article>
-        );
-      })}
-      {p.journal.length > 5 && (
-        <button type="button" onClick={() => setAll(!all)} className="mt-1 text-sm text-accent">
-          {all ? '只看最近 5 天' : `看更早的心得（共 ${p.journal.length} 天）`}
-        </button>
+                    <span className="min-w-0 truncate text-fg group-open:whitespace-normal">{j.summary}</span>
+                  </summary>
+                  <div className="pb-3 pl-6">
+                    <JournalDay j={j} p={p} exp={exp} fillOf={fillOf} hideTitle />
+                  </div>
+                </details>
+              </li>
+            ))}
+          </ul>
+        </>
       )}
     </div>
+  );
+}
+
+function JournalDay({
+  j,
+  p,
+  exp,
+  fillOf,
+  hideTitle = false,
+}: {
+  j: LabJournalEntry;
+  p: Participant;
+  exp: LabExperiment;
+  fillOf: Map<string, LabFill>;
+  hideTitle?: boolean;
+}) {
+  const orders = p.orders.filter((o) => o.day === j.day);
+  const n = dayNumber(exp, j.day);
+  return (
+    <>
+      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-xs text-muted">
+        <span className="font-medium text-fg">{j.day > exp.end ? '結算日' : `第 ${n} 天`}</span>
+        <span>{shortDay(j.day)}</span>
+        {j.snapshot && (
+          <span className="tabular">
+            總資產 {twd(j.snapshot.value)}（<span className={signClass(j.snapshot.returnPct)}>{fmtPct(j.snapshot.returnPct)}</span>）
+          </span>
+        )}
+        {j.confidence !== undefined && <span aria-label={`信心 ${j.confidence} 分`}>信心 {'●'.repeat(j.confidence)}{'○'.repeat(5 - j.confidence)}</span>}
+      </div>
+      {!hideTitle && <h3 className="mt-1 font-semibold text-fg">{j.summary}</h3>}
+      <dl className="mt-2 space-y-2 text-sm leading-relaxed">
+        <Field label="怎麼判斷">{j.market}</Field>
+        <Field label="今天的決定">{j.decision}</Field>
+        {orders.length > 0 && (
+          <Field label="下的單">
+            <ul className="space-y-1.5">
+              {orders.map((o) => (
+                <li key={o.id}>
+                  <OrderLine o={o} fill={fillOf.get(o.id)} />
+                </li>
+              ))}
+            </ul>
+          </Field>
+        )}
+        {j.learned.length > 0 && (
+          <Field label="學到的">
+            <Bullets items={j.learned} />
+          </Field>
+        )}
+        {j.confused.length > 0 && (
+          <Field label="看不懂的">
+            <Bullets items={j.confused} />
+          </Field>
+        )}
+        <Field label="接下來">{j.plan}</Field>
+      </dl>
+      {j.pages.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {j.pages.map((r, i) =>
+            r.startsWith('/') ? (
+              <Link key={i} to={r} className="rounded-full border border-line px-2 py-0.5 text-xs text-accent hover:bg-surface-2">
+                {pageLabel(r)}
+              </Link>
+            ) : (
+              <span key={i} className="rounded-full border border-line px-2 py-0.5 text-xs text-muted">
+                {r}
+              </span>
+            ),
+          )}
+        </div>
+      )}
+    </>
   );
 }
 
