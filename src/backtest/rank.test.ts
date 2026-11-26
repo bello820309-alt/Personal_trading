@@ -15,7 +15,7 @@ import {
   type Prepared,
   type RankRow,
 } from './rank';
-import { summarizeAdjacent, summarizeRanking, summarizeYearly } from './rankSummary';
+import { summarizeAdjacent, summarizeRanking, summarizeYearly, beatHoldHeadline } from './rankSummary';
 
 /*
  * 這些測試用「人工產生的波浪價格」與「人工指定的買賣點」驗證排名邏輯（不是真實行情）：
@@ -198,15 +198,22 @@ describe('每年的勝率冠軍，隔年表現如何', () => {
 
 describe('summarizeRanking（白話結論）', () => {
   const btc = getAsset('BTC')!;
-  it('寫出勝率冠軍、贏過買進持有的數量，以及次數太少的提醒', () => {
-    const text = summarizeRanking(runRanking(prep, year2021.start, year2021.end, free), threeYears, btc).join('\n');
-    expect(text).toContain('勝率最高的是「A」');
+  it('先寫總報酬最高的，再寫勝率最高的，以及次數太少的提醒', () => {
+    const result = runRanking(prep, year2021.start, year2021.end, free);
+    const lines = summarizeRanking(result, threeYears, btc);
+    const text = lines.join('\n');
+    expect(lines[1]).toMatch(/^總報酬最高的是/);
+    expect(text).toMatch(/勝率最高的(是|則是)|同時也是勝率最高的策略/);
     expect(text).toContain('勝率 100%');
-    expect(text).toContain('3 個策略裡');
     expect(text).toContain('交易不到 5 次');
+  });
+  it('最上面的一句：N 個策略裡有 X 個的總報酬贏過買了一直抱著', () => {
+    const result = runRanking(prep, year2021.start, year2021.end, free);
+    const beat = result.rows.filter((r) => r.totalReturn > result.benchmark.totalReturn).length;
+    expect(beatHoldHeadline(result)).toMatch(new RegExp(`^${result.rows.length} 個策略裡有 ${beat} 個的總報酬贏過「買了一直抱著」`));
   });
   it('期間太短、沒有策略夠格時，直接說明排名沒有參考價值', () => {
     const text = summarizeRanking(runRanking(prep, 0, 19, free), threeYears, btc).join('\n');
-    expect(text).toContain('勝率排名沒有參考價值');
+    expect(text).toContain('排名沒有參考價值');
   });
 });

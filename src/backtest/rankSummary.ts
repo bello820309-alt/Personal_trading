@@ -29,6 +29,18 @@ export function marketMood(holdReturn: number, years: number): string {
 
 const average = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
 
+/**
+ * 排行榜最重要的一句：幾個策略的總報酬贏過「買了一直抱著」。放在白話結論最上面、放大顯示。
+ * 交易次數不夠的也算進分母（一樣是這段期間可以選的策略）。
+ */
+export function beatHoldHeadline(result: RankResult): string {
+  const hold = result.benchmark.totalReturn;
+  const all = result.rows;
+  const beaters = all.filter((r) => r.totalReturn > hold).sort((a, b) => b.totalReturn - a.totalReturn);
+  const names = beaters.length > 0 && beaters.length <= 3 ? `：${beaters.map((r) => `${strategyName(r)}（${fmtPct(r.totalReturn)}）`).join('、')}` : '';
+  return `${all.length} 個策略裡有 ${beaters.length} 個的總報酬贏過「買了一直抱著」（${fmtPct(hold)}）${names}。`;
+}
+
 export function summarizeRanking(result: RankResult, candles: Candle[], asset: AssetConfig): string[] {
   const out: string[] = [];
   const from = candles[result.start]!.time;
@@ -43,36 +55,25 @@ export function summarizeRanking(result: RankResult, candles: Candle[], asset: A
 
   const { ranked, lowSample } = splitBySample(result.rows);
   if (ranked.length === 0) {
-    out.push(`這段期間沒有任何策略完成 ${MIN_TRADES} 筆以上的交易，勝率排名沒有參考價值。可以把期間拉長到 1 年以上再看看。`);
+    out.push(`這段期間沒有任何策略完成 ${MIN_TRADES} 筆以上的交易，排名沒有參考價值。可以把期間拉長到 1 年以上再看看。`);
     return out;
   }
 
-  const top = sortRows(ranked, 'winRate')[0]!;
-  out.push(
-    `勝率最高的是${strategyName(top)}：${top.trades} 筆交易中有 ${top.wins} 筆賺錢（勝率 ${fmtPct(top.winRate, 0, false)}），` +
-      `總報酬 ${fmtPct(top.totalReturn)}，${versusHold(top, hold)}。`,
-  );
   const best = sortRows(ranked, 'return')[0]!;
-  if (best.def.id === top.def.id) {
-    out.push('它同時也是總報酬最高的策略。');
+  out.push(
+    `總報酬最高的是${strategyName(best)}：${fmtPct(best.totalReturn)}，${versusHold(best, hold)}（勝率 ${fmtPct(best.winRate, 0, false)}，${best.trades} 筆交易）。`,
+  );
+  const top = sortRows(ranked, 'winRate')[0]!;
+  if (top.def.id === best.def.id) {
+    out.push('它同時也是勝率最高的策略。');
   } else {
     out.push(
-      `總報酬最高的則是${strategyName(best)} ${fmtPct(best.totalReturn)}，勝率是 ${fmtPct(best.winRate, 0, false)}。` +
-        (best.winRate !== null && top.winRate !== null && best.winRate < top.winRate ? '可見勝率最高的，不一定最賺錢。' : ''),
+      `勝率最高的則是${strategyName(top)}：${top.trades} 筆交易中有 ${top.wins} 筆賺錢（勝率 ${fmtPct(top.winRate, 0, false)}），` +
+        `但總報酬只有 ${fmtPct(top.totalReturn)}。勝率是「賺錢的交易占幾 %」，不管每次賺賠多少，所以勝率最高的不一定最賺錢。`,
     );
   }
 
   const all = result.rows;
-  const beaters = all.filter((r) => r.totalReturn > hold).sort((a, b) => b.totalReturn - a.totalReturn);
-  const beat = beaters.length;
-  // 贏的不多時直接說是哪幾個，新手才知道要去看哪一個
-  const names = beat > 0 && beat <= 3 ? `：${beaters.map((r) => `${strategyName(r)}（${fmtPct(r.totalReturn)}）`).join('、')}` : '';
-  out.push(
-    beat === 0
-      ? `${all.length} 個策略裡，沒有任何一個的總報酬贏過「買了一直抱著」。`
-      : `${all.length} 個策略裡，有 ${beat} 個的總報酬贏過「買了一直抱著」${names}。`,
-  );
-
   const trend = all.filter((r) => r.def.category === 'trend').map((r) => r.totalReturn);
   const osc = all.filter((r) => r.def.category === 'momentum').map((r) => r.totalReturn);
   if (trend.length >= 3 && osc.length >= 3) {

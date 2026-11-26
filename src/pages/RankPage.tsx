@@ -20,7 +20,7 @@ import {
   type RankSort,
 } from '../backtest/rank';
 import { buildPresets, type PeriodPreset } from '../backtest/rankPeriods';
-import { summarizeAdjacent, summarizeRanking, summarizeYearly } from '../backtest/rankSummary';
+import { beatHoldHeadline, summarizeAdjacent, summarizeRanking, summarizeYearly } from '../backtest/rankSummary';
 import { defaultCosts } from '../backtest/strategies';
 import { eventRows, regimeShares } from '../backtest/eventStudy';
 import { REGIME_LABELS, eventsFor, fedUpperAt, type Regime } from '../data/events';
@@ -31,7 +31,9 @@ import { indexRange, isIsoDate } from '../data/range';
 import type { AssetSeries, Candle } from '../data/types';
 import { Link, navigate, useLocation, withQuery } from '../router';
 
-const SORTS: RankSort[] = ['winRate', 'return', 'drawdown', 'trades'];
+// 預設用總報酬排序：勝率高不代表賺得多（例如勝率 80% 的策略可能遠遠輸給一直抱著）
+const SORTS: RankSort[] = ['return', 'winRate', 'drawdown', 'trades'];
+const DEFAULT_SORT: RankSort = 'return';
 
 type Go = (patch: Record<string, string | null | undefined>) => void;
 
@@ -41,17 +43,17 @@ export function RankPage() {
   const asset = getAsset(query.get('asset')) ?? getAsset('BTC')!;
   const state = useAsset(asset.id);
   const sortQ = query.get('sort') ?? '';
-  const sort: RankSort = (SORTS as string[]).includes(sortQ) ? (sortQ as RankSort) : 'winRate';
+  const sort: RankSort = (SORTS as string[]).includes(sortQ) ? (sortQ as RankSort) : DEFAULT_SORT;
   const p = query.get('p');
   const from = query.get('from');
   const to = query.get('to');
 
   const go: Go = (patch) =>
-    navigate(withQuery('/backtest/rank', { asset: asset.id, p, from, to, sort: sort === 'winRate' ? null : sort, ...patch }), { replace: true });
+    navigate(withQuery('/backtest/rank', { asset: asset.id, p, from, to, sort: sort === DEFAULT_SORT ? null : sort, ...patch }), { replace: true });
 
   return (
     <div>
-      <PageTitle sub="選一段期間，把每個指標的經典買賣規則都回測一次：哪個勝率最高、哪個最賺錢，以及「冠軍」換到別段期間還靈不靈。">
+      <PageTitle sub="選一段期間，把每個指標的經典買賣規則都回測一次：有幾個贏過「買了一直抱著」、哪個最賺錢、勝率高的是不是真的賺得多，以及「冠軍」換到別段期間還靈不靈。">
         回測
       </PageTitle>
       <BacktestTabs active="rank" assetId={asset.id} />
@@ -448,6 +450,8 @@ function PeriodNews({ asset, candles, start, end }: { asset: AssetConfig; candle
 
 function RankResults({ asset, candles, result, sort, go }: { asset: AssetConfig; candles: Candle[]; result: RankResult; sort: RankSort; go: Go }) {
   const lines = useMemo(() => summarizeRanking(result, candles, asset), [result, candles, asset]);
+  const headline = beatHoldHeadline(result);
+  const beaters = result.rows.filter((r) => r.totalReturn > result.benchmark.totalReturn).length;
   const { ranked, lowSample } = splitBySample(result.rows);
   const sorted = sortRows(ranked, sort);
   const topWin = sortRows(ranked, 'winRate')[0]?.def.id;
@@ -467,6 +471,7 @@ function RankResults({ asset, candles, result, sort, go }: { asset: AssetConfig;
     <>
       <Card>
         <H2>白話結論</H2>
+        <p className={`mb-3 text-lg font-semibold leading-snug ${beaters === 0 ? 'text-hot' : 'text-fg'}`}>{headline}</p>
         <Lines lines={lines} />
         <p className="mt-3 text-xs leading-relaxed text-muted">
           以上是照回測數字自動寫出來的，不是預測，也不是投資建議。回測用還原權息後的日 K；訊號在收盤確定、隔天開盤成交；只做多、全部資金進出，並扣除手續費
@@ -481,10 +486,15 @@ function RankResults({ asset, candles, result, sort, go }: { asset: AssetConfig;
             size="sm"
             ariaLabel="排序方式"
             value={sort}
-            onChange={(v) => go({ sort: v === 'winRate' ? null : v })}
+            onChange={(v) => go({ sort: v === DEFAULT_SORT ? null : v })}
             options={SORTS.map((s) => ({ value: s, label: RANK_SORT_LABELS[s] }))}
           />
         </div>
+        {sort === 'winRate' && (
+          <p className="mb-3 rounded-lg border border-hot/40 bg-hot/10 px-3 py-2 text-sm leading-relaxed text-fg">
+            勝率高 ≠ 賺得多：勝率只看「賺錢的交易占幾 %」，不管每次賺賠多少。勝率很高、每次只賺一點的策略，總報酬可能遠遠輸給一直抱著；想比誰賺得多，請改用「總報酬」排序。
+          </p>
+        )}
         <p className="mb-3 text-xs leading-relaxed text-muted">
           完成 {MIN_TRADES} 筆以上交易的策略才列入排名。超額報酬＝策略的總報酬減掉一直抱著的報酬。點策略名稱可以看完整回測（買賣點、交易明細）。
         </p>
