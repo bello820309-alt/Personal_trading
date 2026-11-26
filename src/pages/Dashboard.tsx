@@ -12,7 +12,8 @@ import { fmtDate, fmtDateTime, fmtMoney, fmtNum, fmtPct, fmtPrice, signClass } f
 import { useAssets, useExtra, useManifest, type LoadState } from '../data/load';
 import { completedCandles, completedLength, priceLabel } from '../data/parse';
 import type { AssetSeries } from '../data/types';
-import { computeIndicator, describeOf, indicatorsByCategory } from '../indicators/registry';
+import { computeIndicator, describeOf, getIndicator, indicatorsByCategory } from '../indicators/registry';
+import { regimeItems, regimeSummary } from '../indicators/regime';
 import { CATEGORY_LABELS, type IndicatorDef, type StateSummary } from '../indicators/types';
 import { Link, withQuery } from '../router';
 import { useResolvedTheme, useSettings } from '../store/settings';
@@ -177,12 +178,28 @@ function IndicatorStates({ asset, series }: { asset: AssetConfig; series: AssetS
   );
   const all = groups.flatMap((g) => g.items);
   const featured = FEATURED.flatMap((id) => all.filter((x) => x.def.id === id));
+  // 綜合判斷：ADX 分趨勢盤或盤整，再統計同一類指標的多空
+  const summary = useMemo(() => {
+    const dmi = getIndicator('dmi');
+    if (!dmi || candles.length === 0) return null;
+    const adx = computeIndicator(dmi, candles, asset.market, null).result.lines.find((l) => l.key === 'adx')?.values[candles.length - 1] ?? null;
+    return regimeSummary(regimeItems(all), adx);
+  }, [all, candles, asset.market]);
   return (
     <div>
       {live && lastDone && (
         <p className="mb-3 text-xs leading-relaxed text-muted">
           下面的指標狀態用最後一根已收盤的日 K（{fmtDate(lastDone.time)}）算；今天還沒收盤的即時價格只顯示在上面的價格卡，收盤之後才會算進來。
         </p>
+      )}
+      {summary && (
+        <div className="mb-4 rounded-lg border border-line bg-surface-2 px-3 py-2">
+          <p className="text-sm leading-relaxed text-fg">
+            <span className="font-semibold">綜合判斷：</span>
+            {summary}
+          </p>
+          <p className="mt-1 text-xs leading-relaxed text-muted">照上面「意見不一致時先看哪一個」的規則，用全部 {all.length} 個指標現在的標籤自動寫的；這是教科書的分法，不是買賣建議。</p>
+        </div>
       )}
       {showAll ? (
         <div className="grid gap-5 lg:grid-cols-2">
