@@ -93,7 +93,7 @@ export function SettingsPage() {
       </Card>
 
       <Card>
-        <SectionTitle sub="日 K 資料在收盤後自動更新（通常 1～2 小時內）；比特幣在網頁開著時每分鐘直接向幣安取得即時價格。">資料</SectionTitle>
+        <SectionTitle sub="日 K 資料在收盤後自動更新（通常 1～2 小時內）；比特幣在網頁開著時每分鐘直接向幣安取得即時價格。資料來源（Yahoo）有時會在事後修正某一天的數字（例如成交量），網站每次更新都改用最新的數字，所以同一天的數字偶爾會和之前看到的不一樣。">資料</SectionTitle>
         <div className="table-scroll">
           <table className="w-full min-w-[420px] text-sm">
             <thead>

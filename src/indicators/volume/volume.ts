@@ -181,7 +181,7 @@ export const volumeIndicator: IndicatorDef<VolumeParams> = {
       comment = up ? '上漲但量縮，追價意願不強。' : down ? '下跌但量縮，賣壓可能正在減輕。' : '交易清淡，市場在觀望。';
       // 爆量之後的「量縮」：只是和被拉高的均量比；和放量之前比已經回到平常，就不要說成追價意願不強
       if (spike && v / spike.base >= 0.7) {
-        comment = `這裡的「量縮」是和被爆量拉高的均量比；和放量之前比是 ${fmtNum(v / spike.base, 1)} 倍，算是回到平常的水準。`;
+        comment = `這裡的「量縮」是和被爆量拉高的均量比；和放量之前比是 ${fmtNum(v / spike.base, 2)} 倍，算是回到平常的水準。`;
         shrink = `最近 ${p.ma2} 天的均量包含爆量那幾天，所以今天看起來是量縮。爆量之後量縮回平常、價格又沒有再創新低，比較像賣壓出清${up ? '，所以這時的「上漲但量縮」不一定是追價意願不強' : ''}。`;
       }
     }
@@ -221,10 +221,10 @@ export const volumeIndicator: IndicatorDef<VolumeParams> = {
       const x = v / spike.base;
       const before = md(candles[spike.start - 1]!.time);
       const vsBase = unit
-        ? `放量之前（${before} 為止）的 ${p.ma2} 日均量是 ${amount(spike.base)}，今天 ${amount(v)}，是它的 ${fmtNum(x, 1)} 倍。`
-        : `今天的量是放量之前（${before} 為止）${p.ma2} 日均量的 ${fmtNum(x, 1)} 倍。`;
+        ? `放量之前（${before} 為止）的 ${p.ma2} 日均量是 ${amount(spike.base)}，今天 ${amount(v)}，是它的 ${fmtNum(x, 2)} 倍。`
+        : `今天的量是放量之前（${before} 為止）${p.ma2} 日均量的 ${fmtNum(x, 2)} 倍。`;
       const calmRule = `（本站的算法：連續 ${CALM_DAYS} 天都在放量之前均量的 ${CALM_RATIO} 倍以內，就算回到平常）`;
-      twoRatios = `前面的 ${fmtNum(ratio, 2)} 倍是和最近 ${p.ma2} 天的均量比，但這 ${p.ma2} 天包含爆量那幾天、均量被拉高了；${fmtNum(x, 1)} 倍是和放量之前比，比較看得出今天的量到底有多大。之後看量有沒有縮回來，就看後面這個數字：降到 1 倍左右，才算回到爆量之前的水準。`;
+      twoRatios = `前面的 ${fmtNum(ratio, 2)} 倍是和最近 ${p.ma2} 天的均量比，但這 ${p.ma2} 天包含爆量那幾天、均量被拉高了；${fmtNum(x, 2)} 倍是和放量之前比，比較看得出今天的量到底有多大。之後看量有沒有縮回來，就看後面這個數字：降到 1 倍左右，才算回到爆量之前的水準。`;
       if (spike.again != null) {
         wave = `上一波放量從 ${md(candles[spike.start]!.time)} 開始，${md(candles[spike.calm!]!.time)} 起量就回到平常${calmRule}；${md(candles[spike.again]!.time)} 又放大到放量之前的 ${CALM_RATIO} 倍以上，算是新的一波，「再觀察 3～5 個交易日」要從 ${md(candles[spike.again]!.time)} 重新算。現在的 ${p.ma2} 日均量還包含上一波爆量的那幾天，所以還是和上一波放量之前比：${vsBase}`;
       } else if (spike.calm != null) {
@@ -247,7 +247,7 @@ export const volumeIndicator: IndicatorDef<VolumeParams> = {
         if (days >= 3) {
           verdict = locked
             ? `這一波放量下跌從 ${md(candles[ws]!.time)} 算到今天是第 ${days} 個交易日。今天是一字${up ? '漲' : '跌'}停，量少是因為整天鎖在${up ? '漲' : '跌'}停價、成交不了，不能拿來判斷量有沒有縮回來，要看之後幾天的量。`
-            : `這一波放量下跌從 ${md(candles[ws]!.time)} 算到今天是第 ${days} 個交易日（一種常見的做法是觀察 3～5 個交易日）。照那兩個條件看：量${volBack ? `已經縮回放量前均量附近（${fmtNum(x, 1)} 倍，${CALM_RATIO} 倍以內）` : `還沒縮回來（是放量前均量的 ${fmtNum(x, 1)} 倍）`}；這一波收盤最低是 ${md(candles[lowIdx]!.time)} 的 ${fmtNum(candles[lowIdx]!.close)}，${noNewLow ? '之後沒有再創新低' : '今天又創了這一波的新低'}。${volBack && noNewLow ? '兩個條件都符合，照這個經驗看法比較像賣壓出清。' : '兩個條件沒有都符合，照這個看法還不能說賣壓出清。'}${days > 5 ? '已經超過 3～5 天：這個經驗看法只講到 3～5 天，沒有說超過之後怎麼判斷；本站每天還是照同樣兩個條件更新結果，不另外下結論。' : ''}這是經驗上的看法，本站沒有回測過，不保證準。`;
+            : `這一波放量下跌從 ${md(candles[ws]!.time)} 算到今天是第 ${days} 個交易日（一種常見的做法是觀察 3～5 個交易日）。照那兩個條件看：量${volBack ? `已經縮回放量前均量附近（${fmtNum(x, 2)} 倍，${CALM_RATIO} 倍以內）` : `還沒縮回來（是放量前均量的 ${fmtNum(x, 2)} 倍）`}；這一波收盤最低是 ${md(candles[lowIdx]!.time)} 的 ${fmtNum(candles[lowIdx]!.close)}，${noNewLow ? '之後沒有再創新低' : '今天又創了這一波的新低'}。${volBack && noNewLow ? '兩個條件都符合，照這個經驗看法比較像賣壓出清。' : '兩個條件沒有都符合，照這個看法還不能說賣壓出清。'}${days > 5 ? '已經超過 3～5 天：這個經驗看法只講到 3～5 天，沒有說超過之後怎麼判斷；本站每天還是照同樣兩個條件更新結果，不另外下結論。' : ''}這是經驗上的看法，本站沒有回測過，不保證準。`;
         }
       }
     }

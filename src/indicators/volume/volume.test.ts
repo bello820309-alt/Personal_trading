@@ -23,7 +23,7 @@ describe('最近的爆量', () => {
     expect(recentSpike(vols, avg, vols.length)).toEqual({ start: 25, base: 100 });
     const d = volumeIndicator.describe!(c, r, p)!;
     expect(summaryText(d)).toContain('這一波放量從 10/26 開始');
-    expect(summaryText(d)).toContain('放量之前（10/25 為止）20 日均量的 6.0 倍');
+    expect(summaryText(d)).toContain('放量之前（10/25 為止）20 日均量的 6.00 倍');
   });
 
   it('最近 10 天沒有爆量就不提', () => {
@@ -39,7 +39,7 @@ describe('最近的爆量', () => {
     const c = candles(vols);
     const p = { ma1: 5, ma2: 20 };
     const r = volumeIndicator.compute(c, p);
-    expect(summaryText(volumeIndicator.describe!(c, r, p)!)).toContain('20 日均量的 1.1 倍');
+    expect(summaryText(volumeIndicator.describe!(c, r, p)!)).toContain('20 日均量的 1.10 倍');
   });
 
   it('帶入單位時寫出實際的量（台股以張為單位），並說明兩個倍數差在哪裡', () => {
@@ -48,8 +48,8 @@ describe('最近的爆量', () => {
     const p = { ma1: 5, ma2: 20 };
     const r = volumeIndicator.compute(c, p, { volume: { divisor: 1000, unit: '張' } });
     const d = summaryText(volumeIndicator.describe!(c, r, p)!);
-    expect(d).toContain('放量之前（10/25 為止）的 20 日均量是 100 張，今天 600 張，是它的 6.0 倍');
-    expect(d).toContain('6.0 倍是和放量之前比，比較看得出今天的量到底有多大');
+    expect(d).toContain('放量之前（10/25 為止）的 20 日均量是 100 張，今天 600 張，是它的 6.00 倍');
+    expect(d).toContain('6.00 倍是和放量之前比，比較看得出今天的量到底有多大');
   });
 
   // 全年無休的市場（比特幣）：平日量 100、週末量 60，最後一根是 2026/11/07（週六）
@@ -107,7 +107,7 @@ describe('最近的爆量', () => {
     expect(d).toContain('上一波放量從 10/26 開始，10/29 起量就回到平常');
     expect(d).toContain('10/31 又放大到放量之前的 1.3 倍以上，算是新的一波');
     expect(d).toContain('要從 10/31 重新算');
-    expect(d).toContain('放量之前（10/25 為止）20 日均量的 3.0 倍');
+    expect(d).toContain('放量之前（10/25 為止）20 日均量的 3.00 倍');
   });
 
   it('只有一天回到平常不算；回到平常但還沒再放大時也寫出來', () => {
@@ -132,7 +132,7 @@ describe('最近的爆量', () => {
     const p = { ma1: 5, ma2: 20 };
     const d = volumeIndicator.describe!(c, volumeIndicator.compute(c, p), p)!;
     expect(d.headline).toContain('量縮');
-    expect(summaryText(d)).toContain('和放量之前比是 1.1 倍，算是回到平常的水準');
+    expect(summaryText(d)).toContain('和放量之前比是 1.05 倍，算是回到平常的水準');
     expect(summaryText(d)).not.toContain('上漲但量縮，追價意願不強');
     expect(summaryText(d)).toContain('不一定是追價意願不強');
   });
