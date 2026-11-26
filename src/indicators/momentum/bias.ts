@@ -176,7 +176,11 @@ export const biasIndicator: IndicatorDef<BiasParams> = {
         : highTh != null && highTh - v < 1
           ? `現在 ${pct(v)}，比正乖離過大的門檻（${pct(highTh)}）只低一點點，所以還不算。`
           : '';
-    return { tone: 'neutral', headline: head, detail: `${detail}屬於正常範圍。`, notes: notesOf(['離門檻多遠', near && `${near}${rule}`]) };
+    const dist =
+      lowTh != null && highTh != null
+        ? `現在 ${pct(v)}，離負乖離過大的門檻（${pct(lowTh)}）還差 ${fmtNum(v - lowTh, 2)} 個百分點，離正乖離過大的門檻（${pct(highTh)}）還差 ${fmtNum(highTh - v, 2)} 個百分點。`
+        : '';
+    return { tone: 'neutral', headline: head, detail: `${detail}屬於正常範圍。`, notes: notesOf(['離門檻多遠', `${near || dist}${rule}`]) };
   },
   strategy: {
     name: '負乖離過大買、回到均線賣',
