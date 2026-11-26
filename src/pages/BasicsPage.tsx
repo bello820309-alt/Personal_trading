@@ -1,4 +1,5 @@
 import { BASICS, getBasics } from '../content';
+import { RouteCard } from '../components/RouteCard';
 import { Link } from '../router';
 import { NotFound } from './NotFound';
 
@@ -34,6 +35,7 @@ export function BasicsPage({ id }: { id: string }) {
           )}
         </section>
       ))}
+      {a.id === 'getting-started' && <RouteCard />}
       <div className="flex flex-wrap justify-between gap-3 border-t border-line pt-4 text-sm">
         <Link to="/learn" className="text-accent">
           ← 回指標百科

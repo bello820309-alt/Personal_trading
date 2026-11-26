@@ -4,6 +4,7 @@ import { DataTimeNote } from '../components/DataTimeNote';
 import { LineChart, type LineSpec } from '../components/chart/LineChart';
 import { Sparkline } from '../components/Sparkline';
 import { Card, Fold, Notice, PageTitle, Segmented, SectionTitle, Spinner, ToneBadge } from '../components/ui';
+import { RouteCard } from '../components/RouteCard';
 import { StateNotes } from '../components/StateNotes';
 import { ASSETS, DEFAULT_ASSET_ID, getAsset, MARKET_LABELS, type AssetConfig } from '../config/assets';
 import { equityMetrics, periodsPerYear, type EquityMetrics } from '../backtest/metrics';
@@ -32,13 +33,7 @@ export function Dashboard() {
         總覽
       </PageTitle>
 
-      <Notice>
-        第一次使用？先看
-        <Link to="/basics/getting-started" className="mx-1 text-accent">
-          5 分鐘入門
-        </Link>
-        ，了解這個工具能做什麼、建議怎麼學。
-      </Notice>
+      <RouteCard compact />
 
       {problems.length > 0 && (
         <Notice tone="warn">
