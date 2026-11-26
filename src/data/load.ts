@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { getAsset } from '../config/assets';
+import { topUpFunding } from './live/funding';
 import { mergeLiveBars } from './live/merge';
 import { getLiveState, hasLive, useLiveVersion } from './live/store';
 import { parseAssetFile } from './parse';
@@ -161,7 +162,10 @@ const extraCache = new Map<string, CacheEntry<ExtraDataFile>>();
 /** 額外資料（比特幣的情緒、合約、鏈上）；沒有或讀取失敗時是 null，不影響其他功能 */
 export function loadExtra(id: string): Promise<ExtraDataFile | null> {
   if (!getAsset(id)?.extraData) return Promise.resolve(null);
-  return cachedLoad(extraCache, id, () => getJson<ExtraDataFile>(`data/${id}_extra.json`)).catch(() => null);
+  // 比特幣的資金費率：網站上的檔案只到上個月底時，瀏覽器直接向幣安補最近幾天（見 live/funding.ts）
+  return cachedLoad(extraCache, id, () => getJson<ExtraDataFile>(`data/${id}_extra.json`).then((f) => (id === 'BTC' ? topUpFunding(f) : f))).catch(
+    () => null,
+  );
 }
 
 export function useExtra(id: string | undefined): ExtraDataFile | null {

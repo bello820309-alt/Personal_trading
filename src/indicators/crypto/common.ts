@@ -23,7 +23,7 @@ export function freshLast(values: Series, n: number, maxLagBars = 7): number | n
 
 /** 資金費率為什麼會停在上個月底 */
 export const FUNDING_STALE_REASON =
-  '這項資料來自幣安每個月一份的公開檔案，那個月過完才會出來，所以月中會停在上個月底；其他免費來源目前補不到最近幾天。網站每天會自動再抓，有新資料就會補上。';
+  '幣安的資金費率公開檔案一個月一份，那個月過完才有；網站抓資料的伺服器在美國，幣安 API 不回應。瀏覽器會試著直接向幣安補最近幾天，這次沒有補到。';
 
 /**
  * 資料停更時（最新資料離最後一根 K 棒超過 maxLagBars 根），卡片不要只顯示「—」，
