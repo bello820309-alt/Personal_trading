@@ -68,7 +68,7 @@ export function progressText(call: AnalystCall, r: CallResult, year: number): st
         const passed = call.direction === 'down' ? d.pct >= 0 : d.pct <= 0;
         parts.push(
           passed
-            ? `${day(r.last.date)}收盤 ${p(r.last.price)}，已經在${d.label} ${p(d.level)}${w.beyond}，但影片上傳當天和之前的 K 棒不算，從下一根開始算。`
+            ? `${day(r.last.date)}收盤 ${p(r.last.price)}，已經在${d.label} ${p(d.level)}${w.beyond}，但影片上傳時已經開盤的 K 棒不算，從上傳之後才開盤的下一根開始算。`
             : `${day(r.last.date)}收盤 ${p(r.last.price)}，離${d.label} ${p(d.level)}還要再${w.move} ${fmtPct(Math.abs(d.pct), 1, false)}。`,
         );
       }

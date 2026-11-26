@@ -33,9 +33,9 @@ describe('預測的判斷方式和進度（白話）', () => {
     );
   });
 
-  it('上傳當天已經在目標以下：說明那一根還不算', () => {
+  it('上傳時那根 K 棒已經開盤、收盤已經在目標以下：說明那一根還不算', () => {
     const r = evaluatePriceCall(sweep, PUBLISHED, bars(['2026-11-06', 77000, 74000, 74500]));
-    expect(progressText(sweep, r, 2026)).toContain('影片上傳當天和之前的 K 棒不算');
+    expect(progressText(sweep, r, 2026)).toContain('影片上傳時已經開盤的 K 棒不算');
   });
 
   it('有結果之後', () => {
