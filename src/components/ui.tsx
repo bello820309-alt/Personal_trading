@@ -44,7 +44,9 @@ export function Segmented<T extends string>({
             role="radio"
             aria-checked={active}
             onClick={() => onChange(o.value)}
-            className={`shrink-0 whitespace-nowrap rounded-md transition-colors ${size === 'sm' ? 'px-2.5 py-1 text-xs' : 'px-3 py-1.5 text-sm'} ${
+            className={`inline-flex min-h-10 shrink-0 items-center whitespace-nowrap rounded-md transition-colors sm:min-h-0 ${
+              size === 'sm' ? 'px-3 text-sm sm:px-2.5 sm:py-1 sm:text-xs' : 'px-3 text-sm sm:py-1.5'
+            } ${
               active ? 'bg-accent text-accent-contrast font-medium' : 'text-muted hover:text-fg'
             }`}
           >

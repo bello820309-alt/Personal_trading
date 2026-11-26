@@ -176,19 +176,17 @@ function IndicatorLegend({
   t,
   asset,
   onExplain,
-  single,
 }: {
   ci: ChartIndicator;
   index: number;
   t: ChartTheme;
   asset: AssetConfig;
   onExplain?: (key: string) => void;
-  /** 只顯示一行（放在副圖裡面時用，避免擋住線） */
-  single?: boolean;
 }) {
   const lines = orderedLines(ci.result);
   return (
-    <div className={`flex items-center gap-x-2 gap-y-0.5 ${single ? 'flex-nowrap overflow-hidden whitespace-nowrap' : 'flex-wrap'}`}>
+    // 副圖裡的圖例也可以換行：手機很窄時（例如成交量的「均量」）不會被切掉
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
       {onExplain ? (
         <button
           type="button"
@@ -298,7 +296,7 @@ function MeasurePanel({
   const note = !first
     ? '點一下圖表上「起點」的那根 K 棒。'
     : !stats
-      ? '再點一下「終點」的那根 K 棒。'
+      ? '再點一下「終點」的那根 K 棒（按住拖動是預覽，放開後再點一下確定）。'
       : previewing
         ? '預覽中：點一下確定終點。'
         : `＝ ${shortDate(first.time)} 開盤買進、抱到 ${shortDate(last!.endTime ?? last!.time)} ${live ? '現在（還沒收盤）' : '收盤'}的漲跌。`;
@@ -797,7 +795,7 @@ function PriceChartImpl({
             <button
               type="button"
               onClick={() => setMeasure({ on: true, start: null, end: null })}
-              className="inline-flex shrink-0 items-center gap-1 rounded-full border border-line bg-surface px-2.5 py-1 text-xs text-fg hover:bg-surface-2"
+              className="inline-flex min-h-10 shrink-0 items-center gap-1 rounded-full border border-line bg-surface px-3 text-xs text-fg hover:bg-surface-2 sm:min-h-0 sm:px-2.5 sm:py-1"
             >
               <RulerIcon width={14} height={14} className="text-accent" />
               區間漲跌
@@ -807,7 +805,7 @@ function PriceChartImpl({
       )}
       <div className="relative">
         <div ref={containerRef} style={{ height }} className="w-full overflow-hidden rounded-lg border border-line" />
-        {/* 副圖的圖例：只佔一行，放在各副圖的左上角 */}
+        {/* 副圖的圖例：放在各副圖的左上角，手機很窄時可以換行 */}
         {panes.map((ci, k) => {
           const box = boxes[k + 1];
           if (!box) return null;
@@ -817,7 +815,7 @@ function PriceChartImpl({
               className="pointer-events-none absolute left-1.5 z-10 max-w-[calc(100%-4.25rem)] rounded bg-surface/70 px-1.5 text-[11px] leading-snug tabular md:text-xs"
               style={{ top: box.top + 2 }}
             >
-              <IndicatorLegend ci={ci} index={idx} t={t} asset={asset} onExplain={onExplain} single />
+              <IndicatorLegend ci={ci} index={idx} t={t} asset={asset} onExplain={onExplain} />
             </div>
           );
         })}

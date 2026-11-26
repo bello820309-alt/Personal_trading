@@ -11,7 +11,7 @@ import { CloseIcon, InfoIcon, PlusIcon, SlidersIcon } from '../components/icons'
 import { IndicatorPicker } from '../components/IndicatorPicker';
 import { ArrowGuide, LineGuide } from '../components/LineGuide';
 import { ParamEditor } from '../components/ParamEditor';
-import { Card, Fold, Segmented, ToneBadge } from '../components/ui';
+import { Card, Fold, Segmented, Sheet, ToneBadge } from '../components/ui';
 import { StateNotes } from '../components/StateNotes';
 import { stateView } from '../indicators/stateView';
 import { TermText } from '../components/TermText';
@@ -52,6 +52,7 @@ function ChartView({ asset, series }: { asset: AssetConfig; series: AssetSeries 
   const [pickerOpen, setPickerOpen] = useState(false);
   const [explainId, setExplainId] = useState<string | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   // 比特幣的額外資料（情緒、合約、鏈上）；比特幣專屬的指標換到股票時不顯示
   const extra = useExtra(asset.id);
@@ -94,6 +95,100 @@ function ChartView({ asset, series }: { asset: AssetConfig; series: AssetSeries 
   const lastChange = lastPrev ? last.close / lastPrev.close - 1 : null;
   const editing = computed.find((c) => c.def.id === editId);
 
+  /** 週期、區間、指標、訊號這些設定；手機放在「圖表設定」裡（close：開別的視窗前先關掉設定） */
+  const controls = (close?: () => void) => {
+    const then = (f: () => void) => () => {
+      close?.();
+      f();
+    };
+    return (
+      <>
+        <div className="flex flex-wrap items-center gap-2">
+          <Segmented<Timeframe>
+            size="sm"
+            ariaLabel="K 線週期"
+            value={s.timeframe}
+            onChange={(v) => s.update({ timeframe: v })}
+            options={(['D', 'W', 'M'] as const).map((v) => ({ value: v, label: TIMEFRAME_LABELS[v] }))}
+          />
+          <Segmented<RangeKey>
+            size="sm"
+            ariaLabel="顯示區間"
+            value={s.range}
+            onChange={(v) => s.update({ range: v })}
+            options={(['3M', '6M', '1Y', '3Y', '5Y', 'ALL'] as const).map((v) => ({ value: v, label: RANGE_LABELS[v] }))}
+          />
+          <label className="inline-flex min-h-10 cursor-pointer items-center gap-2 pr-1 text-sm text-muted">
+            <input type="checkbox" className="h-5 w-5" checked={s.adjusted} onChange={(e) => s.update({ adjusted: e.target.checked })} />
+            還原權息
+          </label>
+          <label className="inline-flex min-h-10 cursor-pointer items-center gap-2 pr-1 text-sm text-muted">
+            <input type="checkbox" className="h-5 w-5" checked={s.showEvents} onChange={(e) => s.update({ showEvents: e.target.checked })} />
+            標示消息面事件
+          </label>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {computed.map((c) => (
+            <span key={c.def.id} className="inline-flex items-center rounded-full border border-line bg-surface text-sm">
+              <button
+                type="button"
+                onClick={then(() => setExplainId(c.def.id))}
+                className="inline-flex min-h-10 items-center gap-1 pr-1 pl-3 text-fg"
+                aria-label={`${c.def.name} 解說`}
+              >
+                {c.def.shortName}
+                <InfoIcon className="text-muted" width={15} height={15} />
+              </button>
+              <button
+                type="button"
+                onClick={then(() => setEditId(c.def.id))}
+                className="inline-flex min-h-10 min-w-10 items-center justify-center text-muted hover:text-fg"
+                aria-label={`調整 ${c.def.name} 參數`}
+              >
+                <SlidersIcon width={16} height={16} />
+              </button>
+              <button
+                type="button"
+                onClick={() => s.removeIndicator(c.def.id)}
+                className="inline-flex min-h-10 min-w-10 items-center justify-center pr-1 text-muted hover:text-fg"
+                aria-label={`移除 ${c.def.name}`}
+              >
+                <CloseIcon width={16} height={16} />
+              </button>
+            </span>
+          ))}
+          <button
+            type="button"
+            onClick={then(() => setPickerOpen(true))}
+            className="inline-flex min-h-10 items-center gap-1 rounded-full bg-accent px-4 text-sm font-medium text-accent-contrast"
+          >
+            <PlusIcon width={15} height={15} />
+            加入指標
+          </button>
+        </div>
+
+        {withSignals.length > 0 && (
+          <label className="flex flex-wrap items-center gap-2 text-sm text-muted">
+            圖上標示訊號：
+            <select
+              value={signalCi?.def.id ?? 'none'}
+              onChange={(e) => s.update({ signalIndicator: e.target.value })}
+              className="min-h-10 rounded-lg border border-line bg-surface px-2 text-sm text-fg"
+            >
+              {withSignals.map((c) => (
+                <option key={c.def.id} value={c.def.id}>
+                  {c.def.name}
+                </option>
+              ))}
+              <option value="none">不標示</option>
+            </select>
+          </label>
+        )}
+      </>
+    );
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-2">
@@ -117,83 +212,25 @@ function ChartView({ asset, series }: { asset: AssetConfig; series: AssetSeries 
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <Segmented<Timeframe>
-          size="sm"
-          ariaLabel="K 線週期"
-          value={s.timeframe}
-          onChange={(v) => s.update({ timeframe: v })}
-          options={(['D', 'W', 'M'] as const).map((v) => ({ value: v, label: TIMEFRAME_LABELS[v] }))}
-        />
-        <Segmented<RangeKey>
-          size="sm"
-          ariaLabel="顯示區間"
-          value={s.range}
-          onChange={(v) => s.update({ range: v })}
-          options={(['3M', '6M', '1Y', '3Y', '5Y', 'ALL'] as const).map((v) => ({ value: v, label: RANGE_LABELS[v] }))}
-        />
-        <label className="inline-flex items-center gap-1.5 text-sm text-muted">
-          <input type="checkbox" checked={s.adjusted} onChange={(e) => s.update({ adjusted: e.target.checked })} />
-          還原權息
-        </label>
-        <label className="inline-flex items-center gap-1.5 text-sm text-muted">
-          <input type="checkbox" checked={s.showEvents} onChange={(e) => s.update({ showEvents: e.target.checked })} />
-          標示消息面事件
-        </label>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2">
-        {computed.map((c) => (
-          <span key={c.def.id} className="inline-flex items-center rounded-full border border-line bg-surface text-sm">
-            <button
-              type="button"
-              onClick={() => setExplainId(c.def.id)}
-              className="inline-flex items-center gap-1 py-1 pr-1 pl-3 text-fg"
-              aria-label={`${c.def.name} 解說`}
-            >
-              {c.def.shortName}
-              <InfoIcon className="text-muted" width={15} height={15} />
-            </button>
-            <button type="button" onClick={() => setEditId(c.def.id)} className="p-1 text-muted hover:text-fg" aria-label={`調整 ${c.def.name} 參數`}>
-              <SlidersIcon width={15} height={15} />
-            </button>
-            <button
-              type="button"
-              onClick={() => s.removeIndicator(c.def.id)}
-              className="py-1 pr-2 pl-1 text-muted hover:text-fg"
-              aria-label={`移除 ${c.def.name}`}
-            >
-              <CloseIcon width={15} height={15} />
-            </button>
-          </span>
-        ))}
+      {/* 手機：設定收進「圖表設定」，讓 K 線圖在第一個畫面就看得到；平板以上直接排開 */}
+      <div className="flex items-center gap-2 sm:hidden">
+        <span className="min-w-0 flex-1 truncate text-sm text-muted">
+          {TIMEFRAME_LABELS[s.timeframe]}・{RANGE_LABELS[s.range]}・{computed.length} 個指標
+          {s.adjusted ? '・還原權息' : ''}
+        </span>
         <button
           type="button"
-          onClick={() => setPickerOpen(true)}
-          className="inline-flex items-center gap-1 rounded-full bg-accent px-3 py-1 text-sm font-medium text-accent-contrast"
+          onClick={() => setSettingsOpen(true)}
+          className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg border border-line bg-surface px-3 text-sm font-medium text-fg"
         >
-          <PlusIcon width={15} height={15} />
-          加入指標
+          <SlidersIcon width={16} height={16} />
+          設定
         </button>
       </div>
-
-      {withSignals.length > 0 && (
-        <label className="flex flex-wrap items-center gap-2 text-sm text-muted">
-          圖上標示訊號：
-          <select
-            value={signalCi?.def.id ?? 'none'}
-            onChange={(e) => s.update({ signalIndicator: e.target.value })}
-            className="rounded-lg border border-line bg-surface px-2 py-1 text-sm text-fg"
-          >
-            {withSignals.map((c) => (
-              <option key={c.def.id} value={c.def.id}>
-                {c.def.name}
-              </option>
-            ))}
-            <option value="none">不標示</option>
-          </select>
-        </label>
-      )}
+      <div className="hidden space-y-3 sm:block">{controls()}</div>
+      <Sheet open={settingsOpen} onClose={() => setSettingsOpen(false)} title="圖表設定">
+        <div className="space-y-4">{controls(() => setSettingsOpen(false))}</div>
+      </Sheet>
 
       <PriceChart
         candles={candles}
@@ -218,7 +255,7 @@ function ChartView({ asset, series }: { asset: AssetConfig; series: AssetSeries 
         </div>
       )}
       <p className="text-xs leading-relaxed text-muted">
-        小技巧：圖裡每個區塊的左上角會標出線的名稱、顏色和數值；手指按住圖表左右移動，可以看每一天的數值，點名稱可以看解說。兩指可以縮放。按圖表右上方的「區間漲跌」，再點兩根 K 棒（例如 10/1 和 11/1），就能看到這段期間漲跌多少。圖上的箭頭是所選指標的經典訊號，不是投資建議。
+        小技巧：圖裡每個區塊的左上角會標出線的名稱、顏色和數值；手指按住圖表左右移動，可以看每一天的數值，點名稱可以看解說。兩指可以縮放。按圖表右上方的「區間漲跌」，先點起點、再點終點的 K 棒（例如 10/1 和 11/1），就能看到這段期間漲跌多少；手指按住拖動時是預覽，放開後再點一下才會確定終點。圖上的箭頭是所選指標的經典訊號，不是投資建議。
         {asset.historyNote ? ` ${asset.historyNote}` : ''}
       </p>
 
@@ -364,7 +401,11 @@ function ReadingGuide({
                 <div className="flex items-center gap-2">
                   <span className="text-base font-semibold text-fg">{c.def.name}</span>
                   {c.def.shortName !== c.def.name && <span className="text-sm text-muted">{c.def.shortName}</span>}
-                  <button type="button" onClick={() => onExplain(c.def.id)} className="ml-auto shrink-0 text-xs text-accent">
+                  <button
+                    type="button"
+                    onClick={() => onExplain(c.def.id)}
+                    className="-my-2 ml-auto inline-flex min-h-10 shrink-0 items-center px-2 text-sm text-accent"
+                  >
                     看解說
                   </button>
                 </div>
