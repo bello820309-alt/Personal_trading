@@ -19,7 +19,7 @@ export function DataTimeNote({ series, compact }: { series: AssetSeries; compact
           </span>
           <span className="text-fg">即時</span>
           <span>
-            {live.source}・{fmtClock(live.fetchedAt)} 更新{compact ? '' : '（每分鐘自動更新）'}
+            {live.source}・{fmtClock(live.fetchedAt)}（台北）更新{compact ? '' : '，每分鐘自動更新'}
           </span>
         </span>
       );
@@ -27,7 +27,7 @@ export function DataTimeNote({ series, compact }: { series: AssetSeries; compact
     if (!live.fetchedAt && !live.error) {
       return <span>正在向{live.source}取得即時價格…</span>;
     }
-    const asOf = live.fetchedAt ? fmtClock(live.fetchedAt) : fmtDateTime(series.meta.updatedAt);
+    const asOf = `${live.fetchedAt ? fmtClock(live.fetchedAt) : fmtDateTime(series.meta.updatedAt)}（台北）`;
     return (
       <span className="text-hot">
         即時報價暫時無法取得（{live.error}），目前顯示 {asOf} 的資料{compact ? '' : '，會每分鐘自動重試'}

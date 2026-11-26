@@ -87,6 +87,7 @@ export function fmtDateTime(iso: string | null | undefined): string {
 }
 
 const clockFormat = new Intl.DateTimeFormat('zh-TW', {
+  timeZone: 'Asia/Taipei',
   month: '2-digit',
   day: '2-digit',
   hour: '2-digit',
@@ -94,10 +95,14 @@ const clockFormat = new Intl.DateTimeFormat('zh-TW', {
   hour12: false,
 });
 
-/** 毫秒時間 → 「11/02 13:11」（使用裝置的時區） */
+/** 毫秒時間 → 台北時間「11/02 13:11」（不管裝置設在哪個時區，全站的時間都用台北時間） */
 export function fmtClock(ms: number | null | undefined): string {
   if (ms === null || ms === undefined || !Number.isFinite(ms)) return '—';
-  return clockFormat.format(new Date(ms));
+  // 自己組字串：不同瀏覽器在日期和時間之間放的空白不一樣（有的是窄空白），也可能把午夜寫成 24 點
+  const parts = clockFormat.formatToParts(new Date(ms));
+  const part = (type: string) => parts.find((x) => x.type === type)?.value ?? '';
+  const hour = part('hour') === '24' ? '00' : part('hour');
+  return `${part('month')}/${part('day')} ${hour}:${part('minute')}`;
 }
 
 /** K 棒的日期；週 K、月 K 顯示區間，例如 2026/10/26～11/01 */
