@@ -1,8 +1,13 @@
 {
  "schemaVersion": 1,
  "channelId": "UCRvqjQPSeaWn-uEx-w0XOIg",
- "fetchedAt": "2026-11-25T21:34:33.860Z",
+ "fetchedAt": "2026-11-26T21:34:00.642Z",
  "videos": [
+  {
+   "id": "q0KSyXCVBr8",
+   "title": "A Bitcoin Thanksgiving",
+   "published": "2026-11-26T19:48:20.000Z"
+  },
   {
    "id": "mPDwkBYWJo8",
    "title": "Bitcoin and the Realized Price",
