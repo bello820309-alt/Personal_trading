@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { FEATURES, type CheckResult, type Forecast, type HorizonKey } from './analog';
-import { checkPoints, describeNow, historyTail, similarityNote, summarizeCheck, usageTips } from './summary';
+import { checkPoints, describeNow, historyTail, similarityNote, similarityStats, summarizeCheck, usageTips } from './summary';
 
 const mk = (key: HorizonKey, label: string, hit: number, alwaysUp: number, coverage: number): CheckResult => ({
   horizon: { key, label, bars: 21 },
@@ -159,3 +159,21 @@ describe('相似的日子到底像不像', () => {
     expect(similarityNote(fakeForecast(now, analogs, sd), FEATURES)).toBeNull();
   });
 });
+
+describe('相似度的統計包含表上的每一項', () => {
+  it('RSI、波動這種不是百分比的項目也算進去', () => {
+    const labels = [
+      { label: '近 1 週漲跌', kind: 'pct' },
+      { label: 'RSI(14)', kind: 'num' },
+      { label: '波動比', kind: 'ratio' },
+    ];
+    const f = { features: [0, 50, 2], featureSd: [0.1, 10, 0.5], analogFeatures: [[0, 50, 1], [0, 50, 1]] } as unknown as Parameters<typeof similarityStats>[0];
+    const st = similarityStats(f, labels);
+    // 波動比差 (2 − 1) ÷ 0.5 = 2 把尺：要被算到，而且是差最多的
+    expect(st.over).toBe(1);
+    expect(st.worst!.j).toBe(2);
+    expect(st.worst!.z).toBeCloseTo(2, 10);
+    expect(similarityNote(f, labels)).toContain('現在是 2.00 倍，相似日子的平均是 1.00 倍');
+  });
+});
+

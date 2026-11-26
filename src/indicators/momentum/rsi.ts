@@ -100,7 +100,8 @@ export function divergenceText(candles: readonly { time: string; close: number }
   const md = (i: number) => `${Number(candles[i]!.time.slice(5, 7))}/${Number(candles[i]!.time.slice(8, 10))}`;
   const p1 = candles[i1]!.close, p0 = candles[i0]!.close, r1 = line[i1]!, r0 = line[i0]!;
   const word = side === 'low' ? '低' : '高';
-  const head = `最近 10 根 K 棒的${word}點（轉折）是 ${md(i1)} 的 ${fmtNum(p1)}（${name} ${fmtNum(r1, 1)}）；再往前 11～40 根之間的${word}點（比前後各 3 根都${word}的轉折）是 ${md(i0)} 的 ${fmtNum(p0)}（${name} ${fmtNum(r0, 1)}）。`;
+  const edge = n - 1 - i1 < 3 ? `（${md(i1)} 之後只有 ${n - 1 - i1} 根 K 棒，右邊還不到 3 根，先只看有的幾根；之後幾天如果價格又比它更${word}，它就不算轉折了）` : '';
+  const head = `最近 10 根 K 棒的${word}點（轉折）是 ${md(i1)} 的 ${fmtNum(p1)}（${name} ${fmtNum(r1, 1)}）${edge}；再往前 11～40 根之間的${word}點（比前後各 3 根都${word}的轉折）是 ${md(i0)} 的 ${fmtNum(p0)}（${name} ${fmtNum(r0, 1)}）。`;
   const priceNew = side === 'low' ? p1 < p0 : p1 > p0;
   const lineNew = side === 'low' ? r1 < r0 : r1 > r0;
   const verdict = priceNew && !lineNew

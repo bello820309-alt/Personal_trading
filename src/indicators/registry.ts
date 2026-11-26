@@ -152,11 +152,20 @@ function withLastSignal(notes: StateSummary['notes'], ci: ComputedIndicator, can
   const md = `${Number(t.slice(5, 7))}/${Number(t.slice(8, 10))}`;
   const ago = candles.length - 1 - last.index;
   const nth = ago + 1;
+  // 回測持有中時，再出現的買進訊號不會再買一次：還沒賣出的那一筆，是最後一次賣出之後的「第一個」買進訊號
+  let entry = -1;
+  if (last.side === 'buy') {
+    for (let k = sigs.length - 1; k >= 0 && sigs[k]!.side === 'buy'; k--) entry = k;
+  }
+  const first = entry >= 0 ? sigs[entry]! : null;
+  const fmd = (i: number) => `${Number(candles[i]!.time.slice(5, 7))}/${Number(candles[i]!.time.slice(8, 10))}`;
+  const holding =
+    first && first !== last
+      ? `回測在 ${fmd(first.index)} 的買進訊號之後就一直持有（之後沒有賣出訊號），所以回測表裡「還沒賣出」的那一筆，是 ${fmd(first.index)} 訊號、隔天開盤買的；${md} 這次是持有中又出現的買進訊號，回測不會再買一次。`
+      : '這是最近一次訊號，之後還沒有賣出訊號，所以照回測的規則，這一筆現在還沒賣出（回測表裡的「還沒賣出」就是它）。';
   const text =
     `${ago === 0 ? `今天（${md}）` : `${md}`}出現${last.side === 'buy' ? '買進' : '賣出'}訊號（${last.label}）${ago === 0 ? '' : `，算到今天是第 ${nth} 根 K 棒（訊號那天算第 1 根）`}。` +
-    (last.side === 'buy'
-      ? '這是最近一次訊號，之後還沒有賣出訊號，所以照回測的規則，這一筆現在還沒賣出（回測表裡的「還沒賣出」就是它）。'
-      : '這是最近一次訊號，照回測的規則現在沒有持有。') +
+    (last.side === 'buy' ? holding : '這是最近一次訊號，照回測的規則現在沒有持有。') +
     '照規則是訊號那天收盤後，隔天開盤買賣。';
   return [...(notes ?? []), { title: '最近一次回測訊號', text }];
 }

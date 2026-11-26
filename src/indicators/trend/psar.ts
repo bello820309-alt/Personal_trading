@@ -1,6 +1,7 @@
+import { dmiIndicator } from './dmi';
 import { fmtNum, fmtPct } from '../../data/format';
 import { nulls, scanSignals } from '../math/core';
-import { getLine, type ColorRole, type IndicatorDef } from '../types';
+import { getLine, type ColorRole, type IndicatorDef, notesOf } from '../types';
 
 export type PsarParams = { step: number; max: number };
 
@@ -91,12 +92,45 @@ export const psarIndicator: IndicatorDef<PsarParams> = {
     if (s == null || t == null) return null;
     const close = candles[n - 1]!.close;
     const up = t > 0;
+    // 和 DMI 方向相反、而且 ADX 25 以上（趨勢明確）時：寫出過去這種翻轉有幾次很快又翻回去
+    const dmi = dmiIndicator.compute(candles, dmiIndicator.defaults);
+    const adx = getLine(dmi, 'adx');
+    const pdi = getLine(dmi, 'pdi');
+    const mdi = getLine(dmi, 'mdi');
+    const tr = getLine(r, 'trend');
+    const against = (i: number, dir: number) => {
+      const a = adx[i], p = pdi[i], m = mdi[i];
+      return a != null && p != null && m != null && a >= 25 && (dir > 0 ? m > p : p > m);
+    };
+    let conflict = '';
+    if (against(n - 1, t)) {
+      const AFTER = 10;
+      let total = 0;
+      let back = 0;
+      for (let i = 1; i + AFTER < n; i++) {
+        if (tr[i] == null || tr[i - 1] == null || tr[i] === tr[i - 1] || tr[i] !== t || !against(i, t)) continue;
+        total++;
+        for (let j = i + 1; j <= i + AFTER; j++) {
+          if (tr[j] !== t) {
+            back++;
+            break;
+          }
+        }
+      }
+      conflict =
+        `現在 ADX 是 ${fmtNum(adx[n - 1]!, 1)}（25 以上，趨勢明確），DMI 是${t > 0 ? '−DI 大於 +DI（下跌力道比較大）' : '+DI 大於 −DI（上漲力道比較大）'}，和 SAR 的方向相反。SAR 翻轉之後，加速因子從 0.02 重新開始、點離價格很近，很容易被碰到又翻回去。` +
+        (total >= 5
+          ? `這份資料裡，像這樣在趨勢明確、方向和 DMI 相反時翻${t > 0 ? '多' : '空'}的有 ${total} 次，其中 ${back} 次在 ${AFTER} 根 K 棒內又翻回去。`
+          : '') +
+        '照總覽「意見不一致時」的說法，趨勢指標彼此方向相反，代表方向還不明確。';
+    }
     return {
       tone: up ? 'bullish' : 'bearish',
       headline: up ? 'SAR 在價格下方（多方）' : 'SAR 在價格上方（空方）',
       detail: `SAR = ${fmtNum(s)}，距離收盤價 ${fmtPct(s / close - 1)}。${
         up ? '盤中最低價跌破這個價位就會翻空（不用等收盤），常被當成「移動停損」的參考。' : '盤中最高價漲過這個價位就會翻多（不用等收盤）。'
       }`,
+      notes: notesOf(['和 DMI 方向相反時', conflict]),
     };
   },
   strategy: {

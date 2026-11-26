@@ -99,7 +99,8 @@ export function similarityStats(f: Forecast, labels: readonly { label: string; k
   let over = 0;
   f.features.forEach((now, j) => {
     const sd = f.featureSd[j];
-    if (labels[j]?.kind !== 'pct' || !sd) return;
+    // 表上的每一項都算（包含 RSI、波動），說法才會和表一致
+    if (!labels[j] || !sd) return;
     const avg = f.analogFeatures.reduce((a, row) => a + row[j]!, 0) / f.analogFeatures.length;
     const z = Math.abs(now - avg) / sd;
     if (z >= 1) over++;
@@ -113,7 +114,9 @@ export function similarityNote(f: Forecast, labels: readonly { label: string; ki
   const st = similarityStats(f, labels);
   const w = st.worst;
   if (!st.warn || !w) return null;
-  return `現在的狀況在過去很少見，最像的日子其實也沒有很像：例如「${labels[w.j]!.label}」現在是 ${fmtPct(f.features[w.j]!)}，相似日子的平均是 ${fmtPct(w.avg)}，差了 ${fmtNum(w.z, 2)} 把尺（1 把尺＝1 個標準差）。相似的日子不夠像時，它們之後的走法參考價值比較低，實際的漲跌可能比預測範圍更極端。`;
+  const kind = labels[w.j]!.kind;
+  const fv = (v: number) => (kind === 'pct' ? fmtPct(v) : kind === 'ratio' ? `${fmtNum(v, 2)} 倍` : fmtNum(v, 1));
+  return `現在的狀況在過去很少見，最像的日子其實也沒有很像：例如「${labels[w.j]!.label}」現在是 ${fv(f.features[w.j]!)}，相似日子的平均是 ${fv(w.avg)}，差了 ${fmtNum(w.z, 2)} 把尺（1 把尺＝1 個標準差）。相似的日子不夠像時，它們之後的走法參考價值比較低，實際的漲跌可能比預測範圍更極端。`;
 }
 
 export type CheckTone = 'good' | 'meh' | 'bad';
