@@ -120,6 +120,8 @@ export interface IndicatorResult {
   legendOrder?: string[];
   /** 比最後一根 K 棒還新、已經公布的資料（例如當天早上公布的恐懼貪婪指數），給白話說明用 */
   newer?: { date: string; value: number };
+  /** 外部資料（比特幣的情緒、合約、鏈上）實際的最後一天；對齊 K 棒時會往後沿用最多 3 天，停更時要用這個日期 */
+  dataEnd?: string | null;
   /** 成交量的顯示單位（計算時有帶入才有） */
   volumeUnit?: { divisor: number; unit: string };
 }
@@ -150,6 +152,8 @@ export interface StateSummary {
   notes?: StateNote[];
   /** 卡片第一行的一句白話（不帶數字和術語）；有的話，標題的數字和結論放進展開區 */
   plain?: string;
+  /** 資料停更：卡片的標籤改成「資料舊」 */
+  stale?: boolean;
 }
 
 /** 組出補充說明的清單：沒有內容的自動略過 */

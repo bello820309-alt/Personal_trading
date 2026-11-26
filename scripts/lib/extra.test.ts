@@ -4,6 +4,7 @@ import {
   dailyAverage,
   mergeDaily,
   monthsBetween,
+  parseBinanceFundingApi,
   parseBinanceFundingCsv,
   parseCoinMetrics,
   parseCoinMetricsFunding,
@@ -85,6 +86,18 @@ describe('資金費率', () => {
     expect(daily.v[0]).toBeCloseTo(0.0002, 12);
     expect(daily.v[1]).toBeCloseTo(-0.0002, 12);
     expect(parseBinanceFundingCsv('1704067200000,8,0.0001')).toEqual([[1704067200000, 0.0001]]);
+  });
+  it('幣安 API 的格式（補月檔之後最近幾天）', () => {
+    const pts = parseBinanceFundingApi([
+      { symbol: 'BTCUSDT', fundingTime: 1704067200000, fundingRate: '0.00010000', markPrice: '42000' },
+      { symbol: 'BTCUSDT', fundingTime: 1704096000000, fundingRate: '-0.00002000', markPrice: '42100' },
+    ]);
+    expect(pts).toEqual([
+      [1704067200000, 0.0001],
+      [1704096000000, -0.00002],
+    ]);
+    expect(dailyAverage(pts).t).toEqual(['2024-01-01']);
+    expect(parseBinanceFundingApi({ code: 0, msg: 'restricted' } as unknown as unknown[])).toEqual([]);
   });
   it('Coin Metrics 的格式', () => {
     const pts = parseCoinMetricsFunding([{ market: 'binance-BTCUSDT-future', time: '2024-01-01T08:00:00.000000000Z', rate: '0.0001' }]);

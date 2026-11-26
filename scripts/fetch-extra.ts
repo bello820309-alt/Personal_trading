@@ -3,8 +3,9 @@
  * 由 GitHub Actions 在抓完行情後執行，也可以手動執行：npm run fetch-extra
  *
  * - 恐懼貪婪指數：alternative.me（免費、不需金鑰，2018 年起）
- * - 資金費率：Coin Metrics 社群版；不行的話改用幣安公開資料的月檔（data.binance.vision）
- *   （幣安的 API 會擋美國的伺服器，GitHub Actions 的伺服器在美國，所以不直接呼叫）
+ * - 資金費率：Coin Metrics 社群版（2026/11 起免費版已不提供）；再用幣安公開資料的月檔（data.binance.vision）。
+ *   月檔要那個月過完才有，這個月的部分先試日檔，再試幣安 API（幣安 API 可能會擋美國的伺服器，
+ *   GitHub Actions 的伺服器在美國；擋掉就只到上個月底，網站上的卡片會寫「資料停在 …」）
  * - 鏈上資料：Coin Metrics 社群版 API（免費、不需金鑰，非商業用途）
  *
  * 任何一項抓取或檢查失敗，都保留上一版的那一項資料，不會影響其他項目。
@@ -17,6 +18,7 @@ import {
   dailyAverage,
   mergeDaily,
   monthsBetween,
+  parseBinanceFundingApi,
   parseBinanceFundingCsv,
   parseCoinMetrics,
   parseCoinMetricsFunding,
@@ -144,13 +146,79 @@ async function fetchFunding(prev: DailySeries | null): Promise<Fetched> {
       }
     }
     console.log(`  · 幣安公開資料：讀了 ${got} 個月檔`);
-    if (got > 0) {
+    // 沒有新的月檔（例如上一版已經用 API 補到這個月）時，沿用上一版，後面再補最近幾天
+    if (got > 0 || base.t.length) {
       series = base;
       sources.push('幣安公開資料（data.binance.vision 月檔）');
     }
   }
+  // 月檔只到上個月底：這個月的部分先試幣安公開資料的日檔，再試幣安 API（API 可能擋美國的伺服器）
+  if (series.t.length) {
+    const tail = await fundingTail(series.t[series.t.length - 1]!);
+    if (tail) {
+      series = mergeDaily(series, tail.series);
+      sources.push(tail.source);
+    }
+  }
   if (!series.t.length) throw new Error('所有來源都抓不到資金費率');
   return { series, source: sources.join('＋') };
+}
+
+const DAY_MS = 86400000;
+
+/** 從 after 的隔天補到昨天（UTC）：日檔或 API，哪個能用就用哪個；都不行回傳 null */
+async function fundingTail(after: string): Promise<Fetched | null> {
+  const from = Date.parse(`${after}T00:00:00Z`) + DAY_MS;
+  const today = Date.parse(`${new Date().toISOString().slice(0, 10)}T00:00:00Z`);
+  if (from >= today) return null;
+
+  // 1. 日檔：data.binance.vision/data/futures/um/daily/fundingRate/…（不一定有提供，第一個就 404 表示沒有）
+  let daily: DailySeries = { t: [], v: [] };
+  let got = 0;
+  for (let ms = from; ms < today; ms += DAY_MS) {
+    const d = new Date(ms).toISOString().slice(0, 10);
+    const url = `https://data.binance.vision/data/futures/um/daily/fundingRate/BTCUSDT/BTCUSDT-fundingRate-${d}.zip`;
+    try {
+      const zip = await get(url, 'buffer');
+      daily = mergeDaily(daily, dailyAverage(parseBinanceFundingCsv(readFirstZipEntry(zip).data.toString('utf8'))));
+      got++;
+    } catch (e) {
+      if (got === 0) {
+        console.log(`  · 幣安公開資料的日檔：${describeError(e)}（${d}），改試 API`);
+        break;
+      }
+      // 最近一兩天的日檔可能還沒出來
+      if (e instanceof HttpError && e.status === 404) break;
+      console.log(`  · 幣安公開資料的日檔 ${d}：${describeError(e)}`);
+      break;
+    }
+  }
+  if (got > 0) {
+    console.log(`  · 幣安公開資料：讀了 ${got} 個日檔（到 ${daily.t[daily.t.length - 1]}）`);
+    return { series: daily, source: '幣安公開資料（日檔）' };
+  }
+
+  // 2. 幣安 API：一次最多 1000 筆（每 8 小時一筆，約 333 天）
+  try {
+    const rows = (await get(`https://fapi.binance.com/fapi/v1/fundingRate?symbol=BTCUSDT&startTime=${from}&limit=1000`, 'json')) as unknown[];
+    const s = dailyAverage(parseBinanceFundingApi(rows));
+    // 只用已經過完的日子（今天還沒收完三筆）
+    const done = { t: [] as string[], v: [] as number[] };
+    s.t.forEach((t, i) => {
+      if (Date.parse(`${t}T00:00:00Z`) < today) {
+        done.t.push(t);
+        done.v.push(s.v[i]!);
+      }
+    });
+    if (done.t.length) {
+      console.log(`  · 幣安 API：補了 ${done.t.length} 天（到 ${done.t[done.t.length - 1]}）`);
+      return { series: done, source: '幣安 API（最近幾天）' };
+    }
+    console.log('  · 幣安 API：沒有新的資料');
+  } catch (e) {
+    console.log(`  · 幣安 API 無法取得：${describeError(e)}`);
+  }
+  return null;
 }
 
 interface Task {

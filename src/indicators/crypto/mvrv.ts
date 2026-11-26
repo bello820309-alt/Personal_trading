@@ -3,7 +3,7 @@ import { crossOver, crossUnder, scanSignals } from '../math/core';
 import { afterStats, afterText, longestRun } from '../math/after';
 import { getLine, type IndicatorDef, notesOf } from '../types';
 import { lastValid } from '../math/core';
-import { extraSeries, freshLast } from './common';
+import { extraEnd, extraSeries, freshLast, staleSummary } from './common';
 
 export type MvrvParams = { low: number; high: number };
 
@@ -23,6 +23,7 @@ export const mvrvIndicator: IndicatorDef<MvrvParams> = {
   defaults: { low: 1, high: 3.5 },
   compute(candles, p, ctx) {
     return {
+      dataEnd: extraEnd(ctx, 'mvrv'),
       lines: [{ key: 'mvrv', label: 'MVRV', values: extraSeries(ctx, 'mvrv', candles), kind: 'line', color: 's5', width: 2 }],
       levels: [
         { value: p.high, label: `高估 ${p.high}`, color: 'hot' },
@@ -42,7 +43,7 @@ export const mvrvIndicator: IndicatorDef<MvrvParams> = {
   },
   describe(candles, r, p) {
     const x = freshLast(getLine(r, 'mvrv'), candles.length);
-    if (x === null) return null;
+    if (x === null) return staleSummary(getLine(r, 'mvrv'), candles, undefined, r.dataEnd);
     const v = fmtNum(x, 2);
     // 價格 ÷ MVRV ＝ 大家平均的買進成本（實現價格）
     const at = lastValid(getLine(r, 'mvrv'));

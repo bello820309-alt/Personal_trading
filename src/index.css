@@ -17,6 +17,7 @@
   --red: #f05252;
   --green: #22c55e;
   --hot: #f59e0b;
+  --warn: #facc15;
   --cold: #38bdf8;
   color-scheme: dark;
 }
@@ -33,6 +34,7 @@
   --red: #dc2626;
   --green: #16a34a;
   --hot: #d97706;
+  --warn: #a16207;
   --cold: #0284c7;
   color-scheme: light;
 }
@@ -60,6 +62,7 @@
   --color-up: var(--up);
   --color-down: var(--down);
   --color-hot: var(--hot);
+  --color-warn: var(--warn);
   --color-cold: var(--cold);
   --font-sans: system-ui, -apple-system, 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', 'Heiti TC', sans-serif;
 }

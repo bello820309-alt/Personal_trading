@@ -80,6 +80,15 @@ export function parseBinanceFundingCsv(csv: string): [number, number][] {
   return out;
 }
 
+/** 幣安 API /fapi/v1/fundingRate：[{ symbol, fundingTime: 1700000000000, fundingRate: "0.00010000", markPrice }] */
+export function parseBinanceFundingApi(rows: unknown[]): [number, number][] {
+  if (!Array.isArray(rows)) return [];
+  return rows.map((r) => {
+    const row = r as Record<string, string | number>;
+    return [Number(row.fundingTime), Number(row.fundingRate)];
+  });
+}
+
 /** Coin Metrics 的資金費率：{ time, rate }，rate 是每一期（通常 8 小時）的費率 */
 export function parseCoinMetricsFunding(rows: unknown[]): [number, number][] {
   return rows.map((r) => {

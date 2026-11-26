@@ -3,11 +3,21 @@ import { ASSETS } from '../config/assets';
 import { fmtDate, fmtDateTime } from '../data/format';
 import { lastDate } from '../data/extra';
 import { useExtra, useManifest } from '../data/load';
+import { FUNDING_STALE_REASON } from '../indicators/crypto/common';
 import { getIndicator } from '../indicators/registry';
 import { Link } from '../router';
 import { DEFAULT_SETTINGS, useSettings, type ColorMode, type ThemeMode } from '../store/settings';
 
 const STATUS_LABEL = { ok: '正常', stale: '更新失敗（顯示舊資料）', missing: '尚無資料' } as const;
+
+/** 額外資料的最新日期比抓取時間舊超過幾天，就標成黃色 */
+const STALE_DAYS = 3;
+
+function lagDays(last: string | null, fetchedAt: string): number | null {
+  if (!last) return null;
+  const ms = Date.parse(fetchedAt) - Date.parse(`${last}T00:00:00Z`);
+  return Number.isFinite(ms) ? Math.floor(ms / 86400000) : null;
+}
 
 /** 比特幣的額外資料（情緒、合約、鏈上）：來源與最新日期 */
 function ExtraDataTable() {
@@ -24,15 +34,26 @@ function ExtraDataTable() {
           </tr>
         </thead>
         <tbody>
-          {Object.entries(extra.series).map(([key, s]) => (
-            <tr key={key} className="border-t border-line">
-              <td className="py-1.5 pr-2 text-fg">{s.label}</td>
-              <td className="py-1.5 pr-2 text-xs text-muted">{s.source}</td>
-              <td className="py-1.5 text-fg tabular">{fmtDate(lastDate(s))}</td>
-            </tr>
-          ))}
+          {Object.entries(extra.series).map(([key, s]) => {
+            const lag = lagDays(lastDate(s), extra.updatedAt);
+            const stale = lag !== null && lag > STALE_DAYS;
+            return (
+              <tr key={key} className={`border-t border-line ${stale ? 'bg-warn/10' : ''}`}>
+                <td className="py-1.5 pr-2 text-fg">{s.label}</td>
+                <td className="py-1.5 pr-2 text-xs text-muted">
+                  {s.source}
+                  {stale && <span className="mt-0.5 block text-warn">{key === 'funding' ? FUNDING_STALE_REASON : '資料來源最近沒有更新，網站每天會自動再抓。'}</span>}
+                </td>
+                <td className={`py-1.5 tabular ${stale ? 'font-medium text-warn' : 'text-fg'}`}>
+                  {fmtDate(lastDate(s))}
+                  {stale && <span className="block text-xs">停更 {lag} 天</span>}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
+      <p className="mt-1.5 text-xs text-muted">黃色：最新資料比上次抓取的時間舊超過 {STALE_DAYS} 天，用到這項資料的指標卡會寫「資料停在 …」，不拿舊資料說「現在」。</p>
     </div>
   );
 }

@@ -64,10 +64,12 @@ const TONE_CLASS: Record<Tone, string> = {
   neutral: 'bg-surface-2 text-muted',
 };
 
-export function ToneBadge({ tone }: { tone: Tone }) {
+export function ToneBadge({ tone, stale = false }: { tone: Tone; stale?: boolean }) {
   return (
-    <span className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-xs font-medium ${TONE_CLASS[tone]}`}>
-      {TONE_LABELS[tone]}
+    <span
+      className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-xs font-medium ${stale ? 'bg-warn/15 text-warn' : TONE_CLASS[tone]}`}
+    >
+      {stale ? '資料舊' : TONE_LABELS[tone]}
     </span>
   );
 }

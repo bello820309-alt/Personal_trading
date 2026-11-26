@@ -145,7 +145,7 @@ function StateItem({ def, d }: { def: IndicatorDef; d: StateSummary | null }) {
   return (
     <li className="text-sm">
       <div className="flex items-center gap-2">
-        {d ? <ToneBadge tone={d.tone} /> : <span className="text-xs text-muted">—</span>}
+        {d ? <ToneBadge tone={d.tone} stale={d.stale} /> : <span className="text-xs text-muted">—</span>}
         <Link to={`/learn/${def.id}`} className="font-medium text-fg hover:text-accent">
           {def.name}
         </Link>

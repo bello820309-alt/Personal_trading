@@ -380,7 +380,7 @@ function ReadingGuide({
                   {d ? (
                     <>
                       <div className="flex flex-wrap items-center gap-2">
-                        <ToneBadge tone={d.tone} />
+                        <ToneBadge tone={d.tone} stale={d.stale} />
                         <span className="text-sm font-medium text-fg">現在：{stateView(d).first}</span>
                       </div>
                       {stateView(d).detail && (

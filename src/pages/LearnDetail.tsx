@@ -254,7 +254,7 @@ function LiveChart({ def, asset, series }: { def: IndicatorDef; asset: AssetConf
       {d && (
         <div className="mt-3 rounded-lg border border-line px-3 py-2">
           <div className="flex items-center gap-2">
-            <ToneBadge tone={d.tone} />
+            <ToneBadge tone={d.tone} stale={d.stale} />
             <span className="font-medium">{asset.name}現在：{stateView(d).first}</span>
           </div>
           {stateView(d).detail && (

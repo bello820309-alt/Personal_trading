@@ -3,7 +3,7 @@ import type { ExtraKey } from '../../data/extra';
 import { crossOver, crossUnder, scanSignals, sma } from '../math/core';
 import { afterStats, afterText } from '../math/after';
 import { getLine, type IndicatorDef, notesOf } from '../types';
-import { extraSeries, freshLast } from './common';
+import { extraEnd, extraSeries, freshLast, staleSummary } from './common';
 
 export type OnchainTrendParams = { fast: number; slow: number };
 
@@ -48,6 +48,7 @@ function onchainTrend(opts: {
     compute(candles, p, ctx) {
       const raw = extraSeries(ctx, opts.key, candles).map((x) => (x === null ? null : opts.scale(x)));
       return {
+        dataEnd: extraEnd(ctx, opts.key),
         lines: [
           { key: 'fast', label: `MA${p.fast}`, values: sma(raw, p.fast), kind: 'line', color: 'accent', width: 2 },
           { key: 'slow', label: `MA${p.slow}`, values: sma(raw, p.slow), kind: 'line', color: 'hot', width: 1 },
@@ -62,7 +63,7 @@ function onchainTrend(opts: {
     describe(candles, r) {
       const f = freshLast(getLine(r, 'fast'), candles.length);
       const s = freshLast(getLine(r, 'slow'), candles.length);
-      if (f === null || s === null) return null;
+      if (f === null || s === null) return staleSummary(getLine(r, 'fast'), candles, undefined, r.dataEnd);
       const diff = s > 0 ? f / s - 1 : 0;
       const v = `${opts.what}的短均線 ${fmtCompact(f)}，比長均線${diff >= 0 ? '高' : '低'} ${fmtNum(Math.abs(diff) * 100, 1)}%`;
       // 差不到 1% 時兩條線幾乎黏在一起，不要說成明顯的轉強或轉弱

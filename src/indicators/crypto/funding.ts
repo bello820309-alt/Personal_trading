@@ -2,7 +2,7 @@ import { fmtNum } from '../../data/format';
 import { crossOver, crossUnder, scanSignals, sma } from '../math/core';
 import { afterStats, afterText } from '../math/after';
 import { getLine, type ColorRole, type IndicatorDef, notesOf } from '../types';
-import { extraSeries, freshLast } from './common';
+import { extraEnd, extraSeries, freshLast, FUNDING_STALE_REASON, staleSummary } from './common';
 
 export type FundingParams = { smooth: number; buyBelow: number; sellAbove: number };
 
@@ -26,6 +26,7 @@ export const fundingIndicator: IndicatorDef<FundingParams> = {
     const pct = extraSeries(ctx, 'funding', candles).map((x) => (x === null ? null : x * 100));
     const colors: (ColorRole | null)[] = pct.map((x) => (x === null ? null : x >= 0 ? 'hot' : 'cold'));
     return {
+      dataEnd: extraEnd(ctx, 'funding'),
       lines: [
         { key: 'funding', label: '每日資金費率', values: pct, kind: 'histogram', color: 'hot', colors, unit: 'percent' },
         { key: 'avg', label: `${p.smooth} 日平均`, values: sma(pct, p.smooth), kind: 'line', color: 'accent', width: 2, unit: 'percent' },
@@ -50,7 +51,7 @@ export const fundingIndicator: IndicatorDef<FundingParams> = {
   },
   describe(candles, r, p) {
     const x = freshLast(getLine(r, 'avg'), candles.length);
-    if (x === null) return null;
+    if (x === null) return staleSummary(getLine(r, 'funding'), candles, FUNDING_STALE_REASON, r.dataEnd);
     const v = `${fmtNum(x, 3)}%`;
     // 過去到過這麼極端之後怎麼走：用資料算，不憑印象
     const avg = getLine(r, 'avg');

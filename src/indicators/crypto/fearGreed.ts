@@ -4,7 +4,7 @@ import { afterStats, afterText, longestRun } from '../math/after';
 import { getLine, notesOf, type IndicatorDef } from '../types';
 import { lastValid } from '../math/core';
 import { lastDate, valueOn } from '../../data/extra';
-import { extraSeries, freshLast } from './common';
+import { extraSeries, freshLast, staleSummary } from './common';
 
 export type FearGreedParams = { buyBelow: number; sellAbove: number };
 
@@ -32,6 +32,7 @@ export const fearGreedIndicator: IndicatorDef<FearGreedParams> = {
       lastBar && newestDay && newestValue !== null && newestDay > (lastBar.endTime ?? lastBar.time) ? { date: newestDay, value: newestValue } : undefined;
     return {
       ...(newer ? { newer } : {}),
+      dataEnd: newestDay,
       lines: [{ key: 'fng', label: '恐懼貪婪指數', values: extraSeries(ctx, 'fng', candles), kind: 'line', color: 's4', width: 2 }],
       levels: [
         { value: p.sellAbove, label: `極度貪婪 ${p.sellAbove}`, color: 'hot' },
@@ -53,7 +54,7 @@ export const fearGreedIndicator: IndicatorDef<FearGreedParams> = {
   },
   describe(candles, r, p) {
     const x = freshLast(getLine(r, 'fng'), candles.length);
-    if (x === null) return null;
+    if (x === null) return staleSummary(getLine(r, 'fng'), candles, undefined, r.dataEnd);
     const v = fmtNum(x, 0);
     const at = lastValid(getLine(r, 'fng'));
     const when = at ? candles[at.index]?.time : undefined;
