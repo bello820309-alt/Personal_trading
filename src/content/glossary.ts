@@ -40,4 +40,10 @@ export const GLOSSARY: GlossaryTerm[] = [
   { term: '複委託', text: '透過台灣的券商下單買賣國外股票（例如 VOO）。通常有手續費和最低收費。' },
   { term: '標準差', en: 'Standard Deviation', text: '統計上衡量資料分散程度的數字。布林通道用它衡量價格的波動。', related: [{ type: 'indicator', id: 'bollinger' }] },
   { term: 'Wilder 平滑', text: '一種指數平滑方法，每天新資料占 1/N。RSI、ATR、DMI 都使用這種方法。' },
+  { term: 'DIF、訊號線、柱狀體（OSC）', en: 'MACD', text: 'MACD 的三個部分：DIF 是短期和長期均線（EMA）的差距；訊號線（台灣也叫 MACD 線）是 DIF 的平均；柱狀體是 DIF 減掉訊號線。DIF 在 0 以上代表短期均線比長期高。', related: [{ type: 'indicator', id: 'macd' }] },
+  { term: '%B', en: 'Percent B', text: '收盤價在布林通道裡的位置：1 是上軌、0 是下軌、0.5 是中軌。大於 1 代表衝出上軌，小於 0 代表跌出下軌。', related: [{ type: 'indicator', id: 'bollinger' }] },
+  { term: '+DI、−DI、ADX', en: 'DMI', text: '趨向指標的三條線：+DI 是上漲的力道，−DI 是下跌的力道，ADX 是趨勢有多強（不分漲跌）。本站把 ADX 25 以上算趨勢明確、20 以下算盤整。', related: [{ type: 'indicator', id: 'dmi' }] },
+  { term: '先行帶、雲', en: 'Ichimoku', text: '一目均衡表的兩條先行帶（A、B）往未來畫，兩條之間塗色的區域叫「雲」。先行帶 A 在上面是多方雲，B 在上面是空方雲；價格在雲上面算偏多、在雲下面算偏空。', related: [{ type: 'indicator', id: 'ichimoku' }] },
+  { term: '樞軸點（P、S1、S2、R1、R2）', en: 'Pivot Points', text: '用上一段期間（本站預設上個月）的最高、最低、收盤算出來的價位：P 是中心價，S1、S2 是下方的支撐，R1、R2 是上方的壓力。', related: [{ type: 'indicator', id: 'pivot' }] },
+  { term: 'RSV', en: 'Raw Stochastic Value', text: 'KD 的原始數字：今天收盤在最近 9 天最高、最低之間的位置（0 是最低、100 是最高）。K 是 RSV 平滑後的數字，D 是 K 再平滑一次。', related: [{ type: 'indicator', id: 'kd' }] },
 ];

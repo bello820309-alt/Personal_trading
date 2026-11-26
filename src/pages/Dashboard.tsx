@@ -6,6 +6,8 @@ import { Sparkline } from '../components/Sparkline';
 import { Card, Fold, Notice, PageTitle, Segmented, SectionTitle, Spinner, ToneBadge } from '../components/ui';
 import { RouteCard } from '../components/RouteCard';
 import { StateNotes } from '../components/StateNotes';
+import { stateView } from '../indicators/stateView';
+import { TermText } from '../components/TermText';
 import { ASSETS, DEFAULT_ASSET_ID, getAsset, MARKET_LABELS, type AssetConfig } from '../config/assets';
 import { equityMetrics, periodsPerYear, type EquityMetrics } from '../backtest/metrics';
 import { fmtDate, fmtDateTime, fmtMoney, fmtNum, fmtPct, fmtPrice, signClass } from '../data/format';
@@ -139,6 +141,7 @@ function AssetCard({ asset, state }: { asset: AssetConfig; state: LoadState<Asse
 const FEATURED = ['sma', 'ma-cross', 'macd', 'dmi', 'rsi', 'kd', 'bollinger', 'volume', 'fear-greed'];
 
 function StateItem({ def, d }: { def: IndicatorDef; d: StateSummary | null }) {
+  const v = d ? stateView(d) : null;
   return (
     <li className="text-sm">
       <div className="flex items-center gap-2">
@@ -147,13 +150,13 @@ function StateItem({ def, d }: { def: IndicatorDef; d: StateSummary | null }) {
           {def.name}
         </Link>
       </div>
-      {d && (
+      {v && (
         <>
           <p className="mt-0.5 leading-relaxed text-muted">
-            <span className="text-fg">{d.headline}。</span>
-            {d.detail}
+            <span className="text-fg">{v.first}。</span>
+            {v.detail && <TermText text={v.detail} />}
           </p>
-          <StateNotes notes={d.notes} className="mt-1" />
+          <StateNotes notes={v.notes} className="mt-1" />
         </>
       )}
     </li>

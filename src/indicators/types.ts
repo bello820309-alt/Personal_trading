@@ -148,6 +148,8 @@ export interface StateSummary {
   detail: string;
   /** 補充說明：為什麼、怎麼算、要注意什麼。越重要的放越前面 */
   notes?: StateNote[];
+  /** 卡片第一行的一句白話（不帶數字和術語）；有的話，標題的數字和結論放進展開區 */
+  plain?: string;
 }
 
 /** 組出補充說明的清單：沒有內容的自動略過 */

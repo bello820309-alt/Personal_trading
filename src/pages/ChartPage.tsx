@@ -13,6 +13,8 @@ import { ArrowGuide, LineGuide } from '../components/LineGuide';
 import { ParamEditor } from '../components/ParamEditor';
 import { Card, Fold, Segmented, ToneBadge } from '../components/ui';
 import { StateNotes } from '../components/StateNotes';
+import { stateView } from '../indicators/stateView';
+import { TermText } from '../components/TermText';
 import { DEFAULT_ASSET_ID, getAsset, type AssetConfig } from '../config/assets';
 import { fmtBarDate, fmtPct, fmtPrice, fmtVolume, signClass } from '../data/format';
 import { useAsset, useExtra } from '../data/load';
@@ -379,10 +381,14 @@ function ReadingGuide({
                     <>
                       <div className="flex flex-wrap items-center gap-2">
                         <ToneBadge tone={d.tone} />
-                        <span className="text-sm font-medium text-fg">現在：{d.headline}</span>
+                        <span className="text-sm font-medium text-fg">現在：{stateView(d).first}</span>
                       </div>
-                      <p className="mt-1 text-sm leading-relaxed text-muted">{d.detail}</p>
-                      <StateNotes notes={d.notes} className="mt-2" />
+                      {stateView(d).detail && (
+                        <p className="mt-1 text-sm leading-relaxed text-muted">
+                          <TermText text={stateView(d).detail} />
+                        </p>
+                      )}
+                      <StateNotes notes={stateView(d).notes} className="mt-2" />
                     </>
                   ) : (
                     <p className="text-sm text-muted">資料不夠長，還算不出目前的狀態。</p>

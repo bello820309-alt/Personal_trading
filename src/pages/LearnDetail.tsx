@@ -5,6 +5,8 @@ import { PriceChart, type ChartIndicator, type ChartMarker } from '../components
 import { ArrowGuide, LineGuide } from '../components/LineGuide';
 import { Notice, Spinner, ToneBadge } from '../components/ui';
 import { StateNotes } from '../components/StateNotes';
+import { stateView } from '../indicators/stateView';
+import { TermText } from '../components/TermText';
 import { ASSETS, DEFAULT_ASSET_ID, getAsset, type AssetConfig } from '../config/assets';
 import { defaultCosts, runIndicatorBacktest } from '../backtest/strategies';
 import { getContent } from '../content';
@@ -253,10 +255,14 @@ function LiveChart({ def, asset, series }: { def: IndicatorDef; asset: AssetConf
         <div className="mt-3 rounded-lg border border-line px-3 py-2">
           <div className="flex items-center gap-2">
             <ToneBadge tone={d.tone} />
-            <span className="font-medium">{asset.name}現在：{d.headline}</span>
+            <span className="font-medium">{asset.name}現在：{stateView(d).first}</span>
           </div>
-          <p className="mt-1 text-muted">{d.detail}</p>
-          <StateNotes notes={d.notes} className="mt-2" />
+          {stateView(d).detail && (
+            <p className="mt-1 text-muted">
+              <TermText text={stateView(d).detail} />
+            </p>
+          )}
+          <StateNotes notes={stateView(d).notes} className="mt-2" />
         </div>
       )}
       <button

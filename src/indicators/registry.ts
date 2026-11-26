@@ -1,4 +1,5 @@
 import type { Candle } from '../data/types';
+import { plainLine } from './plain';
 import type { Market } from '../config/assets';
 import { donchianIndicator } from './trend/donchian';
 import { dmiIndicator } from './trend/dmi';
@@ -135,7 +136,8 @@ export function describeOf(ci: ComputedIndicator, candles: Candle[]): StateSumma
   try {
     const d = ci.def.describe ? ci.def.describe(candles, ci.result, ci.params) : null;
     if (!d) return null;
-    return { ...d, notes: withLastSignal(d.notes, ci, candles) };
+    const plain = plainLine(ci.def.id, d, ci.result, candles) ?? undefined;
+    return { ...d, plain, notes: withLastSignal(d.notes, ci, candles) };
   } catch {
     return null;
   }

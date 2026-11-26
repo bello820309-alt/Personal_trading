@@ -1,4 +1,5 @@
 import type { StateNote } from '../indicators/types';
+import { TermText } from './TermText';
 import { ChevronRightIcon } from './icons';
 
 /**
@@ -12,14 +13,14 @@ export function StateNotes({ notes, className = '' }: { notes?: StateNote[]; cla
       <summary className="flex cursor-pointer list-none items-start gap-1 text-xs leading-relaxed text-accent [&::-webkit-details-marker]:hidden">
         <ChevronRightIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 transition-transform group-open:rotate-90" />
         <span>
-          還有 {notes.length} 點說明：{notes.map((n) => n.title).join('、')}
+          還有 {notes.length} 點說明：{notes.map((n) => n.title).join('／')}
         </span>
       </summary>
       <ul className="mt-1.5 space-y-1.5 border-l-2 border-line pl-3 text-sm leading-relaxed text-muted">
         {notes.map((n) => (
           <li key={n.title}>
             <span className="font-medium text-fg">{n.title}：</span>
-            {n.text}
+            <TermText text={n.text} />
           </li>
         ))}
       </ul>

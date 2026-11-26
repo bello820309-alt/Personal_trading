@@ -1,11 +1,15 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { PageTitle } from '../components/ui';
 import { GLOSSARY, getBasics, getContent } from '../content';
 import { getIndicator } from '../indicators/registry';
-import { Link } from '../router';
+import { Link, useLocation } from '../router';
 
 export function GlossaryPage() {
-  const [q, setQ] = useState('');
+  // 從其他頁面的術語連結點進來時，網址會帶 ?q=名詞，直接幫忙搜好
+  const { query: loc } = useLocation();
+  const linked = loc.get('q') ?? '';
+  const [q, setQ] = useState(linked);
+  useEffect(() => setQ(linked), [linked]);
   const query = q.trim().toLowerCase();
   const items = GLOSSARY.filter((t) => !query || [t.term, t.en ?? '', t.text].some((s) => s.toLowerCase().includes(query)));
   return (
