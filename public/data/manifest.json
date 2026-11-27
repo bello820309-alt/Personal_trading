@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-11-27T07:34:18.370Z",
+  "generatedAt": "2026-11-27T12:17:34.975Z",
   "assets": [
     {
       "id": "0050",
       "symbol": "0050.TW",
       "status": "ok",
-      "updatedAt": "2026-11-27T07:34:18.370Z",
+      "updatedAt": "2026-11-27T12:17:34.975Z",
       "lastDate": "2026-11-27",
       "bars": 3131
     },
