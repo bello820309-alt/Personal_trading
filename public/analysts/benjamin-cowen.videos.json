@@ -1,8 +1,13 @@
 {
  "schemaVersion": 1,
  "channelId": "UCRvqjQPSeaWn-uEx-w0XOIg",
- "fetchedAt": "2026-11-26T21:34:00.642Z",
+ "fetchedAt": "2026-11-27T02:51:17.756Z",
  "videos": [
+  {
+   "id": "o33qsiVAT1U",
+   "title": "The Stock Market's Q4 Reckoning",
+   "published": "2026-11-26T23:00:18.000Z"
+  },
   {
    "id": "q0KSyXCVBr8",
    "title": "A Bitcoin Thanksgiving",
