@@ -148,6 +148,7 @@ function StateItem({ def, d }: { def: IndicatorDef; d: StateSummary | null }) {
         {d ? <ToneBadge tone={d.tone} stale={d.stale} /> : <span className="text-xs text-muted">—</span>}
         <Link to={`/learn/${def.id}`} className="font-medium text-fg hover:text-accent">
           {def.name}
+          {def.shortName !== def.name && <span className="ml-1 font-normal text-muted">（{def.shortName}）</span>}
         </Link>
       </div>
       {v && (
@@ -201,7 +202,10 @@ function IndicatorStates({ asset, series }: { asset: AssetConfig; series: AssetS
             <span className="font-semibold">綜合判斷：</span>
             {summary}
           </p>
-          <p className="mt-1 text-xs leading-relaxed text-muted">照上面「意見不一致時先看哪一個」的規則，用全部 {all.length} 個指標現在的標籤自動寫的；這是教科書的分法，不是買賣建議。</p>
+          <p className="mt-1 text-xs leading-relaxed text-muted">
+            照上面「意見不一致時先看哪一個」的規則自動寫的：只算「趨勢」類（{all.filter((x) => x.def.category === 'trend' && x.d).length} 個）和「動能／擺盪」類（
+            {all.filter((x) => x.def.category === 'momentum' && x.d).length} 個）指標現在的標籤；量能類（例如 MFI、OBV）、波動、價位這幾類不算進來。名稱用簡稱，對應下面清單裡每個指標名稱後面括號裡的簡稱。這是教科書的分法，不是買賣建議。
+          </p>
         </div>
       )}
       {showAll ? (

@@ -94,13 +94,38 @@ export const pivotIndicator: IndicatorDef<PivotParams> = {
       : !resist
         ? '樞軸點只算到 R2，價格已經在所有壓力之上，樞軸點沒有更上面的價位可以參考。'
         : '';
+    // 「上個月」是哪個月、什麼時候換：找出最後一根 K 棒那一期的前一期
+    const keyFn = p.basis === 'week' ? weekKey : p.basis === 'year' ? yearKey : monthKey;
+    const curKey = keyFn(candles[n - 1]!.time);
+    let j = n - 1;
+    while (j >= 0 && keyFn(candles[j]!.time) === curKey) j--;
+    let periodNote = '';
+    let periodName = '';
+    if (j >= 0) {
+      const prevKey = keyFn(candles[j]!.time);
+      let k = j;
+      while (k > 0 && keyFn(candles[k - 1]!.time) === prevKey) k--;
+      const seg = candles.slice(k, j + 1);
+      const hi = Math.max(...seg.map((c) => c.high));
+      const lo = Math.min(...seg.map((c) => c.low));
+      const md = (t: string) => `${Number(t.slice(5, 7))}/${Number(t.slice(8, 10))}`;
+      const first = candles[k]!.time;
+      const last = candles[j]!.time;
+      periodName =
+        p.basis === 'year' ? `${first.slice(0, 4)} 年` : p.basis === 'week' ? `${md(first)}～${md(last)} 那一週` : `${Number(first.slice(5, 7))} 月`;
+      const curMonth = Number(candles[n - 1]!.time.slice(5, 7));
+      const nextWhen =
+        p.basis === 'year' ? '等明年的第一根 K 棒出來' : p.basis === 'week' ? '等下一週的第一根 K 棒出來' : `等 ${(curMonth % 12) + 1} 月的第一根 K 棒出來`;
+      const curName = p.basis === 'year' ? '今年' : p.basis === 'week' ? '這一週' : `${curMonth} 月`;
+      periodNote = `「${BASIS_LABEL[p.basis]}」指的是 ${periodName}（${md(first)}～${md(last)}：最高 ${fmtNum(hi)}、最低 ${fmtNum(lo)}、收盤 ${fmtNum(candles[j]!.close)}）。${curName}${p.basis === 'week' ? '' : '一整'}${p.basis === 'year' ? '年' : p.basis === 'week' ? '都' : '個月'}${p.basis === 'week' ? '' : '都'}用這組價位，${nextWhen}，就會換成用 ${curName}的高低收計算。`;
+    }
     return {
       tone: 'neutral',
       headline: `收盤價在樞軸 P（${fmtNum(pv.v)}）之${close >= pv.v ? '上' : '下'}`,
-      detail: `依${BASIS_LABEL[p.basis] ?? ''}的高低收計算：${
+      detail: `依${BASIS_LABEL[p.basis] ?? ''}${periodName ? `（${periodName}）` : ''}的高低收計算：${
         resist ? `上方最近的壓力是 ${resist.name}（${fmtNum(resist.v)}）${role(resist, '壓力')}` : '已經在所有壓力之上'
       }，${support ? `下方最近的支撐是 ${support.name}（${fmtNum(support.v)}）${role(support, '支撐')}` : '已經跌破所有支撐'}。`,
-      notes: notesOf(['再往下（往上）看哪裡', beyond]),
+      notes: notesOf(['用哪一段的價格算', periodNote], ['再往下（往上）看哪裡', beyond]),
     };
   },
   noSignalReason:

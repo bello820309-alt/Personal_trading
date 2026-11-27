@@ -23,7 +23,8 @@ export function plainLine(id: string, d: StateSummary, r: IndicatorResult, candl
       const o1 = line('osc')[n - 1];
       const o0 = line('osc')[n - 2];
       if (dif == null || sig == null || o1 == null) return null;
-      const faster = o0 != null && Math.abs(o1) > Math.abs(o0);
+      // 昨天和今天在 0 的兩邊（今天剛交叉）時，比長短沒有意義，不說變快
+      const faster = o0 != null && o0 >= 0 === o1 >= 0 && Math.abs(o1) > Math.abs(o0);
       if (dif < sig && dif < 0) return faster ? '短期在跌，而且跌勢變快' : '短期在跌，但跌勢變慢';
       if (dif > sig && dif > 0) return faster ? '短期在漲，而且漲勢變快' : '短期在漲，但漲勢變慢';
       if (dif > sig) return '跌勢緩和、短線轉強，但還沒變成上漲趨勢';

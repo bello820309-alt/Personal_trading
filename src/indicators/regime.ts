@@ -44,7 +44,15 @@ export function regimeSummary(items: RegimeItem[], adx: number | null): string |
   const up = count(trend, (t) => trendSide(t) === 'up');
   const down = count(trend, (t) => trendSide(t) === 'down');
   const major: 'up' | 'down' | null = up > down ? 'up' : down > up ? 'down' : null;
-  const trendText = major ? `${major === 'up' ? up : down}/${trend.length} 個趨勢指標${major === 'up' ? '偏多' : '偏空'}` : `趨勢指標多空各半（${up} 個偏多、${down} 個偏空）`;
+  // 列出是哪幾個，新手才能自己對照下面的清單（偏多／偏空／中性各是誰）
+  const names = (side: Side) => trend.filter((x) => trendSide(x.tone) === side).map((x) => x.name).join('、');
+  const who = (['down', 'up', 'none'] as Side[])
+    .filter((s) => names(s))
+    .map((s) => `${s === 'up' ? '偏多' : s === 'down' ? '偏空' : '中性'}：${names(s)}`)
+    .join('；');
+  const trendText = major
+    ? `${major === 'up' ? up : down}/${trend.length} 個趨勢指標${major === 'up' ? '偏多' : '偏空'}（${who}）`
+    : `趨勢指標多空各半（${who}）`;
   const oscCounts = (['cold', 'bearish', 'bullish', 'hot'] as Tone[])
     .map((t) => [t, count(osc, (x) => x === t)] as const)
     .filter(([, c]) => c > 0)

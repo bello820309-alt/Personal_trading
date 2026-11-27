@@ -231,7 +231,7 @@ function EventsView({ asset, series, group, onGroup }: { asset: AssetConfig; ser
         <h2 className="text-base font-semibold text-fg">不同的利率環境下，哪個策略勝率最高？</h2>
         <p className="mt-0.5 mb-3 text-xs leading-relaxed text-muted">
           {REGIME_RULE}用全部資料回測每個策略，每筆交易依「買進那天」屬於哪一種環境歸類；完成 {MIN_TRADES} 筆以上交易的策略才排名。
-          這裡只比勝率，勝率高不代表賺得多（見基礎觀念「回測是什麼？」）；交易只有 5～10 筆時，多輸一次勝率就差很多。
+          這裡照勝率排，旁邊也列出「平均每筆報酬」（每筆交易從買到賣漲跌幾 %，再平均）：勝率高不代表賺得多（見基礎觀念「回測是什麼？」），勝率高、平均每筆報酬卻是負的，代表賺的時候賺得少、賠的時候賠得多。交易只有 5～10 筆時，多輸一次勝率就差很多。
         </p>
         <p className="mb-3 text-xs leading-relaxed text-muted">
           「一直抱著的年化報酬」是把整段升息期（或降息期）加起來算的長期報酬，和上面「升息後 30 天」只看每次升息之後短短 30 天的反應不一樣。例如 2017 年聯準會一路升息，股市和比特幣那一年卻都大漲。所以「升息後 30 天的平均」和「升息期一直抱著的報酬」就算看起來方向相反，也可以同時成立，並不矛盾。對定投的人：利率環境不會改變定投的規則（定投本來就不猜時機），這些資訊比較適合拿來了解最近的市場為什麼比較動盪，或給想抓買賣時機的人參考。
@@ -263,7 +263,7 @@ function EventsView({ asset, series, group, onGroup }: { asset: AssetConfig; ser
                         <span className={`w-4 shrink-0 text-xs font-bold tabular ${i === 0 ? 'text-hot' : 'text-muted'}`}>{i + 1}</span>
                         <span className="min-w-0 flex-1 truncate text-fg">{x.def.name}</span>
                         <span className="shrink-0 text-xs text-muted tabular">
-                          {fmtPct(x.winRate, 0, false)}・{x.trades} 筆
+                          勝率 {fmtPct(x.winRate, 0, false)}・平均每筆 <span className={signClass(x.avgReturn)}>{fmtPct(x.avgReturn, 1)}</span>・{x.trades} 筆
                         </span>
                       </li>
                     ))}

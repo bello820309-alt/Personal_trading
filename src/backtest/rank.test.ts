@@ -13,6 +13,7 @@ import {
   winRateChampion,
   yearlyChampions,
   type Prepared,
+  type RankResult,
   type RankRow,
 } from './rank';
 import { summarizeAdjacent, summarizeRanking, summarizeYearly, beatHoldHeadline } from './rankSummary';
@@ -202,7 +203,7 @@ describe('summarizeRanking（白話結論）', () => {
     const result = runRanking(prep, year2021.start, year2021.end, free);
     const lines = summarizeRanking(result, threeYears, btc);
     const text = lines.join('\n');
-    expect(lines[1]).toMatch(/^總報酬最高的是/);
+    expect(lines[1]).toMatch(/^列入排名（交易 5 筆以上）的策略裡，總報酬最高的是/);
     expect(text).toMatch(/勝率最高的(是|則是)|同時也是勝率最高的策略/);
     expect(text).toContain('勝率 100%');
     expect(text).toContain('交易不到 5 次');
@@ -211,6 +212,22 @@ describe('summarizeRanking（白話結論）', () => {
     const result = runRanking(prep, year2021.start, year2021.end, free);
     const beat = result.rows.filter((r) => r.totalReturn > result.benchmark.totalReturn).length;
     expect(beatHoldHeadline(result)).toMatch(new RegExp(`^${result.rows.length} 個策略裡有 ${beat} 個的總報酬贏過「買了一直抱著」`));
+  });
+  it('交易太少的也算在「贏過」裡時說清楚；沒列入排名但總報酬更高的也寫出來', () => {
+    const row = (id: string, totalReturn: number, trades: number) =>
+      ({ def: { id, name: id, category: 'trend' }, totalReturn, trades, wins: trades, winRate: trades ? 1 : 0 }) as unknown as RankRow;
+    const fake = {
+      start: 0,
+      end: 400,
+      benchmark: { totalReturn: -0.33, years: 1 },
+      rows: [row('MACD', 0.04, 6), row('KD', 0.22, 3), row('MVRV', 0, 0), row('RSI', -0.4, 8)],
+    } as unknown as RankResult;
+    expect(beatHoldHeadline(fake)).toBe(
+      '4 個策略裡有 3 個的總報酬贏過「買了一直抱著」（-33.00%）：「KD」（+22.00%）、「MACD」（+4.00%）、「MVRV」（0.00%）。其中 2 個交易不到 5 筆（1 個一筆都沒買，等於一直拿著現金），沒有列入下面的排名。',
+    );
+    const lines = summarizeRanking(fake, threeYears, btc);
+    expect(lines[1]).toContain('總報酬最高的是「MACD」');
+    expect(lines[1]).toContain('交易不到 5 筆的「KD」（+22.00%，3 筆）總報酬更高');
   });
   it('期間太短、沒有策略夠格時，直接說明排名沒有參考價值', () => {
     const text = summarizeRanking(runRanking(prep, 0, 19, free), threeYears, btc).join('\n');

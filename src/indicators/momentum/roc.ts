@@ -56,7 +56,15 @@ export const rocIndicator: IndicatorDef<RocParams> = {
     const v = getLine(r, 'roc')[n - 1];
     const prev = getLine(r, 'roc')[n - 2];
     if (v == null) return null;
-    const accel = prev == null ? '' : v > prev ? '，而且比昨天更強' : '，但比昨天弱一些';
+    // 直接說漲幅（跌幅）比昨天大還是小，不說「強／弱」（新手分不出是跌多還是跌少）
+    const word = v >= 0 ? '漲' : '跌';
+    const bigger = v >= 0 ? v > (prev ?? v) : v < (prev ?? v);
+    const accel =
+      prev == null || prev === v
+        ? ''
+        : (prev >= 0) === (v >= 0)
+          ? `；昨天是 ${fmtNum(prev, 2)}%，${word}幅比昨天${bigger ? '大' : '小'}`
+          : `；昨天是 ${fmtNum(prev, 2)}%，今天從${prev >= 0 ? '漲' : '跌'}翻成${word}`;
     return {
       tone: v > 0 ? 'bullish' : v < 0 ? 'bearish' : 'neutral',
       headline: `ROC(${p.period}) = ${fmtNum(v, 2)}%`,

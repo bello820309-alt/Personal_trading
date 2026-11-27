@@ -97,11 +97,19 @@ export const macdIndicator: IndicatorDef<MacdParams> = {
       if (growing ? Math.abs(a) > Math.abs(b) : Math.abs(a) < Math.abs(b)) streak++;
       else break;
     }
+    // 今天柱狀體剛換邊（DIF 今天剛穿過訊號線）：昨天和今天在 0 的兩邊，比長短沒有意義
+    const flipped = o0 != null && o0 >= 0 !== o1 >= 0;
     const days = streak >= 2 ? `已經連續 ${streak} 天` : '今天剛開始';
-    const growth = o0 == null ? '' : `，而且${days}${growing ? '放大' : '縮小'}（${side}的力道在${growing ? '增強' : '減弱'}）`;
+    const growth =
+      o0 == null
+        ? ''
+        : flipped
+          ? `，今天剛從${o0 >= 0 ? '正值' : '負值'}翻成${o1 >= 0 ? '正值' : '負值'}（DIF 今天剛${o1 >= 0 ? '往上' : '往下'}穿過訊號線）`
+          : `，而且${days}${growing ? '放大' : '縮小'}（${side}的力道在${growing ? '增強' : '減弱'}）`;
     // 才變 1～2 天：要不要算數，各家做法不同
-    const streakNote =
-      o0 == null || streak >= 3
+    const streakNote = flipped
+      ? `今天才剛交叉，柱狀體只有 ${fmtNum(o1, 3)}：差距這麼小時，隔天價格小小的變動就可能交叉回去。有人交叉當天就算數，比較保守的做法是等交叉後連續 2～3 天都沒有交叉回去。`
+      : o0 == null || streak >= 3
         ? ''
         : streak === 2
           ? '柱狀體才連續變化 2 天：有人 2 天就算數，比較保守的做法是等到第 3 天。'
@@ -122,11 +130,12 @@ export const macdIndicator: IndicatorDef<MacdParams> = {
     }
     return {
       tone,
-      headline: `DIF ${fmtNum(dif)}／MACD ${fmtNum(sig)}`,
+      // 兩個數字四捨五入後一樣時（剛交叉），多顯示幾位小數，才看得出哪一條比較高
+      headline: fmtNum(dif) === fmtNum(sig) ? `DIF ${fmtNum(dif, 4)}／MACD ${fmtNum(sig, 4)}` : `DIF ${fmtNum(dif)}／MACD ${fmtNum(sig)}`,
       detail: `${text}柱狀體（OSC）目前為${o1 >= 0 ? '正值' : '負值'}${growth}。`,
       notes: notesOf(
         ['最近一次交叉', cross],
-        ['柱狀體變幾天才算數', streakNote],
+        [flipped ? '剛交叉算不算數' : '柱狀體變幾天才算數', streakNote],
         ['DIF、訊號線、柱狀體是什麼', 'DIF 是短期和長期均線的差距，訊號線是 DIF 的平均，柱狀體是兩者相減；0 軸代表短期和長期均線一樣高。'],
       ),
     };

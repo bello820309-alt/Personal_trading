@@ -38,7 +38,13 @@ export function beatHoldHeadline(result: RankResult): string {
   const all = result.rows;
   const beaters = all.filter((r) => r.totalReturn > hold).sort((a, b) => b.totalReturn - a.totalReturn);
   const names = beaters.length > 0 && beaters.length <= 3 ? `：${beaters.map((r) => `${strategyName(r)}（${fmtPct(r.totalReturn)}）`).join('、')}` : '';
-  return `${all.length} 個策略裡有 ${beaters.length} 個的總報酬贏過「買了一直抱著」（${fmtPct(hold)}）${names}。`;
+  // 交易太少的也算在裡面（下跌的期間，一筆都沒買就是拿著現金，也會贏）：說清楚有幾個沒列入排名
+  const low = beaters.filter((r) => r.trades < MIN_TRADES);
+  const none = low.filter((r) => r.trades === 0).length;
+  const lowNote = low.length
+    ? `其中 ${low.length} 個交易不到 ${MIN_TRADES} 筆${none ? `（${none} 個一筆都沒買，等於一直拿著現金）` : ''}，沒有列入下面的排名。`
+    : '';
+  return `${all.length} 個策略裡有 ${beaters.length} 個的總報酬贏過「買了一直抱著」（${fmtPct(hold)}）${names}。${lowNote}`;
 }
 
 export function summarizeRanking(result: RankResult, candles: Candle[], asset: AssetConfig): string[] {
@@ -60,8 +66,16 @@ export function summarizeRanking(result: RankResult, candles: Candle[], asset: A
   }
 
   const best = sortRows(ranked, 'return')[0]!;
+  // 交易不到 MIN_TRADES 筆、總報酬卻更高的：寫出來，免得以為結論漏看了
+  const higherLow = sortRows(lowSample, 'return').filter((r) => r.trades > 0 && r.totalReturn > best.totalReturn);
   out.push(
-    `總報酬最高的是${strategyName(best)}：${fmtPct(best.totalReturn)}，${versusHold(best, hold)}（勝率 ${fmtPct(best.winRate, 0, false)}，${best.trades} 筆交易）。`,
+    `列入排名（交易 ${MIN_TRADES} 筆以上）的策略裡，總報酬最高的是${strategyName(best)}：${fmtPct(best.totalReturn)}，${versusHold(best, hold)}（勝率 ${fmtPct(best.winRate, 0, false)}，${best.trades} 筆交易）。` +
+      (higherLow.length
+        ? `交易不到 ${MIN_TRADES} 筆的${higherLow
+            .slice(0, 3)
+            .map((r) => `${strategyName(r)}（${fmtPct(r.totalReturn)}，${r.trades} 筆）`)
+            .join('、')}總報酬更高，但次數太少，看不出是規則好還是剛好碰上，所以沒有列入排名。`
+        : ''),
   );
   const top = sortRows(ranked, 'winRate')[0]!;
   if (top.def.id === best.def.id) {

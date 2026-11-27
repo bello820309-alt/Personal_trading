@@ -132,7 +132,7 @@ describe('最近的爆量', () => {
     const p = { ma1: 5, ma2: 20 };
     const d = volumeIndicator.describe!(c, volumeIndicator.compute(c, p), p)!;
     expect(d.headline).toContain('量縮');
-    expect(summaryText(d)).toContain('和放量之前比是 1.05 倍，算是回到平常的水準');
+    expect(summaryText(d)).toContain('和放量之前比，今天是 1.05 倍，在平常的範圍裡');
     expect(summaryText(d)).not.toContain('上漲但量縮，追價意願不強');
     expect(summaryText(d)).toContain('不一定是追價意願不強');
   });
@@ -181,5 +181,21 @@ describe('最近的爆量', () => {
     expect(d).toContain('算到今天是第 8 個交易日');
     expect(d).toContain('已經超過 3～5 天');
     expect(d).toContain('今天又創了這一波的新低');
+  });
+
+  it('量縮回來要連續 2 天：今天 0.94 倍、前一天還是 2.07 倍時不算（不說賣壓出清）', () => {
+    // 平常 100 → 放量下跌 400 連續 6 天（收盤一路創低）→ 反彈、量 207 → 今天 94
+    const vols = [...Array(25).fill(100), ...Array(6).fill(400), 207, 94];
+    const closes = [...Array(25).fill(100), ...Array.from({ length: 6 }, (_, i) => 99 - i), 96, 95];
+    const c = candles(vols, closes);
+    const p = { ma1: 5, ma2: 20 };
+    const d = summaryText(volumeIndicator.describe!(c, volumeIndicator.compute(c, p), p)!);
+    expect(d).toContain('今天縮到放量前均量的 0.94 倍，但前一天還是 2.07 倍');
+    expect(d).toContain('還不能說賣壓出清');
+    expect(d).not.toContain('兩個條件都符合');
+    // 再過一天也在 1.3 倍以內，才算回到平常
+    const c2 = candles([...vols, 90], [...closes, 95.5]);
+    const d2 = summaryText(volumeIndicator.describe!(c2, volumeIndicator.compute(c2, p), p)!);
+    expect(d2).toContain('11/2 起量已經回到平常');
   });
 });

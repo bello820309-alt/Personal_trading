@@ -149,6 +149,9 @@ function H2({ children, sub }: { children: ReactNode; sub?: ReactNode }) {
 interface LongTermCheck {
   long: RankResult;
   rows: { row: RankRow; long: RankRow; why: string }[];
+  /** 這段期間贏過一直抱著、而且有交易的規則一共幾個，表上列了幾個 */
+  beatCount: number;
+  beatShown: number;
 }
 
 /**
@@ -160,11 +163,16 @@ function longTermCheck(prep: Parameters<typeof runRanking>[0], cfg: Parameters<t
   if (!last) return null;
   const range = indexRange(prep.candles, `${Number(last.slice(0, 4)) - 10}${last.slice(4)}`, last);
   if (!range || result.end - result.start + 1 >= (range.end - range.start + 1) * 0.8) return null;
+  // 排行榜預設照總報酬排：先看總報酬第一，再看勝率第一，再看其他贏過一直抱著的（一筆都沒交易的不用再算）
   const picks: { row: RankRow; why: string }[] = [];
+  const { ranked } = splitBySample(result.rows);
+  const best = ranked.length ? sortRows(ranked, 'return')[0]! : null;
+  if (best) picks.push({ row: best, why: '總報酬第一' });
   const champ = winRateChampion(result.rows);
-  if (champ) picks.push({ row: champ, why: '勝率第一' });
-  const beat = result.rows
-    .filter((x) => x.totalReturn > result.benchmark.totalReturn && x.def.id !== champ?.def.id)
+  if (champ && champ.def.id !== best?.def.id) picks.push({ row: champ, why: '勝率第一' });
+  const beatAll = result.rows.filter((x) => x.totalReturn > result.benchmark.totalReturn && x.trades > 0);
+  const beat = beatAll
+    .filter((x) => !picks.some((p) => p.row.def.id === x.def.id))
     .sort((a, b) => b.totalReturn - a.totalReturn)
     .slice(0, 3);
   for (const row of beat) picks.push({ row, why: '贏過一直抱著' });
@@ -174,7 +182,8 @@ function longTermCheck(prep: Parameters<typeof runRanking>[0], cfg: Parameters<t
     const l = long.rows.find((x) => x.def.id === p.row.def.id);
     return l ? [{ ...p, long: l }] : [];
   });
-  return rows.length ? { long, rows } : null;
+  const beatShown = rows.filter((r) => r.row.totalReturn > result.benchmark.totalReturn).length;
+  return rows.length ? { long, rows, beatCount: beatAll.length, beatShown } : null;
 }
 
 function LongTermCard({ check, candles }: { check: LongTermCheck; candles: Candle[] }) {
@@ -183,7 +192,13 @@ function LongTermCard({ check, candles }: { check: LongTermCheck; candles: Candl
   const cagr = (total: number) => (years > 0 ? (1 + total) ** (1 / years) - 1 : null);
   return (
     <Card>
-      <H2 sub={`短期間的冠軍，可能只是剛好遇到適合它的行情。這裡把這段期間勝率第一、和贏過一直抱著的規則，放到近 10 年（${fmtDate(candles[long.start]!.time)}～${fmtDate(candles[long.end]!.time)}）再算一次。`}>
+      <H2
+        sub={`短期間的冠軍，可能只是剛好遇到適合它的行情。這裡把這段期間總報酬第一（交易 ${MIN_TRADES} 筆以上）、勝率第一，和其他贏過一直抱著的規則（最多 3 個），放到近 10 年（${fmtDate(candles[long.start]!.time)}～${fmtDate(candles[long.end]!.time)}）再算一次。${
+          check.beatCount > 0
+            ? `這段期間贏過一直抱著、而且有交易的共 ${check.beatCount} 個，表上列了 ${check.beatShown} 個${check.beatCount > check.beatShown ? '（其他的總報酬比較低，沒有列出）' : ''}；一筆都沒交易的（等於一直拿現金）不算。`
+            : ''
+        }`}
+      >
         放到近 10 年，還贏嗎？
       </H2>
       <div className="table-scroll">
