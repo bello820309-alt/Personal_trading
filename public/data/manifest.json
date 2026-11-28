@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-11-27T21:34:45.361Z",
+  "generatedAt": "2026-11-28T03:54:07.882Z",
   "assets": [
     {
       "id": "0050",
@@ -14,7 +14,7 @@
       "id": "VOO",
       "symbol": "VOO",
       "status": "ok",
-      "updatedAt": "2026-11-27T21:34:45.361Z",
+      "updatedAt": "2026-11-28T03:54:07.882Z",
       "lastDate": "2026-11-27",
       "bars": 4080
     },
