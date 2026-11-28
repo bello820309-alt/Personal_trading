@@ -120,3 +120,9 @@ export function signClass(v: number | null | undefined): string {
   if (v === null || v === undefined || v === 0 || !Number.isFinite(v)) return 'text-muted';
   return v > 0 ? 'text-up' : 'text-down';
 }
+
+/** 日期 → 「11/6」；和參考日期（通常是最後一根 K 棒）不同年時寫「2022/11/6」，免得看成今年 */
+export function fmtMd(time: string, ref?: string): string {
+  const md = `${Number(time.slice(5, 7))}/${Number(time.slice(8, 10))}`;
+  return ref && ref.slice(0, 4) !== time.slice(0, 4) ? `${time.slice(0, 4)}/${md}` : md;
+}

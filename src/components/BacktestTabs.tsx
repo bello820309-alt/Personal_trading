@@ -17,7 +17,7 @@ export function BacktestTabs({ active, assetId }: { active: 'rank' | 'single' | 
             key={it.key}
             to={it.to}
             aria-current={on ? 'page' : undefined}
-            className={`shrink-0 rounded-md px-3 py-1.5 text-sm whitespace-nowrap transition-colors ${on ? 'bg-accent font-medium text-accent-contrast' : 'text-muted hover:text-fg'}`}
+            className={`inline-flex min-h-10 shrink-0 items-center rounded-md px-3 text-sm whitespace-nowrap transition-colors sm:min-h-0 sm:py-1.5 ${on ? 'bg-accent font-medium text-accent-contrast' : 'text-muted hover:text-fg'}`}
           >
             {it.label}
           </Link>

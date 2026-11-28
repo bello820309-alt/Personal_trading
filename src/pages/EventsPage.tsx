@@ -127,7 +127,7 @@ function EventsView({ asset, series, group, onGroup }: { asset: AssetConfig; ser
                   setShowAll(false);
                   onGroup(g);
                 }}
-                className={`rounded-full border px-2.5 py-1 text-xs whitespace-nowrap ${on ? 'border-accent bg-accent font-medium text-accent-contrast' : 'border-line bg-surface text-fg hover:bg-surface-2'}`}
+                className={`inline-flex min-h-10 items-center rounded-full border px-3 text-xs whitespace-nowrap sm:min-h-0 sm:px-2.5 sm:py-1 ${on ? 'border-accent bg-accent font-medium text-accent-contrast' : 'border-line bg-surface text-fg hover:bg-surface-2'}`}
               >
                 {EVENT_GROUP_LABELS[g]}（{byGroup.get(g)!.length}）
               </button>
@@ -221,7 +221,7 @@ function EventsView({ asset, series, group, onGroup }: { asset: AssetConfig; ser
           </table>
         </div>
         {recent.length > 12 && (
-          <button type="button" onClick={() => setShowAll((v) => !v)} className="mt-2 text-sm text-accent">
+          <button type="button" onClick={() => setShowAll((v) => !v)} className="mt-2 inline-flex min-h-10 items-center sm:min-h-0 text-sm text-accent">
             {showAll ? '收起' : `顯示全部 ${recent.length} 次`}
           </button>
         )}

@@ -9,8 +9,8 @@ function load(sym: string): Candle[] {
 }
 
 /** 第一行不能出現的術語和數字代號 */
-const JARGON = /DIF|MACD|OSC|%B|\+DI|−DI|ADX|先行帶|S1|S2|R1|R2|RSV|SAR|%K|%D|ATR|CCI|ROC|BIAS|PSY|OBV|MFI|=/;
-const IDS = ['macd', 'bollinger', 'keltner', 'dmi', 'ichimoku', 'pivot', 'kd', 'rsi', 'mfi', 'stoch-rsi', 'williams-r', 'cci', 'roc', 'atr', 'donchian', 'psar', 'supertrend', 'obv', 'psy', 'bias'];
+const JARGON = /MA\d|EMA|Fib|DIF|MACD|OSC|%B|\+DI|−DI|ADX|先行帶|S1|S2|R1|R2|RSV|SAR|%K|%D|ATR|CCI|ROC|BIAS|PSY|OBV|MFI|=/;
+const IDS = ['sma', 'ema', 'ma-cross', 'volume', 'fibonacci', 'macd', 'bollinger', 'keltner', 'dmi', 'ichimoku', 'pivot', 'kd', 'rsi', 'mfi', 'stoch-rsi', 'williams-r', 'cci', 'roc', 'atr', 'donchian', 'psar', 'supertrend', 'obv', 'psy', 'bias'];
 
 describe('指標卡第一行的白話', () => {
   for (const sym of ['0050', 'VOO', 'BTC']) {

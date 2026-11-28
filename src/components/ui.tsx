@@ -142,7 +142,12 @@ export function Sheet({
       <div className="safe-bottom absolute inset-x-0 bottom-0 flex max-h-[85dvh] flex-col rounded-t-2xl border border-line bg-surface shadow-2xl md:inset-y-0 md:right-0 md:left-auto md:max-h-none md:w-[440px] md:rounded-none md:rounded-l-2xl">
         <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3">
           <h2 className="text-base font-semibold text-fg">{title}</h2>
-          <button type="button" onClick={onClose} className="rounded-md p-1.5 text-muted hover:bg-surface-2 hover:text-fg" aria-label="關閉">
+          <button
+            type="button"
+            onClick={onClose}
+            className="-mr-2 inline-flex min-h-10 min-w-10 items-center justify-center rounded-md text-muted hover:bg-surface-2 hover:text-fg"
+            aria-label="關閉"
+          >
             <CloseIcon />
           </button>
         </div>

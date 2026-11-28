@@ -64,7 +64,8 @@ export function regimeSummary(items: RegimeItem[], adx: number | null): string |
   if (adx >= 25) {
     if (!major) return `${head} → 趨勢盤，以趨勢指標為主：但${trendText}，方向還不明確，先觀望。`;
     const against = osc.filter((x) => agrees(x.tone, major) === false);
-    const names = against.map((x) => `${x.name}${TONE_WORDS[x.tone]}`).join('、');
+    // 英文名字和中文之間空一格（「KD 偏多」），中文名字直接接（「心理線過冷」）
+    const names = against.map((x) => `${x.name}${/[A-Za-z0-9%)]$/.test(x.name) ? ' ' : ''}${TONE_WORDS[x.tone]}`).join('、');
     return `${head} → 趨勢盤，以趨勢指標為主：${trendText}。${
       names ? `${names}和趨勢方向不一致，在趨勢盤中要打折看。` : osc.length ? '擺盪指標沒有和趨勢方向相反的。' : ''
     }`;

@@ -148,7 +148,8 @@ function StateItem({ def, d }: { def: IndicatorDef; d: StateSummary | null }) {
         {d ? <ToneBadge tone={d.tone} stale={d.stale} /> : <span className="text-xs text-muted">—</span>}
         <Link to={`/learn/${def.id}`} className="font-medium text-fg hover:text-accent">
           {def.name}
-          {def.shortName !== def.name && <span className="ml-1 font-normal text-muted">（{def.shortName}）</span>}
+          {/* 名稱裡已經有簡稱的（例如「趨向指標（DMI／ADX）」）就不再加括號 */}
+          {!def.name.includes(def.shortName) && <span className="ml-1 font-normal text-muted">（{def.shortName}）</span>}
         </Link>
       </div>
       {v && (

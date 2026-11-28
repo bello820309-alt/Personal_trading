@@ -11,7 +11,15 @@ describe('每個有回測規則的指標，都寫出最近一次訊號', () => {
     const candles: Candle[] = closes.map((close, i) => ({ time: day(i), open: close, high: close + 1, low: close - 1, close, volume: 1 }));
     const d = describeOf(computeIndicator(getIndicator('macd')!, candles, 'us', null), candles)!;
     const note = d.notes!.find((x) => x.title === '最近一次回測訊號')!;
-    expect(note.text).toMatch(/^\d+\/\d+出現買進訊號（MACD 黃金交叉），算到今天是第 \d+ 根 K 棒（訊號那天算第 1 根）。/);
+    expect(note.text).toMatch(/^\d+\/\d+ 出現買進訊號（MACD 黃金交叉），算到今天是第 \d+ 根 K 棒（訊號那天算第 1 根）。/);
     expect(note.text).toContain('這一筆現在還沒賣出');
+  });
+});
+
+describe('訊號日期不在今年時寫年份', () => {
+  it('fmtMd：和最後一根 K 棒同年只寫月/日，不同年寫年/月/日', async () => {
+    const { fmtMd } = await import('../data/format');
+    expect(fmtMd('2026-11-06', '2026-11-27')).toBe('11/6');
+    expect(fmtMd('2022-11-06', '2026-11-27')).toBe('2022/11/6');
   });
 });

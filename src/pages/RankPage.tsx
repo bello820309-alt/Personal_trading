@@ -90,7 +90,7 @@ function RankItem({
         <span className={`mt-0.5 w-6 shrink-0 text-center text-sm font-bold tabular ${rank === 1 ? 'text-hot' : 'text-muted'}`}>{rank ?? '—'}</span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-            <Link to={href} className="font-medium text-fg underline decoration-dotted underline-offset-4">
+            <Link to={href} className="-my-2 inline-flex min-h-10 items-center font-medium text-fg underline decoration-dotted underline-offset-4 sm:my-0 sm:min-h-0">
               {row.def.name}
             </Link>
             <span className="text-xs text-muted">{row.def.strategy?.name}</span>

@@ -60,17 +60,17 @@ export const fundingIndicator: IndicatorDef<FundingParams> = {
       const st = afterStats(candles, (i) => { const y = avg[i]; return y != null && y >= p.sellAbove; }, AFTER);
       return {
         tone: 'hot',
-        headline: `資金費率 ${v}：多方過熱`,
+        headline: `資金費率（${p.smooth} 日平均）${v}：多方過熱`,
         detail: '做多的人願意付很高的費用，代表很多人開槓桿追漲；行情一回頭，開槓桿的多單會被迫平倉，跌勢可能被放大。',
         notes: notesOf(['過去費率這麼高之後', afterText(st, `資金費率在 ${fmtNum(p.sellAbove, 3)}% 以上`, 'down')]),
       };
     }
-    if (x > 0.01) return { tone: 'bullish', headline: `資金費率 ${v}：偏多`, detail: '做多的人比較多，市場偏樂觀，但還不算過熱。' };
-    if (x >= p.buyBelow) return { tone: 'neutral', headline: `資金費率 ${v}：正常`, detail: '在一般的基準附近，多空大致平衡。' };
+    if (x > 0.01) return { tone: 'bullish', headline: `資金費率（${p.smooth} 日平均）${v}：偏多`, detail: '做多的人比較多，市場偏樂觀，但還不算過熱。' };
+    if (x >= p.buyBelow) return { tone: 'neutral', headline: `資金費率（${p.smooth} 日平均）${v}：正常`, detail: '在一般的基準附近，多空大致平衡。' };
     const st = afterStats(candles, (i) => { const y = avg[i]; return y != null && y < p.buyBelow; }, AFTER);
     return {
       tone: 'cold',
-      headline: `資金費率 ${v}：空方付錢給多方`,
+      headline: `資金費率（${p.smooth} 日平均）${v}：空方付錢給多方`,
       detail: '放空的人比較多，市場悲觀；空單太擠時，價格一反彈，空單被迫買回，漲勢也可能被放大。',
       notes: notesOf(['過去費率這麼低之後', afterText(st, `資金費率低於 ${fmtNum(p.buyBelow, 3)}%`, 'up')]),
     };

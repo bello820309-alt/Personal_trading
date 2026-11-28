@@ -1,5 +1,5 @@
 import type { Candle } from '../../data/types';
-import { fmtNum } from '../../data/format';
+import { fmtMd, fmtNum } from '../../data/format';
 import { closes, crossOver, crossUnder, highest, highs, lowest, lows, scanSignals, smoothFrom } from '../math/core';
 import { zoneNote } from '../math/after';
 import { dmiIndicator } from '../trend/dmi';
@@ -94,7 +94,7 @@ export const kdIndicator: IndicatorDef<KdParams> = {
     for (let i = n - 1; i >= 0 && (k[i] ?? 0) > p.overbought; i--) highRun++;
     for (let i = n - 1; i >= 0 && (k[i] ?? 100) < p.oversold; i--) lowRun++;
     const head = `K ${fmtNum(kv, 1)}／D ${fmtNum(dv, 1)}`;
-    const md = (i: number) => `${Number(candles[i]!.time.slice(5, 7))}/${Number(candles[i]!.time.slice(8, 10))}`;
+    const md = (i: number) => fmtMd(candles[i]!.time, candles[candles.length - 1]!.time);
     const pull = p.kSmooth > 1 ? `K 每天只往 RSV 靠近 1/${p.kSmooth}` : 'K 就等於 RSV';
     /** 第 i 天收盤在最近 N 天高低範圍裡的位置（RSV），用實際的價格寫出來 */
     const rsvText = (i: number) => {
@@ -145,7 +145,7 @@ export const kdIndicator: IndicatorDef<KdParams> = {
       const golden = pa <= pb && a > b;
       const dead = pa >= pb && a < b;
       if (!golden && !dead) continue;
-      const day = `${Number(candles[i]!.time.slice(5, 7))}/${Number(candles[i]!.time.slice(8, 10))}`;
+      const day = fmtMd(candles[i]!.time, candles[candles.length - 1]!.time);
       const zone = golden ? (b < p.oversold ? `，交叉當天的 D 值 ${fmtNum(b, 1)} 在 ${p.oversold} 以下，算「低檔黃金交叉」` : `，交叉當天的 D 值 ${fmtNum(b, 1)}，不在 ${p.oversold} 以下，不算低檔交叉`)
         : b > p.overbought ? `，交叉當天的 D 值 ${fmtNum(b, 1)} 在 ${p.overbought} 以上，算「高檔死亡交叉」` : `，交叉當天的 D 值 ${fmtNum(b, 1)}，不在 ${p.overbought} 以上，不算高檔交叉`;
       cross = `最近一次交叉是 ${day} 的${golden ? '黃金交叉（K 往上穿過 D）' : '死亡交叉（K 往下穿過 D）'}${zone}。`;

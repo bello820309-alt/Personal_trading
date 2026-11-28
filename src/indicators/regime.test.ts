@@ -10,7 +10,7 @@ describe('總覽的綜合判斷', () => {
   it('ADX 25 以上：趨勢盤，統計趨勢指標，點名和趨勢方向相反的擺盪指標', () => {
     const s = regimeSummary([...trend, o('KD', 'bullish'), o('RSI', 'cold'), o('CCI', 'hot'), o('W%R', 'neutral')], 37.4)!;
     expect(s).toBe(
-      'ADX 37.4 → 趨勢盤，以趨勢指標為主：5/6 個趨勢指標偏空（偏空：MA、MACD、DMI、SuperTrend、雲；偏多：SAR）。KD偏多、RSI過冷和趨勢方向不一致，在趨勢盤中要打折看。',
+      'ADX 37.4 → 趨勢盤，以趨勢指標為主：5/6 個趨勢指標偏空（偏空：MA、MACD、DMI、SuperTrend、雲；偏多：SAR）。KD 偏多、RSI 過冷和趨勢方向不一致，在趨勢盤中要打折看。',
     );
   });
 
@@ -18,8 +18,8 @@ describe('總覽的綜合判斷', () => {
     const up = trend.map((x) => ({ ...x, tone: 'bullish' as const }));
     const s = regimeSummary([...up, o('RSI', 'cold'), o('KD', 'hot')], 30)!;
     expect(s).toContain('6/6 個趨勢指標偏多');
-    expect(s).toContain('KD過熱和趨勢方向不一致');
-    expect(s).not.toContain('RSI過冷');
+    expect(s).toContain('KD 過熱和趨勢方向不一致');
+    expect(s).not.toContain('RSI 過冷');
   });
 
   it('ADX 20 以下：盤整，以擺盪指標為主', () => {

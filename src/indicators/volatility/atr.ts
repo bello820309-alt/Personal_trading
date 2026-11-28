@@ -36,7 +36,7 @@ export const atrIndicator: IndicatorDef<AtrParams> = {
       ratio > 1.3 ? '明顯高於' : ratio > 1.05 ? '略高於' : ratio < 0.7 ? '明顯低於' : ratio < 0.95 ? '略低於' : '接近';
     return {
       tone: 'neutral',
-      headline: `ATR(${p.period}) = ${fmtNum(a)}（約股價的 ${fmtNum(pct, 2)}%）`,
+      headline: `ATR(${p.period}) = ${fmtNum(a)}（約價格的 ${fmtNum(pct, 2)}%）`,
       detail: `最近平均每天的波動約 ${fmtNum(a)}，${cmp}過去一年的平均水準（${fmtNum(avg, 2)}%）。ATR 只看波動大小、不分漲跌。`,
       notes: notesOf([
         '和走勢預測頁的「波動」不一樣',

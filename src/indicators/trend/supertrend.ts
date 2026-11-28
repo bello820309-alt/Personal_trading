@@ -1,4 +1,4 @@
-import { fmtNum, fmtPct } from '../../data/format';
+import { fmtMd, fmtNum, fmtPct } from '../../data/format';
 import { nulls, rma, scanSignals } from '../math/core';
 import { getLine, notesOf, type IndicatorDef, type Series } from '../types';
 
@@ -95,7 +95,7 @@ export const supertrendIndicator: IndicatorDef<SuperTrendParams> = {
     let from = n - 1;
     while (from > 0 && tr[from - 1] === t) from--;
     const days = n - from;
-    const md = `${Number(candles[from]!.time.slice(5, 7))}/${Number(candles[from]!.time.slice(8, 10))}`;
+    const md = fmtMd(candles[from]!.time, candles[candles.length - 1]!.time);
     const confirm =
       days <= 2
         ? '，還沒經過有些人用的「連續 2～3 天才算」確認'
@@ -109,7 +109,7 @@ export const supertrendIndicator: IndicatorDef<SuperTrendParams> = {
       const pnl = entry ? close / entry.open - 1 : null;
       const trade =
         entry && pnl !== null
-          ? `照回測的規則在翻${up ? '多' : '空'}隔天開盤（${Number(entry.time.slice(5, 7))}/${Number(entry.time.slice(8, 10))} 的 ${fmtNum(entry.open)}）${up ? '買進' : '賣出'}的話，到今天${up ? (pnl < 0 ? `虧 ${fmtNum(-pnl * 100, 2)}%` : `賺 ${fmtNum(pnl * 100, 2)}%`) : pnl > 0 ? `賣掉之後又漲了 ${fmtNum(pnl * 100, 2)}%` : `賣掉之後跌了 ${fmtNum(-pnl * 100, 2)}%`}，要等收盤${up ? '跌破' : '漲過'}線才會${up ? '賣出' : '買回'}。`
+          ? `照回測的規則在翻${up ? '多' : '空'}隔天開盤（${fmtMd(entry.time, candles[candles.length - 1]!.time)} 的 ${fmtNum(entry.open)}）${up ? '買進' : '賣出'}的話，到今天${up ? (pnl < 0 ? `虧 ${fmtNum(-pnl * 100, 2)}%` : `賺 ${fmtNum(pnl * 100, 2)}%`) : pnl > 0 ? `賣掉之後又漲了 ${fmtNum(pnl * 100, 2)}%` : `賣掉之後跌了 ${fmtNum(-pnl * 100, 2)}%`}，要等收盤${up ? '跌破' : '漲過'}線才會${up ? '賣出' : '買回'}。`
           : '';
       against = `翻${up ? '多' : '空'}那天收盤 ${fmtNum(flipClose)}，到今天反而${up ? '跌' : '漲'}了 ${fmtNum(Math.abs(move) * 100, 2)}%，但收盤還沒${up ? '跌破支撐線' : '漲過壓力線'}，所以還是${up ? '多' : '空'}方：SuperTrend 只有收盤${up ? '跌破' : '漲過'}這條線才會翻轉。${trade}這是 SuperTrend 用「倍數 × ATR」和價格保持距離的代價：倍數越大越不容易被洗出場，但碰到線之前${up ? '回吐' : '錯過'}的也越多；倍數小一點會比較早翻轉，但盤整時也比較容易被洗出場。`;
     }

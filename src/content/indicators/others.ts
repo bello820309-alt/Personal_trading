@@ -49,7 +49,7 @@ export const OTHER_CONTENT: IndicatorContent[] = [
     principle: [
       'ATR 由 J. Welles Wilder 在 1978 年提出。「真實區間」TR 取三者最大值：今天最高減最低、今天最高減昨天收盤、今天最低減昨天收盤。這樣跳空缺口也會被算進去。',
       '把 TR 平均（Wilder 平滑）14 天，就是 ATR。',
-      'ATR 是用「價格單位」表示的，0050 的 ATR 是幾元、比特幣的 ATR 是幾千美元。要比較不同標的，可以換算成占股價的百分比。',
+      'ATR 是用「價格單位」表示的，0050 的 ATR 是幾元、比特幣的 ATR 是幾千美元。要比較不同標的，可以換算成占價格的百分比。',
     ],
     steps: [
       { text: 'TR = max(今日高 − 今日低, |今日高 − 昨日收|, |今日低 − 昨日收|)', formula: 'TR = max(H − L, |H − Cₜ₋₁|, |L − Cₜ₋₁|)' },

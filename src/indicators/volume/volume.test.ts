@@ -48,8 +48,8 @@ describe('最近的爆量', () => {
     const p = { ma1: 5, ma2: 20 };
     const r = volumeIndicator.compute(c, p, { volume: { divisor: 1000, unit: '張' } });
     const d = summaryText(volumeIndicator.describe!(c, r, p)!);
-    expect(d).toContain('放量之前（10/25 為止）的 20 日均量是 100 張，今天 600 張，是它的 6.00 倍');
-    expect(d).toContain('6.00 倍是和放量之前比，比較看得出今天的量到底有多大');
+    expect(d).toContain('放量之前（10/25 為止）的 20 日均量是 100 張，10/28 是 600 張，是它的 6.00 倍');
+    expect(d).toContain('6.00 倍是和放量之前比，比較看得出 10/28 的量到底有多大');
   });
 
   // 全年無休的市場（比特幣）：平日量 100、週末量 60，最後一根是 2026/11/07（週六）
@@ -71,7 +71,7 @@ describe('最近的爆量', () => {
     const p = { ma1: 5, ma2: 20 };
     const d = volumeIndicator.describe!(c, volumeIndicator.compute(c, p), p)!;
     expect(d.headline.startsWith('價平')).toBe(true);
-    expect(summaryText(d)).toMatch(/今天是週末。過去一年，比特幣週末的平均成交量比平日少 4\d%，所以週末量縮不一定代表什麼/);
+    expect(summaryText(d)).toMatch(/\d+\/\d+ 是週末。過去一年，比特幣週末的平均成交量比平日少 4\d%，所以週末量縮不一定代表什麼/);
     expect(weekendVolumeGap(c)!).toBeGreaterThan(0.38);
     expect(weekendVolumeGap(c)!).toBeLessThan(0.42);
   });
@@ -90,7 +90,7 @@ describe('最近的爆量', () => {
     const c = candles(vols).map((x, i) => ({ ...x, time: new Date(Date.UTC(2026, 9, 8) + i * 86400000).toISOString().slice(0, 10) }));
     expect(c[c.length - 1]!.time).toBe('2026-11-07');
     const p = { ma1: 5, ma2: 20 };
-    expect(summaryText(volumeIndicator.describe!(c, volumeIndicator.compute(c, p), p)!)).not.toContain('今天是週末');
+    expect(summaryText(volumeIndicator.describe!(c, volumeIndicator.compute(c, p), p)!)).not.toMatch(/是週末/);
     expect(weekendVolumeGap(c)).toBeNull();
   });
 
@@ -132,7 +132,7 @@ describe('最近的爆量', () => {
     const p = { ma1: 5, ma2: 20 };
     const d = volumeIndicator.describe!(c, volumeIndicator.compute(c, p), p)!;
     expect(d.headline).toContain('量縮');
-    expect(summaryText(d)).toContain('和放量之前比，今天是 1.05 倍，在平常的範圍裡');
+    expect(summaryText(d)).toMatch(/和放量之前比，\d+\/\d+ 是 1\.05 倍，在平常的範圍裡/);
     expect(summaryText(d)).not.toContain('上漲但量縮，追價意願不強');
     expect(summaryText(d)).toContain('不一定是追價意願不強');
   });
@@ -178,9 +178,9 @@ describe('最近的爆量', () => {
     const c = candles(vols, closes);
     const p = { ma1: 5, ma2: 20 };
     const d = summaryText(volumeIndicator.describe!(c, volumeIndicator.compute(c, p), p)!);
-    expect(d).toContain('算到今天是第 8 個交易日');
+    expect(d).toMatch(/算到 \d+\/\d+ 是第 8 個交易日/);
     expect(d).toContain('已經超過 3～5 天');
-    expect(d).toContain('今天又創了這一波的新低');
+    expect(d).toMatch(/\d+\/\d+ 又創了這一波的新低/);
   });
 
   it('量縮回來要連續 2 天：今天 0.94 倍、前一天還是 2.07 倍時不算（不說賣壓出清）', () => {
@@ -190,12 +190,22 @@ describe('最近的爆量', () => {
     const c = candles(vols, closes);
     const p = { ma1: 5, ma2: 20 };
     const d = summaryText(volumeIndicator.describe!(c, volumeIndicator.compute(c, p), p)!);
-    expect(d).toContain('今天縮到放量前均量的 0.94 倍，但前一天還是 2.07 倍');
+    expect(d).toMatch(/\d+\/\d+ 縮到放量前均量的 0\.94 倍，但前一天還是 2\.07 倍/);
     expect(d).toContain('還不能說賣壓出清');
     expect(d).not.toContain('兩個條件都符合');
     // 再過一天也在 1.3 倍以內，才算回到平常
     const c2 = candles([...vols, 90], [...closes, 95.5]);
     const d2 = summaryText(volumeIndicator.describe!(c2, volumeIndicator.compute(c2, p), p)!);
     expect(d2).toContain('11/2 起量已經回到平常');
+  });
+});
+
+describe('寫最後一根 K 棒的日期，不寫「今天」', () => {
+  it('總覽用已收盤的 K 棒：寫「10/31 的成交量」', () => {
+    const c = candles([...Array(30).fill(100), 120]);
+    const p = { ma1: 5, ma2: 20 };
+    const d = volumeIndicator.describe!(c, volumeIndicator.compute(c, p), p)!;
+    expect(d.detail).toMatch(/^10\/31 的成交量/);
+    expect(summaryText(d)).not.toContain('今天');
   });
 });

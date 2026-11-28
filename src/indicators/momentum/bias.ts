@@ -1,4 +1,4 @@
-import { fmtNum } from '../../data/format';
+import { fmtMd, fmtNum } from '../../data/format';
 import { closes, crossOver, nulls, percentileRank, quantile, scanSignals, sma, validSlice } from '../math/core';
 import { afterStats, afterText } from '../math/after';
 import { getLine, seriesColor, type IndicatorDef, type Series, notesOf } from '../types';
@@ -149,7 +149,7 @@ export const biasIndicator: IndicatorDef<BiasParams> = {
       const b = bias[i], t = lowLine[i], pb = bias[i - 1], pt = lowLine[i - 1];
       if (b == null || t == null || !(b < t) || (pb != null && pt != null && pb < pt)) continue;
       if (i === n - 1) break;
-      const md = `${Number(candles[i]!.time.slice(5, 7))}/${Number(candles[i]!.time.slice(8, 10))}`;
+      const md = fmtMd(candles[i]!.time, candles[candles.length - 1]!.time);
       movingNote = `門檻線每天都用到那天為止的過去資料重新算，所以每天會差一點：最近一次跌破門檻（回測的買進訊號）是 ${md}，那天乖離率 ${pct(b)}，當天的門檻線是 ${pct(t)}，所以算跌破；拿今天的門檻線（${lowTh != null ? pct(lowTh) : '—'}）去比那天的數字會對不起來。`;
       break;
     }

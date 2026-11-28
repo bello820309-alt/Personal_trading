@@ -1,3 +1,4 @@
+import { fmtMd } from '../../data/format';
 import { alignToCandles, lastDate, type ExtraKey } from '../../data/extra';
 import type { Candle } from '../../data/types';
 import { lastValid } from '../math/core';
@@ -40,7 +41,7 @@ export function staleSummary(
   if (!last || last.index >= candles.length - 1 - maxLagBars) return null;
   // 對齊 K 棒時資料會往後沿用幾天，所以日期以資料實際的最後一天為準
   const t = dataEnd ?? candles[last.index]!.time;
-  const md = `${Number(t.slice(5, 7))}/${Number(t.slice(8, 10))}`;
+  const md = fmtMd(t, candles[candles.length - 1]!.time);
   return {
     tone: 'neutral',
     stale: true,

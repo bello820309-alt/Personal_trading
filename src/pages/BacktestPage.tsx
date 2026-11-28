@@ -108,7 +108,7 @@ function NumberInput({
             const v = Number(e.target.value);
             if (Number.isFinite(v) && v >= min) onChange(v);
           }}
-          className="w-full rounded-lg border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg tabular"
+          className="min-h-10 w-full rounded-lg border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg tabular sm:min-h-0"
         />
         {suffix && <span className="shrink-0 text-xs text-muted">{suffix}</span>}
       </span>
@@ -231,7 +231,7 @@ function BacktestView({
               <select
                 value={def.id}
                 onChange={(e) => onStrategy(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-line bg-surface-2 px-3 py-2 text-sm text-fg"
+                className="mt-1 min-h-10 w-full rounded-lg border border-line bg-surface-2 px-3 py-2 text-sm text-fg"
               >
                 {indicatorsByCategory(asset.id).map((g) => {
                   const items = g.items.filter((d) => d.strategy);
@@ -256,10 +256,10 @@ function BacktestView({
               {def.strategy!.sellRule}
             </p>
             <div className="mt-2 flex gap-3 text-sm">
-              <button type="button" onClick={() => setEditOpen(true)} className="text-accent">
+              <button type="button" onClick={() => setEditOpen(true)} className="inline-flex min-h-10 items-center sm:min-h-0 text-accent">
                 調整參數{params ? '（已自訂）' : ''}
               </button>
-              <button type="button" onClick={() => setExplain(true)} className="text-accent">
+              <button type="button" onClick={() => setExplain(true)} className="inline-flex min-h-10 items-center sm:min-h-0 text-accent">
                 這個指標是什麼？
               </button>
             </div>
@@ -288,7 +288,7 @@ function BacktestView({
               )}
             </div>
             <details className="rounded-lg border border-line px-3 py-2">
-              <summary className="cursor-pointer text-sm text-fg">本金與交易成本</summary>
+              <summary className="flex min-h-10 cursor-pointer items-center text-sm text-fg sm:min-h-0">本金與交易成本</summary>
               <div className="mt-3 grid grid-cols-2 gap-3">
                 <NumberInput
                   label={`本金（${asset.currency}）`}
@@ -314,7 +314,7 @@ function BacktestView({
                   onChange={(v) => setCfg({ ...cfg, sellTaxRate: v / 100 })}
                 />
                 <div className="flex items-end">
-                  <button type="button" onClick={() => setCfg(defaultCosts(asset))} className="text-sm text-accent">
+                  <button type="button" onClick={() => setCfg(defaultCosts(asset))} className="inline-flex min-h-10 items-center sm:min-h-0 text-sm text-accent">
                     恢復預設
                   </button>
                 </div>
@@ -381,8 +381,8 @@ function BacktestView({
         <Card>
           <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-base font-semibold text-fg">資產變化</h2>
-            <label className="inline-flex items-center gap-1.5 text-xs text-muted">
-              <input type="checkbox" checked={logScale} onChange={(e) => setLogScale(e.target.checked)} />
+            <label className="inline-flex min-h-10 items-center gap-1.5 text-xs text-muted sm:min-h-0">
+              <input type="checkbox" className="h-5 w-5 sm:h-auto sm:w-auto" checked={logScale} onChange={(e) => setLogScale(e.target.checked)} />
               對數刻度
             </label>
           </div>
@@ -454,7 +454,7 @@ function BacktestView({
               </table>
             </div>
             {trades.length > 15 && (
-              <button type="button" onClick={() => setShowAll((v) => !v)} className="mt-2 text-sm text-accent">
+              <button type="button" onClick={() => setShowAll((v) => !v)} className="mt-2 inline-flex min-h-10 items-center sm:min-h-0 text-sm text-accent">
                 {showAll ? '收起' : `顯示全部 ${trades.length} 筆`}
               </button>
             )}

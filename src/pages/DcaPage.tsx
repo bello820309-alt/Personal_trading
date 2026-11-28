@@ -380,7 +380,7 @@ function NumberInput({
     else setText(shown);
   };
   return (
-    <span className={`inline-flex items-center rounded-lg border border-line bg-surface-2 px-2 focus-within:border-accent ${className}`}>
+    <span className={`inline-flex min-h-11 items-center rounded-lg border border-line bg-surface-2 px-2 focus-within:border-accent sm:min-h-0 ${className}`}>
       {prefix && <span className="mr-1 shrink-0 text-xs text-muted">{prefix}</span>}
       <input
         type="text"
@@ -397,7 +397,7 @@ function NumberInput({
         onKeyDown={(e) => {
           if (e.key === 'Enter') e.currentTarget.blur();
         }}
-        className="w-full min-w-0 bg-transparent py-1 text-right text-sm text-fg tabular outline-none"
+        className="w-full min-w-0 self-stretch bg-transparent py-1 text-right text-sm text-fg tabular outline-none"
       />
       {suffix && <span className="ml-1 shrink-0 text-xs text-muted">{suffix}</span>}
     </span>
@@ -443,7 +443,7 @@ function RuleRow({
           value={a.kind}
           aria-label="要做什麼"
           onChange={(e) => onChange({ ...rule, action: switchKind(a, e.target.value, plan) })}
-          className="rounded-lg border border-line bg-surface-2 px-1.5 py-1 text-sm text-fg"
+          className="min-h-10 rounded-lg border border-line bg-surface-2 px-1.5 py-1 text-sm text-fg sm:min-h-0"
         >
           <option value="buy">買</option>
           <option value="sell">賣出</option>
@@ -458,7 +458,12 @@ function RuleRow({
             <NumberInput value={a.pct} suffix="%" max={100} allowZero={false} ariaLabel="賣出比例" onCommit={(v) => onChange({ ...rule, action: { kind: 'sell', pct: v } })} className="w-20" />
           </>
         )}
-        <button type="button" onClick={onDelete} aria-label="刪除這一階" className="rounded p-1 text-muted hover:bg-surface-2 hover:text-fg">
+        <button
+          type="button"
+          onClick={onDelete}
+          aria-label="刪除這一階"
+          className="inline-flex min-h-10 min-w-10 items-center justify-center rounded text-muted hover:bg-surface-2 hover:text-fg"
+        >
           <CloseIcon width={16} height={16} />
         </button>
       </div>
@@ -578,7 +583,7 @@ function LadderEditor({
           type="button"
           disabled={full}
           onClick={() => add('above')}
-          className="rounded-lg border border-line px-3 py-1.5 text-sm text-fg hover:bg-surface-2 disabled:opacity-50"
+          className="min-h-10 rounded-lg border border-line px-3 py-1.5 text-sm text-fg hover:bg-surface-2 disabled:opacity-50 sm:min-h-0"
         >
           ＋ 往上加一階
         </button>
@@ -586,12 +591,12 @@ function LadderEditor({
           type="button"
           disabled={full}
           onClick={() => add('below')}
-          className="rounded-lg border border-line px-3 py-1.5 text-sm text-fg hover:bg-surface-2 disabled:opacity-50"
+          className="min-h-10 rounded-lg border border-line px-3 py-1.5 text-sm text-fg hover:bg-surface-2 disabled:opacity-50 sm:min-h-0"
         >
           ＋ 往下加一階
         </button>
         {onReset && (
-          <button type="button" onClick={onReset} className="rounded-lg px-3 py-1.5 text-sm text-muted hover:bg-surface-2 hover:text-fg">
+          <button type="button" onClick={onReset} className="min-h-10 rounded-lg px-3 py-1.5 text-sm text-muted hover:bg-surface-2 hover:text-fg sm:min-h-0">
             還原成預設
           </button>
         )}

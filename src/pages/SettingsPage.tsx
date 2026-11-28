@@ -2,7 +2,7 @@ import { Card, PageTitle, Segmented, SectionTitle } from '../components/ui';
 import { ASSETS } from '../config/assets';
 import { fmtDate, fmtDateTime } from '../data/format';
 import { lastDate } from '../data/extra';
-import { useExtra, useManifest } from '../data/load';
+import { useAsset, useExtra, useManifest } from '../data/load';
 import { FUNDING_STALE_REASON } from '../indicators/crypto/common';
 import { getIndicator } from '../indicators/registry';
 import { Link } from '../router';
@@ -17,6 +17,21 @@ function lagDays(last: string | null, fetchedAt: string): number | null {
   if (!last) return null;
   const ms = Date.parse(fetchedAt) - Date.parse(`${last}T00:00:00Z`);
   return Number.isFinite(ms) ? Math.floor(ms / 86400000) : null;
+}
+
+/** 比特幣：網站上的檔案只到最後一根已收盤的日 K，瀏覽器另外用幣安的即時資料補上之後的 K 棒 */
+function LiveNote({ assetId, fileLast }: { assetId: string; fileLast: string }) {
+  const state = useAsset(assetId);
+  if (state.status !== 'ready') return null;
+  const s = state.data;
+  const last = s.candles[s.candles.length - 1];
+  if (!s.live || !last || last.time <= fileLast) return null;
+  return (
+    <span className="block text-xs text-muted">
+      瀏覽器另外用{s.live.source}的即時資料補到 {fmtDate(last.time)}
+      {s.meta.lastBarComplete ? '' : '（最後一根還沒收盤）'}
+    </span>
+  );
 }
 
 /** 比特幣的額外資料（情緒、合約、鏈上）：來源與最新日期 */
@@ -135,7 +150,10 @@ export function SettingsPage() {
                       <span className="ml-1 text-xs text-muted">{a.symbol}</span>
                     </td>
                     <td className={`py-1.5 pr-2 ${e?.status === 'ok' ? 'text-fg' : 'text-hot'}`}>{e ? STATUS_LABEL[e.status] : '—'}</td>
-                    <td className="py-1.5 pr-2 text-fg tabular">{fmtDate(e?.lastDate)}</td>
+                    <td className="py-1.5 pr-2 text-fg tabular">
+                      {fmtDate(e?.lastDate)}
+                      {a.live && e?.lastDate && <LiveNote assetId={a.id} fileLast={e.lastDate} />}
+                    </td>
                     <td className="py-1.5 text-fg tabular">{e?.bars?.toLocaleString('zh-TW') ?? '—'}</td>
                   </tr>
                 );

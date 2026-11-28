@@ -34,6 +34,32 @@ export function RouteCard({ compact = false }: { compact?: boolean }) {
   };
   const nextDay = nextRouteDay(done);
   const days = showAll ? ROUTE_DAYS : ROUTE_DAYS.filter((d) => d.day === nextDay);
+  // 總覽頂端：預設收成一行，手機第一個畫面才看得到三檔的價格
+  if (compact && !showAll) {
+    const next = ROUTE_DAYS.find((d) => d.day === nextDay);
+    return (
+      <section className="flex items-center gap-2 rounded-xl border border-accent/40 bg-accent/5 px-3" aria-label="7 天新手路線">
+        <button
+          type="button"
+          onClick={() => setShowAll(true)}
+          aria-expanded={false}
+          className="flex min-h-11 min-w-0 flex-1 items-center gap-1.5 text-left text-sm"
+        >
+          <ChevronRightIcon className="h-4 w-4 shrink-0 text-accent" />
+          <span className="shrink-0 font-semibold text-fg">7 天新手路線</span>
+          <span className="shrink-0 text-muted tabular">
+            {done.length}／{ROUTE_DAYS.length}
+          </span>
+          <span className="min-w-0 truncate text-muted">{next ? `・下一步：第 ${next.day} 天 ${next.title}` : '・全部完成了！'}</span>
+        </button>
+        {next && (
+          <Link to={next.links[0]!.to} className="inline-flex min-h-10 shrink-0 items-center text-sm text-accent">
+            開始 →
+          </Link>
+        )}
+      </section>
+    );
+  }
   return (
     <section className="rounded-xl border border-accent/40 bg-accent/5 px-4 py-3" aria-label="7 天新手路線">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
@@ -80,7 +106,7 @@ export function RouteCard({ compact = false }: { compact?: boolean }) {
           aria-expanded={showAll}
         >
           <ChevronRightIcon className={`h-4 w-4 transition-transform ${showAll ? 'rotate-90' : ''}`} />
-          {showAll ? '只看下一天' : '看全部 7 天'}
+          收起
         </button>
       )}
     </section>

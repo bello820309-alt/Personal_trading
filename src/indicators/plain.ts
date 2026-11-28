@@ -106,6 +106,48 @@ export function plainLine(id: string, d: StateSummary, r: IndicatorResult, candl
       if (has('正乖離過大')) return '價格漲離均線很遠';
       if (has('負乖離過大')) return '價格跌離均線很遠';
       return '價格離均線的距離在正常範圍';
+    case 'sma':
+    case 'ema': {
+      // 照天數排好：3 條時叫短期、中期、長期
+      const mas = r.lines
+        .map((l) => ({ days: Number(l.label.match(/(\d+)/)?.[1] ?? NaN), v: l.values[n - 1] }))
+        .filter((x): x is { days: number; v: number } => Number.isFinite(x.days) && x.v != null)
+        .sort((a, b) => a.days - b.days);
+      const close = candles[n - 1]?.close;
+      if (!mas.length || close == null) return null;
+      const terms = mas.length === 3 ? ['短期', '中期', '長期'] : mas.length === 2 ? ['短期', '長期'] : null;
+      const up = mas.map((m) => close > m.v);
+      if (up.every(Boolean)) return terms ? `價格在${terms.join('、')}均線上面，都偏強` : `價格在全部 ${mas.length} 條均線上面，都偏強`;
+      if (!up.some(Boolean)) return terms ? `價格在${terms.join('、')}均線下面，都偏弱` : `價格在全部 ${mas.length} 條均線下面，都偏弱`;
+      if (!terms) return `價格站上 ${up.filter(Boolean).length} 條、跌破 ${up.filter((x) => !x).length} 條均線，方向不一致`;
+      const join = (xs: string[]) => xs.join('和');
+      return `價格在${join(terms.filter((_, i) => up[i]))}均線上面、${join(terms.filter((_, i) => !up[i]))}均線下面`;
+    }
+    case 'ma-cross': {
+      const bull = has('之上');
+      if (bull && d.detail.includes('跌到兩條均線下面')) return '長期趨勢還偏多，但價格已經跌到兩條均線下面';
+      if (!bull && d.detail.includes('站上兩條均線')) return '長期趨勢還偏空，但價格已經站上兩條均線';
+      return bull ? '中期均線在長期均線上面，長期趨勢偏多' : '中期均線在長期均線下面，長期趨勢偏空';
+    }
+    case 'volume': {
+      if (d.detail.includes('一字漲停')) return '整天鎖在漲停價，成交很少';
+      if (d.detail.includes('一字跌停')) return '整天鎖在跌停價，成交很少';
+      const m = d.headline.match(/^(價漲|價跌|價平)(爆量|量增|量縮|量能持平)/);
+      if (!m) return null;
+      const price = { 價漲: '價格上漲', 價跌: '價格下跌', 價平: '價格幾乎沒動' }[m[1]!];
+      const vol = { 爆量: '成交量暴增', 量增: '成交量比平常多', 量縮: '成交量比最近平均少', 量能持平: '成交量和平常差不多' }[m[2]!];
+      return `${price}，${vol}`;
+    }
+    case 'fibonacci': {
+      const down = d.detail.includes('跌到');
+      const what = down ? '大跌之後，價格反彈回跌幅的' : '大漲之後，價格拉回了漲幅的';
+      const one = d.headline.match(/剛好在 ([\d.]+%)/);
+      if (one) return `${what} ${one[1]} 附近`;
+      const two = d.headline.match(/介於 ([\d.]+%)（[^）]*）和 ([\d.]+%)/);
+      if (!two) return null;
+      if (two[1] === '0%') return `${down ? '大跌之後，反彈還不到跌幅的' : '大漲之後，拉回還不到漲幅的'} ${two[2]}`;
+      return `${what} ${two[1]}～${two[2]} 之間`;
+    }
     default:
       return null;
   }

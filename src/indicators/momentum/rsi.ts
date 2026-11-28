@@ -1,4 +1,4 @@
-import { fmtNum } from '../../data/format';
+import { fmtMd, fmtNum } from '../../data/format';
 import { closes, crossOver, crossUnder, firstValid, nulls, rma, scanSignals } from '../math/core';
 import { zoneNote } from '../math/after';
 import { dmiIndicator } from '../trend/dmi';
@@ -97,7 +97,7 @@ export function divergenceText(candles: readonly { time: string; close: number }
   }
   if (i0 < 0) return `再往前 11～40 根之間沒有明顯的${side === 'low' ? '低' : '高'}點（比前後各 3 根都${side === 'low' ? '低' : '高'}的轉折），沒辦法比較背離。`;
   if (i1 < 0) return `最近 10 根 K 棒裡沒有明顯的${side === 'low' ? '低' : '高'}點（比前後各 3 根都${side === 'low' ? '低' : '高'}的轉折；例如一路往下時，最近 10 根的最高點只是一開始那天，不算轉折），沒辦法比較背離。`;
-  const md = (i: number) => `${Number(candles[i]!.time.slice(5, 7))}/${Number(candles[i]!.time.slice(8, 10))}`;
+  const md = (i: number) => fmtMd(candles[i]!.time, candles[candles.length - 1]!.time);
   const p1 = candles[i1]!.close, p0 = candles[i0]!.close, r1 = line[i1]!, r0 = line[i0]!;
   const word = side === 'low' ? '低' : '高';
   const edge = n - 1 - i1 < 3 ? `（${md(i1)} 之後只有 ${n - 1 - i1} 根 K 棒，右邊還不到 3 根，先只看有的幾根；之後幾天如果價格又比它更${word}，它就不算轉折了）` : '';
@@ -182,7 +182,7 @@ export const rsiIndicator: IndicatorDef<RsiParams> = {
     const name = `RSI(${p.period})`;
     const base = describeOscillator(name, v, p.overbought, p.oversold, 50, 1, { candles, line: rsi });
     // 今天剛好出現回測規則的訊號（圖上的箭頭）
-    const md = (i: number) => `${Number(candles[i]!.time.slice(5, 7))}/${Number(candles[i]!.time.slice(8, 10))}`;
+    const md = (i: number) => fmtMd(candles[i]!.time, candles[candles.length - 1]!.time);
     // 趨勢強度：總覽的說法是 ADX 25 以上以趨勢指標為主，20～25 兩類都要打折看
     const adx = getLine(dmiIndicator.compute(candles, dmiIndicator.defaults), 'adx')[n - 1];
     const adxCtx =

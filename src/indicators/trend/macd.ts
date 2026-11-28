@@ -1,4 +1,4 @@
-import { fmtNum } from '../../data/format';
+import { fmtMd, fmtNum } from '../../data/format';
 import { closes, crossOver, crossUnder, ema, scanSignals, zip } from '../math/core';
 import { getLine, notesOf, type IndicatorDef } from '../types';
 
@@ -124,7 +124,7 @@ export const macdIndicator: IndicatorDef<MacdParams> = {
       const golden = pa <= pb && a > b;
       const dead = pa >= pb && a < b;
       if (!golden && !dead) continue;
-      const day = `${Number(candles[i]!.time.slice(5, 7))}/${Number(candles[i]!.time.slice(8, 10))}`;
+      const day = fmtMd(candles[i]!.time, candles[candles.length - 1]!.time);
       cross = `最近一次交叉是 ${day} 的${golden ? '黃金交叉（DIF 往上穿過訊號線）' : '死亡交叉（DIF 往下穿過訊號線）'}，發生在 0 軸${a >= 0 ? '之上' : '之下'}，到今天是第 ${n - i} 根 K 棒。`;
       break;
     }

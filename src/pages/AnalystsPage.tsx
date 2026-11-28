@@ -142,28 +142,27 @@ function AnalystSection({ entry, data, today, year }: { entry: AnalystEntry; dat
         </div>
       )}
 
+      {/* 預設只看準確度摘要和最新看法；每個預測、每支影片的細節收起來 */}
       {calls.length > 0 && (
-        <div>
-          <SubTitle sub="只記下有具體價位或事件、可以事後對照的說法；狀態每天跟著收盤資料自動更新">他說過的預測</SubTitle>
+        <Fold title={`他說過的預測（${calls.length} 個）`} sub="只記下有具體價位或事件、可以事後對照的說法；狀態每天跟著收盤資料自動更新">
           <div className="space-y-3">
             {calls.map((c) => (
               <CallCard key={c.call.id} ec={c} year={year} />
             ))}
           </div>
-        </div>
+        </Fold>
       )}
 
       {notes.length > 0 && (
-        <div>
-          <SubTitle>整理過的影片</SubTitle>
+        <Fold title={`整理過的影片（${notes.length} 支）`} sub={`最新一支是${noteDay(notes[0]!, year)}「${notes[0]!.titleZh}」；點一支看重點`}>
           <div className="space-y-3">
-            {notes.map((n, i) => (
-              <Fold key={n.videoId} title={`${noteDay(n, year)}「${n.titleZh}」`} sub={n.title} defaultOpen={i === 0}>
+            {notes.map((n) => (
+              <Fold key={n.videoId} title={`${noteDay(n, year)}「${n.titleZh}」`} sub={n.title}>
                 <NoteBody note={n} year={year} />
               </Fold>
             ))}
           </div>
-        </div>
+        </Fold>
       )}
 
       {entry.videos && <WaitingVideos videos={waiting} fetchedAt={entry.videos.fetchedAt} year={year} />}
